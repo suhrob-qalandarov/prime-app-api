@@ -4,8 +4,8 @@ import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.exp.primeapp.models.entities.Setting;
-import org.exp.primeapp.models.enums.setting.SettingType;
-import org.exp.primeapp.repository.setting.SettingRepository;
+import org.exp.primeapp.models.enums.SettingType;
+import org.exp.primeapp.repository.SettingRepository;
 import org.exp.primeapp.service.face.setting.SettingService;
 import org.springframework.stereotype.Service;
 

@@ -3,7 +3,7 @@ package org.exp.primeapp.controller.setting;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.exp.primeapp.models.entities.Setting;
-import org.exp.primeapp.models.enums.setting.SettingType;
+import org.exp.primeapp.models.enums.SettingType;
 import org.exp.primeapp.service.face.setting.SettingService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;

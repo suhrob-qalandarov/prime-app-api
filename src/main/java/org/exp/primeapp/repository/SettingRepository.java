@@ -1,8 +1,8 @@
-package org.exp.primeapp.repository.setting;
+package org.exp.primeapp.repository;
 
 import org.exp.primeapp.models.entities.Setting;
-import org.exp.primeapp.models.enums.setting.SettingCategory;
-import org.exp.primeapp.models.enums.setting.SettingType;
+import org.exp.primeapp.models.enums.SettingCategory;
+import org.exp.primeapp.models.enums.SettingType;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 

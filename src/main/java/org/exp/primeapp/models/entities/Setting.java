@@ -6,8 +6,8 @@ import jakarta.validation.constraints.NotNull;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
 import org.exp.primeapp.models.base.BaseEntity;
-import org.exp.primeapp.models.enums.setting.SettingCategory;
-import org.exp.primeapp.models.enums.setting.SettingType;
+import org.exp.primeapp.models.enums.SettingCategory;
+import org.exp.primeapp.models.enums.SettingType;
 
 @Getter
 @Setter
