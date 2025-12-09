@@ -17,6 +17,8 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     User findOneByVerifyCode(Integer verifyCode);
 
+    Optional<User> findByPhoneAndVerifyCode(String phone, Integer verifyCode);
+
     User findByTelegramId(Long telegramId);
 
     User findByTgUsername(String tgUsername);

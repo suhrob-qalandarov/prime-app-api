@@ -1,7 +1,6 @@
 package org.exp.primeapp.models.dto.responce.user;
 
 import lombok.*;
-import org.exp.primeapp.models.enums.ProductStatus;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -11,12 +10,13 @@ public record ProductRes(
         Long id,
         String name,
         String brand,
+        String color,
+        String tag,
+        String category,
         String description,
         BigDecimal price,
+        BigDecimal originalPrice,
         Integer discount,
-        ProductStatus status,
-        String categoryName,
-        List<String> attachmentKeys,
-        List<ProductSizeRes> productSizes
-) {
-}
+        List<String> images,
+        List<ProductSizeRes> sizes
+) {}

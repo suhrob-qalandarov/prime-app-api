@@ -9,11 +9,11 @@ import org.exp.primeapp.configs.security.JwtCookieService;
 import org.exp.primeapp.models.dto.responce.global.LoginRes;
 import org.exp.primeapp.models.dto.responce.order.UserProfileOrdersRes;
 import org.exp.primeapp.models.dto.responce.user.UserRes;
-import org.exp.primeapp.models.entities.Role;
 import org.exp.primeapp.models.entities.User;
 import org.exp.primeapp.repository.UserRepository;
 import org.exp.primeapp.service.face.global.auth.AuthService;
 import org.exp.primeapp.service.face.user.OrderService;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
@@ -27,6 +27,9 @@ public class AuthServiceImpl implements AuthService {
     private final JwtCookieService jwtService;
     private final UserRepository userRepository;
     private final OrderService orderService;
+
+    @Value("${cookie.max.age}")
+    private Integer cookieMaxAge;
 
     @Transactional
     @Override
@@ -42,7 +45,7 @@ public class AuthServiceImpl implements AuthService {
         }
         String token = jwtService.generateToken(user);
 
-        jwtService.setJwtCookie(response, token);
+        jwtService.setJwtCookie(token, "prime-user-token", response);
 
         var auth = new UsernamePasswordAuthenticationToken(user, null, user.getAuthorities());
         SecurityContextHolder.getContext().setAuthentication(auth);
@@ -53,20 +56,25 @@ public class AuthServiceImpl implements AuthService {
                 .id(user.getId())
                 .firstName(user.getFirstName())
                 .phone(user.getPhone())
-                .roles(user.getRoles().stream().map(Role::getName).toList())
-                .ordersRes(profileOrdersById)
+                .username(user.getTgUsername())
+                //.roles(user.getRoles().stream().map(Role::getName).toList())
+                .orders(profileOrdersById)
                 .isAdmin(user.getRoles().stream().anyMatch(role -> role.getName().equals("ROLE_ADMIN") || role.getName().equals("ROLE_VISITOR")))
                 .build();
 
+        long nowMillis = System.currentTimeMillis();
+        long expiryMillis = nowMillis + cookieMaxAge * 1000L;
+
         return LoginRes.builder()
                 .token(token)
-                .userRes(userRes)
+                .user(userRes)
+                .expiryMillis(expiryMillis)
                 .build();
     }
 
     @Override
     public void logout(HttpServletResponse response) {
-        Cookie cookie = new Cookie("prime-token", null);
+        Cookie cookie = new Cookie("prime-user-token", null);
         cookie.setHttpOnly(true);
         //cookie.setDomain("howdy.uz");
         cookie.setSecure(true);
@@ -74,5 +82,14 @@ public class AuthServiceImpl implements AuthService {
         cookie.setMaxAge(0);
         cookie.setAttribute("SameSite", "None");
         response.addCookie(cookie);
+
+        Cookie cookieAdmin = new Cookie("prime-admin-token", null);
+        cookieAdmin.setHttpOnly(true);
+        //cookieAdmin.setDomain("howdy.uz");
+        cookieAdmin.setSecure(true);
+        cookieAdmin.setPath("/");
+        cookieAdmin.setMaxAge(0);
+        cookieAdmin .setAttribute("SameSite", "None");
+        response.addCookie(cookieAdmin );
     }
 }

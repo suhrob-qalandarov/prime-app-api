@@ -5,9 +5,6 @@ import org.exp.primeapp.models.enums.Size;
 
 @Builder
 public record ProductSizeRes (
-        Long id,
         Size size,
         Integer amount
-        //, Boolean isAvailable
-) {
-}
+) {}

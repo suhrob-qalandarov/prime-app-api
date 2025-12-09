@@ -115,18 +115,20 @@ public class ProductServiceImpl implements ProductService {
 
         List<ProductSizeRes> productSizes = product.getSizes()
                 .stream()
-                .map(size -> new ProductSizeRes(size.getId(), size.getSize(), size.getAmount()))
+                .map(size -> new ProductSizeRes(size.getSize(), size.getAmount()))
                 .collect(toList());
 
         return new ProductRes(
                 product.getId(),
                 product.getName(),
                 product.getBrand(),
+                product.getColor(),
+                product.getTag().name(),
+                product.getCategory().getName(),
                 product.getDescription(),
                 product.getPrice(),
+                product.getPrice(),
                 product.getDiscount(),
-                product.getStatus(),
-                product.getCategory().getName(),
                 attachmentKeys,
                 productSizes
         );

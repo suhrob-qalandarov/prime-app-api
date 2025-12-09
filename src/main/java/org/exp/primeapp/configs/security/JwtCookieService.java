@@ -29,6 +29,27 @@ public class JwtCookieService {
     @Value("${jwt.secret.key}")
     private String secretKey;
 
+    @Value("${cookie.domain}")
+    private String cookieDomain;
+
+    @Value("${cookie.path}")
+    private String cookiePath;
+
+    @Value("${cookie.attribute.name}")
+    private String cookieAttributeName;
+
+    @Value("${cookie.attribute.value}")
+    private String cookieAttributeValue;
+
+    @Value("${cookie.max.age}")
+    private Integer cookieMaxAge;
+
+    @Value("${cookie.is.http.only}")
+    private Boolean cookieIsHttpOnly;
+
+    @Value("${cookie.is.secure}")
+    private Boolean cookieIsSecure;
+
     public SecretKey getSecretKey() {
         return Keys.hmacShaKeyFor(secretKey.getBytes());
     }
@@ -86,7 +107,9 @@ public class JwtCookieService {
     public String extractTokenFromCookie(HttpServletRequest request) {
         if (request.getCookies() != null) {
             for (Cookie cookie : request.getCookies()) {
-                if ("prime-token".equals(cookie.getName())) {
+                if ("prime-user-token".equals(cookie.getName())
+                        || "prime-admin-token".equals(cookie.getName())) {
+
                     return cookie.getValue();
                 }
             }
@@ -94,14 +117,14 @@ public class JwtCookieService {
         return null;
     }
 
-    public void setJwtCookie(HttpServletResponse response, String token) {
-        Cookie cookie = new Cookie("prime-token", token);
-        cookie.setHttpOnly(true);
-        //cookie.setDomain("howdy.uz");
-        cookie.setSecure(true);
-        cookie.setPath("/");
-        cookie.setMaxAge(7 * 24 * 60 * 60);
-        cookie.setAttribute("SameSite", "None");
+    public void setJwtCookie(String token, String key, HttpServletResponse response) {
+        Cookie cookie = new Cookie(key, token);
+        cookie.setHttpOnly(cookieIsHttpOnly);
+        cookie.setSecure(cookieIsSecure);
+        cookie.setDomain(cookieDomain);
+        cookie.setPath(cookiePath);
+        cookie.setMaxAge(cookieMaxAge);
+        cookie.setAttribute(cookieAttributeName, cookieAttributeValue);
         response.addCookie(cookie);
     }
 }

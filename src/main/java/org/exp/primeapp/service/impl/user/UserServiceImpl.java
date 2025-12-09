@@ -103,21 +103,22 @@ public class UserServiceImpl implements UserService {
     private UserRes convertToUserRes(User user) {
         UserProfileOrdersRes profileOrdersById = orderService.getUserProfileOrdersById(user.getId());
 
-        List<String> rolesNamesList = user.getRoles().stream()
+        /*List<String> rolesNamesList = user.getRoles().stream()
                 .map(Role::getName)
-                .toList();
+                .toList();*/
 
-        boolean hasRoleAdmin = user.getRoles().stream()
-                .anyMatch(role -> role.getName().equals("ROLE_ADMIN"));
-
-        return new UserRes(
-                user.getId(),
-                user.getFirstName(),
-                user.getPhone(),
-                rolesNamesList,
-                profileOrdersById,
-                hasRoleAdmin
-        );
+        return UserRes.builder()
+                .id(user.getId())
+                .firstName(user.getFirstName())
+                .phone(user.getPhone())
+                .username(user.getTgUsername())
+                .isAdmin(user.getRoles().stream()
+                        .anyMatch(role -> role.getName().equals("ROLE_ADMIN")))
+                .isVisitor(user.getRoles().stream()
+                        .anyMatch(role -> role.getName().equals("ROLE_VISITOR")))
+                .isSuperAdmin(user.getRoles().stream()
+                        .anyMatch(role -> role.getName().equals("ROLE_SUPER_ADMIN")))
+                .build();
     }
 
     private AdminUserRes convertToAdminUserRes(User user) {

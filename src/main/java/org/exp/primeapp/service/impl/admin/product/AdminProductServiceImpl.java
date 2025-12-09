@@ -90,7 +90,6 @@ public class AdminProductServiceImpl implements AdminProductService {
     public AdminProductRes convertToAdminProductRes(Product product) {
         List<ProductSizeRes> productSizeReslist = product.getSizes().stream()
                 .map(size -> ProductSizeRes.builder()
-                        .id(size.getId())
                         .size(size.getSize())
                         .amount(size.getAmount())
                         .build())
