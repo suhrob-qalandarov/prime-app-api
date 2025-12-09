@@ -34,6 +34,9 @@ public class User extends BaseEntity implements UserDetails {
     @Column(length = 500)
     private String attachmentToken;
 
+    @Column(length = 1000)
+    private String accessToken;
+
     @ManyToMany(fetch = FetchType.EAGER)
     private List<Role> roles;
 
