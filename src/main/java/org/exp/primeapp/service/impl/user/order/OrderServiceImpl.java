@@ -181,7 +181,7 @@ public class OrderServiceImpl implements OrderService {
         ProductOutcome outcome = new ProductOutcome();
         outcome.setUser(user);
         outcome.setProduct(product);
-        outcome.setAmount(quantity);
+        outcome.setStockQuantity(quantity);
         outcome.setProductSize(productSize);
         productOutcomeRepository.save(outcome);
     }

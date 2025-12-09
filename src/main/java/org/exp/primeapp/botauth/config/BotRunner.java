@@ -1,3 +1,4 @@
+/*
 package org.exp.primeapp.botauth.config;
 
 import com.pengrad.telegrambot.TelegramBot;
@@ -58,3 +59,4 @@ public class BotRunner implements CommandLineRunner {
         log.info("🤖 Telegram bot listener started successfully!");
     }
 }
+*/
