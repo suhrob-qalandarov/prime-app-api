@@ -1,9 +1,6 @@
 package org.exp.primeapp.models.entities;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.Index;
-import jakarta.persistence.Table;
+import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -19,7 +16,8 @@ import org.exp.primeapp.models.base.BaseEntity;
 @NoArgsConstructor
 @Entity
 @Table(name = "attachments", indexes = {
-        @Index(name = "idx_attachment_url", columnList = "url")
+        @Index(name = "idx_attachment_url", columnList = "url"),
+        @Index(name = "idx_attachment_product_id", columnList = "product_id")
 })
 public class Attachment extends BaseEntity {
 
@@ -46,4 +44,8 @@ public class Attachment extends BaseEntity {
 
     @Column(length = 50)
     private String fileExtension;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "product_id")
+    private Product product;
 }

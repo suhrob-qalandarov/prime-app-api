@@ -66,15 +66,6 @@ public class Product extends BaseEntity {
     private Category category;
 
     @Builder.Default
-    @ManyToMany(fetch = FetchType.EAGER)
-    @JoinTable(
-            name = "products_attachments",
-            joinColumns = @JoinColumn(name = "product_id"),
-            inverseJoinColumns = @JoinColumn(name = "attachment_id")
-    )
-    private Set<Attachment> attachments = new HashSet<>();
-
-    @Builder.Default
     @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, orphanRemoval = true)
     private Set<ProductSize> sizes = new HashSet<>();
 

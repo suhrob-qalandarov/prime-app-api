@@ -19,23 +19,23 @@ public interface AttachmentRepository extends JpaRepository<Attachment, Long> {
 
     List<Attachment> findAllByActiveFalse();
 
-    @Query("SELECT a FROM Attachment a WHERE NOT EXISTS (SELECT 1 FROM Product p JOIN p.attachments pa WHERE pa = a)")
-    List<Attachment> findAllByNotLinkedToProduct();
+    List<Attachment> findByProductIsNull();
 
-    @Query("SELECT a FROM Attachment a WHERE a.active = true AND NOT EXISTS (SELECT 1 FROM Product p JOIN p.attachments pa WHERE pa = a)")
-    List<Attachment> findAllByActiveTrueAndNotLinkedToProduct();
+    List<Attachment> findByProductIsNullAndActiveTrue();
 
-    @Query("SELECT a FROM Attachment a WHERE a.active = false AND NOT EXISTS (SELECT 1 FROM Product p JOIN p.attachments pa WHERE pa = a)")
-    List<Attachment> findAllByActiveFalseAndNotLinkedToProduct();
+    List<Attachment> findByProductIsNullAndActiveFalse();
 
-    @Query("SELECT a FROM Attachment a WHERE EXISTS (SELECT 1 FROM Product p JOIN p.attachments pa WHERE pa = a)")
-    List<Attachment> findAllByLinkedToProduct();
+    List<Attachment> findByProductIsNotNull();
 
-    @Query("SELECT a FROM Attachment a WHERE a.active = true AND EXISTS (SELECT 1 FROM Product p JOIN p.attachments pa WHERE pa = a)")
-    List<Attachment> findAllByActiveTrueAndLinkedToProduct();
+    List<Attachment> findByProductIsNotNullAndActiveTrue();
 
-    @Query("SELECT a FROM Attachment a WHERE a.active = false AND EXISTS (SELECT 1 FROM Product p JOIN p.attachments pa WHERE pa = a)")
-    List<Attachment> findAllByActiveFalseAndLinkedToProduct();
+    List<Attachment> findByProductIsNotNullAndActiveFalse();
+
+    List<Attachment> findByProductId(Long productId);
+
+    List<Attachment> findByProductIdAndActiveTrue(Long productId);
+
+    List<Attachment> findByProductIdAndActiveFalse(Long productId);
 
     @Query("SELECT COUNT(a) FROM Attachment a")
     int countAll();

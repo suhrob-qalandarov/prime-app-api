@@ -94,7 +94,10 @@ public class AdminProductServiceImpl implements AdminProductService {
                         .amount(size.getAmount())
                         .build())
                 .toList();
-        List<String> picturesUrlList = product.getAttachments().stream().map(Attachment::getUrl).toList();
+        List<String> picturesUrlList = attachmentRepository.findByProductId(product.getId())
+                .stream()
+                .map(Attachment::getUrl)
+                .toList();
         return AdminProductRes.builder()
                 .id(product.getId())
                 .name(product.getName())
@@ -130,16 +133,23 @@ public class AdminProductServiceImpl implements AdminProductService {
             throw new RuntimeException("Attachments empty");
         }
 
-        Set<Attachment> attachments = attachmentRepository.findAllByUrlIn(attachmentUrls);
+        List<Attachment> attachments = new java.util.ArrayList<>(attachmentRepository.findAllByUrlIn(attachmentUrls));
+        if (attachments.size() != attachmentUrls.size()) {
+            throw new RuntimeException("Some attachments not found");
+        }
 
-        Product product = createProductFromReq(productReq, category, attachments);
+        Product product = createProductFromReq(productReq, category);
         product.setDiscount(0);
         Product savedProduct = productRepository.save(product);
+
+        // Attachments ga product_id ni set qilamiz
+        attachments.forEach(attachment -> attachment.setProduct(savedProduct));
+        attachmentRepository.saveAll(attachments);
 
         return convertToAdminProductRes(savedProduct);
     }
 
-    private Product createProductFromReq(ProductReq req, Category category, Set<Attachment> attachments) {
+    private Product createProductFromReq(ProductReq req, Category category) {
         return Product.builder()
                 .name(req.name())
                 .brand(req.brand())
@@ -148,7 +158,6 @@ public class AdminProductServiceImpl implements AdminProductService {
                 .active(false)
                 .status(ProductStatus.PENDING_INCOME)
                 .category(category)
-                .attachments((Set<Attachment>) attachments)
                 .sizes(new HashSet<>())
                 .build();
     }

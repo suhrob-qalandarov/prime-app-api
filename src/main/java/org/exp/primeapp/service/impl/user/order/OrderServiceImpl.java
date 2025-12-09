@@ -28,6 +28,7 @@ public class OrderServiceImpl implements OrderService {
     private final UserRepository userRepository;
     private final ProductRepository productRepository;
     private final ProductSizeRepository productSizeRepository;
+    private final AttachmentRepository attachmentRepository;
     private final ProductOutcomeRepository productOutcomeRepository;
 
     @Override
@@ -64,9 +65,10 @@ public class OrderServiceImpl implements OrderService {
 
                             return UserOrderItemRes.builder()
                                     .name(orderItem.getProduct().getName())
-                                    .imageUrl(orderItem.getProduct().getAttachments().stream()
+                                    .imageUrl(attachmentRepository.findByProductId(orderItem.getProduct().getId())
+                                            .stream()
                                             .findFirst()
-                                            .map(attachment -> attachment.getUrl())
+                                            .map(Attachment::getUrl)
                                             .orElse(null))
                                     .size(orderItem.getProductSize().getSize().name())
                                     .price(itemPrice.setScale(2, RoundingMode.HALF_UP))

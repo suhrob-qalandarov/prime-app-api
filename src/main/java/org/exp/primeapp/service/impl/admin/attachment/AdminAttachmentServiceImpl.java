@@ -35,14 +35,14 @@ public class AdminAttachmentServiceImpl implements AdminAttachmentService {
 
     @Override
     public List<AttachmentRes> getAttachmentsNoProduct() {
-        List<Attachment> noProduct = attachmentRepository.findAllByNotLinkedToProduct();
+        List<Attachment> noProduct = attachmentRepository.findByProductIsNull();
         return attachmentService.convertToAttachmentResList(noProduct);
     }
 
 
     @Override
     public List<AttachmentRes> getAttachmentsLinkedWithProduct() {
-        List<Attachment> linkedToProduct = attachmentRepository.findAllByLinkedToProduct();
+        List<Attachment> linkedToProduct = attachmentRepository.findByProductIsNotNull();
         return attachmentService.convertToAttachmentResList(linkedToProduct);
     }
 
