@@ -67,10 +67,7 @@ public class SettingServiceImpl implements SettingService {
 
     @Override
     public void update(String key, String value, SettingType type, String description) {
-        Setting setting = repository.findAll()
-                .stream()
-                .filter(s -> s.getKey().equals(key))
-                .findFirst()
+        Setting setting = repository.findByKey(key)
                 .orElseGet(() -> Setting.builder()
                         .key(key)
                         .type(type)
@@ -79,7 +76,9 @@ public class SettingServiceImpl implements SettingService {
 
         setting.setValue(value);
         setting.setType(type);
-        setting.setDescription(description);
+        if (description != null) {
+            setting.setDescription(description);
+        }
 
         repository.save(setting);
         cache.put(key, setting);
