@@ -1,11 +1,13 @@
 package org.exp.primeapp.models.base;
 
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.MappedSuperclass;
+import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
+
+import java.util.ArrayList;
+import java.util.List;
 
 @Getter
 @Setter
@@ -20,4 +22,9 @@ public class BaseEntity extends Auditable {
 
     @Builder.Default
     private Boolean active = true;
+
+    @Builder.Default
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "recent_activities", columnDefinition = "jsonb")
+    private List<Activity> recentActivities = new ArrayList<>();
 }
