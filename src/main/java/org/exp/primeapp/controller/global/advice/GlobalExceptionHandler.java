@@ -4,13 +4,11 @@ import jakarta.persistence.EntityNotFoundException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.server.ResponseStatusException;
-import software.amazon.awssdk.services.s3.model.S3Exception;
 
 import java.io.IOException;
 import java.util.HashMap;
@@ -66,13 +64,6 @@ public class GlobalExceptionHandler {
         log.warn("Noto‘g‘ri argument: {}", e.getMessage());
         return ResponseEntity.badRequest()
                 .body(new ErrorResponse(HttpStatus.BAD_REQUEST.value(), e.getMessage()));
-    }
-
-    @ExceptionHandler(S3Exception.class)
-    public ResponseEntity<ErrorResponse> handleS3Exception(S3Exception e) {
-        log.error("S3 xatosi: {}", e.getMessage());
-        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(new ErrorResponse(HttpStatus.INTERNAL_SERVER_ERROR.value(), "S3 xatosi: " + e.getMessage()));
     }
 
     @ExceptionHandler(IOException.class)

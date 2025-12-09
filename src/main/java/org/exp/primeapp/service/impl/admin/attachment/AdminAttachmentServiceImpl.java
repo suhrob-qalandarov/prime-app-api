@@ -8,10 +8,8 @@ import org.exp.primeapp.models.entities.Attachment;
 import org.exp.primeapp.repository.AttachmentRepository;
 import org.exp.primeapp.service.face.admin.attachment.AdminAttachmentService;
 import org.exp.primeapp.service.face.global.attachment.AttachmentService;
-import org.exp.primeapp.service.face.global.attachment.S3Service;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
-import software.amazon.awssdk.services.s3.model.S3Exception;
 
 import java.io.IOException;
 import java.util.Arrays;
@@ -23,7 +21,6 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class AdminAttachmentServiceImpl implements AdminAttachmentService {
 
-    private final S3Service s3Service;
     private final AttachmentRepository attachmentRepository;
     private final AttachmentService attachmentService;
 
@@ -50,8 +47,9 @@ public class AdminAttachmentServiceImpl implements AdminAttachmentService {
     @Override
     public Attachment uploadOne(MultipartFile file) {
         attachmentService.validateFile(file);
-        String key = uploadToS3(file);
-        return saveAttachment(file, key);
+        // TODO: Implement local file storage
+        String url = saveFileLocally(file);
+        return saveAttachment(file, url);
     }
 
     @Transactional
@@ -63,8 +61,9 @@ public class AdminAttachmentServiceImpl implements AdminAttachmentService {
         return Arrays.stream(files)
                 .map(file -> {
                     attachmentService.validateFile(file);
-                    String key = uploadToS3(file);
-                    return saveAttachment(file, key);
+                    // TODO: Implement local file storage
+                    String url = saveFileLocally(file);
+                    return saveAttachment(file, url);
                 })
                 .collect(Collectors.toList());
     }
@@ -74,22 +73,23 @@ public class AdminAttachmentServiceImpl implements AdminAttachmentService {
     public AttachmentRes update(Long attachmentId, MultipartFile file) {
         attachmentService.validateFile(file);
         Attachment attachment = attachmentService.getAttachment(attachmentId);
-        String oldKey = attachment.getUrl();
-        String newKey = uploadToS3(file);
+        String oldUrl = attachment.getUrl();
+        // TODO: Implement local file storage
+        String newUrl = saveFileLocally(file);
 
-        attachment.setUrl(newKey);
+        attachment.setUrl(newUrl);
         attachment.setFilename(file.getOriginalFilename());
         attachment.setContentType(file.getContentType());
 
         try {
             Attachment saved = attachmentRepository.save(attachment);
-            if (oldKey != null && !oldKey.equals(newKey)) {
-                deleteOldS3File(oldKey);
+            if (oldUrl != null && !oldUrl.equals(newUrl)) {
+                deleteLocalFile(oldUrl);
             }
             return attachmentService.convertToAttachmentRes(saved);
         } catch (Exception e) {
             log.error("Failed to update attachment ID {} in database: {}", attachmentId, e.getMessage());
-            s3Service.deleteFile(newKey); // Rollback new S3 upload
+            deleteLocalFile(newUrl); // Rollback new file upload
             throw new RuntimeException("Unable to update attachment in database", e);
         }
     }
@@ -112,7 +112,7 @@ public class AdminAttachmentServiceImpl implements AdminAttachmentService {
     @Override
     public void deleteFromS3(Long attachmentId) {
         Attachment attachment = attachmentService.getAttachment(attachmentId);
-        String key = attachment.getUrl();
+        String url = attachment.getUrl();
 
         if (attachment.getActive() || attachment.getUrl().startsWith("deleted_")) {
             return;
@@ -127,7 +127,8 @@ public class AdminAttachmentServiceImpl implements AdminAttachmentService {
             throw new RuntimeException("Unable to soft-delete attachment in database", e);
         }
 
-        deleteOldS3File(key);
+        // TODO: Implement local file deletion
+        deleteLocalFile(url);
     }
 
     @Override
@@ -148,22 +149,18 @@ public class AdminAttachmentServiceImpl implements AdminAttachmentService {
         return attachmentService.convertToAttachmentRes(updatedAttachment);
     }
 
-    private String uploadToS3(MultipartFile file) {
-        try {
-            return s3Service.uploadAttachment(file);
-        } catch (IOException e) {
-            log.error("Failed to upload file {} to S3: {}", file.getOriginalFilename(), e.getMessage());
-            throw new RuntimeException("Unable to upload file to S3", e);
-        } catch (S3Exception e) {
-            log.error("S3 error while uploading file {}: {}", file.getOriginalFilename(), e.getMessage());
-            throw new RuntimeException("S3 service error during file upload", e);
-        }
+    private String saveFileLocally(MultipartFile file) {
+        // TODO: Implement local file storage
+        // For now, return a placeholder URL
+        String filename = file.getOriginalFilename() != null ? file.getOriginalFilename() : file.getName();
+        return "/uploads/" + System.currentTimeMillis() + "_" + filename;
     }
 
-    private Attachment saveAttachment(MultipartFile file, String key) {
+    private Attachment saveAttachment(MultipartFile file, String url) {
+        String filePath = url; // TODO: Update when implementing local file storage
         Attachment newAttachment = Attachment.builder()
-                .url(key)
-                .filePath(key) // TODO: Update when implementing local file storage
+                .url(url)
+                .filePath(filePath)
                 .filename(file.getOriginalFilename())
                 .originalFilename(file.getOriginalFilename())
                 .contentType(file.getContentType())
@@ -175,7 +172,7 @@ public class AdminAttachmentServiceImpl implements AdminAttachmentService {
             return attachmentRepository.save(newAttachment);
         } catch (Exception e) {
             log.error("Failed to save attachment for file {}: {}", file.getOriginalFilename(), e.getMessage());
-            s3Service.deleteFile(key); // Rollback S3 upload
+            deleteLocalFile(url); // Rollback file upload
             throw new RuntimeException("Unable to save attachment to database", e);
         }
     }
@@ -188,11 +185,8 @@ public class AdminAttachmentServiceImpl implements AdminAttachmentService {
         return lastDotIndex > 0 ? filename.substring(lastDotIndex + 1) : "";
     }
 
-    private void deleteOldS3File(String key) {
-        try {
-            s3Service.deleteFile(key);
-        } catch (S3Exception e) {
-            log.warn("Failed to delete S3 file with key {}: {}", key, e.getMessage());
-        }
+    private void deleteLocalFile(String url) {
+        // TODO: Implement local file deletion
+        log.debug("File deletion not yet implemented for URL: {}", url);
     }
 }
