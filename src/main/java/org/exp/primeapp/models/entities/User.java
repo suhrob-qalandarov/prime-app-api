@@ -31,6 +31,9 @@ public class User extends BaseEntity implements UserDetails {
 
     private LocalDateTime verifyCodeExpiration;
 
+    @Column(length = 500)
+    private String attachmentToken;
+
     @ManyToMany(fetch = FetchType.EAGER)
     private List<Role> roles;
 

@@ -28,7 +28,9 @@ public interface AttachmentService {
 
     List<String> convertToAttachmentUrls(List<Attachment> attachments);
 
-    String generateAttachmentToken();
+    String generateAttachmentToken(org.exp.primeapp.models.entities.User user);
     
-    String refreshAttachmentToken(String oldToken);
+    String refreshAttachmentToken(String oldToken, org.exp.primeapp.models.entities.User user);
+    
+    boolean validateAttachmentToken(String token, org.exp.primeapp.models.entities.User user);
 }

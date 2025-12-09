@@ -30,9 +30,7 @@ public class AttachmentServiceImpl implements AttachmentService {
 
     @Override
     public void get(String attachmentUrl, String token, HttpServletResponse response) throws IOException {
-        if (token == null || !attachmentTokenService.validateToken(token)) {
-            throw new IllegalArgumentException("Invalid or missing attachment token");
-        }
+        // Token validation will be done in controller with user context
 
         try {
             Attachment attachment = getAttachmentWithUrl(attachmentUrl);
@@ -56,13 +54,18 @@ public class AttachmentServiceImpl implements AttachmentService {
     }
 
     @Override
-    public String generateAttachmentToken() {
-        return attachmentTokenService.generateToken();
+    public String generateAttachmentToken(org.exp.primeapp.models.entities.User user) {
+        return attachmentTokenService.generateToken(user);
     }
 
     @Override
-    public String refreshAttachmentToken(String oldToken) {
-        return attachmentTokenService.refreshToken(oldToken);
+    public String refreshAttachmentToken(String oldToken, org.exp.primeapp.models.entities.User user) {
+        return attachmentTokenService.refreshToken(oldToken, user);
+    }
+
+    @Override
+    public boolean validateAttachmentToken(String token, org.exp.primeapp.models.entities.User user) {
+        return attachmentTokenService.validateToken(token, user);
     }
 
     private byte[] getFileContent(String url) throws IOException {
