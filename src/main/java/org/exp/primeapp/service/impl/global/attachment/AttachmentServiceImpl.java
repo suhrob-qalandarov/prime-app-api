@@ -9,6 +9,7 @@ import org.exp.primeapp.models.entities.Attachment;
 import org.exp.primeapp.repository.AttachmentRepository;
 import org.exp.primeapp.service.face.global.attachment.AttachmentService;
 import org.exp.primeapp.service.face.global.attachment.S3Service;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -25,6 +26,9 @@ public class AttachmentServiceImpl implements AttachmentService {
 
     private final S3Service s3Service;
     private final AttachmentRepository attachmentRepository;
+
+    @Value("${attachment.max.file.size.mb}")
+    private Long maxFileSizeMB;
 
     @Override
     public void get(String attachmentUrl, HttpServletResponse response) throws IOException {
@@ -76,8 +80,9 @@ public class AttachmentServiceImpl implements AttachmentService {
         if (file.getContentType() == null || !file.getContentType().startsWith("image/")) {
             throw new IllegalArgumentException("Only image files are allowed");
         }
-        if (file.getSize() > 5 * 1024 * 1024) { // 5MB limit
-            throw new IllegalArgumentException("File size exceeds 5MB limit");
+        long maxFileSizeBytes = maxFileSizeMB * 1024 * 1024;
+        if (file.getSize() > maxFileSizeBytes) {
+            throw new IllegalArgumentException("File size exceeds " + maxFileSizeMB + "MB limit");
         }
     }
 
