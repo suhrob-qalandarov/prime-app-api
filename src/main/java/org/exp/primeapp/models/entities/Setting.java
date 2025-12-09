@@ -1,4 +1,4 @@
-package org.exp.primeapp.models.entities.settings;
+package org.exp.primeapp.models.entities;
 
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
