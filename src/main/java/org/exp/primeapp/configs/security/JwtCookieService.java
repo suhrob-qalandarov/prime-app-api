@@ -50,6 +50,12 @@ public class JwtCookieService {
     @Value("${cookie.is.secure}")
     private Boolean cookieIsSecure;
 
+    @Value("${cookie.name.user}")
+    private String cookieNameUser;
+
+    @Value("${cookie.name.admin}")
+    private String cookieNameAdmin;
+
     public SecretKey getSecretKey() {
         return Keys.hmacShaKeyFor(secretKey.getBytes());
     }
@@ -107,8 +113,8 @@ public class JwtCookieService {
     public String extractTokenFromCookie(HttpServletRequest request) {
         if (request.getCookies() != null) {
             for (Cookie cookie : request.getCookies()) {
-                if ("prime-user-token".equals(cookie.getName())
-                        || "prime-admin-token".equals(cookie.getName())) {
+                if (cookieNameUser.equals(cookie.getName())
+                        || cookieNameAdmin.equals(cookie.getName())) {
 
                     return cookie.getValue();
                 }

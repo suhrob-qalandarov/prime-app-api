@@ -26,6 +26,9 @@ public class AdminAuthServiceImpl implements AdminAuthService {
     @Value("${cookie.max.age}")
     private Integer cookieMaxAge;
 
+    @Value("${cookie.name.admin}")
+    private String cookieNameAdmin;
+
     @Override
     public LoginRes checkAdminLogin(AdminLoginReq loginReq, HttpServletResponse response) {
         User u = userRepository.findByPhoneAndVerifyCode(loginReq.phoneNumber(), loginReq.verifyCode())
@@ -33,7 +36,7 @@ public class AdminAuthServiceImpl implements AdminAuthService {
 
         String token = jwtService.generateToken(u);
 
-        jwtService.setJwtCookie(token, "prime-admin-token", response);
+        jwtService.setJwtCookie(token, cookieNameAdmin, response);
 
         var auth = new UsernamePasswordAuthenticationToken(u, null, u.getAuthorities());
         SecurityContextHolder.getContext().setAuthentication(auth);

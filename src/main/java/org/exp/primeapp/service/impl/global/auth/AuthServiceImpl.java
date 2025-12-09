@@ -31,6 +31,12 @@ public class AuthServiceImpl implements AuthService {
     @Value("${cookie.max.age}")
     private Integer cookieMaxAge;
 
+    @Value("${cookie.name.user}")
+    private String cookieNameUser;
+
+    @Value("${cookie.name.admin}")
+    private String cookieNameAdmin;
+
     @Transactional
     @Override
     public LoginRes verifyWithCodeAndSendUserData(Integer code, HttpServletResponse response) {
@@ -45,7 +51,7 @@ public class AuthServiceImpl implements AuthService {
         }
         String token = jwtService.generateToken(user);
 
-        jwtService.setJwtCookie(token, "prime-user-token", response);
+        jwtService.setJwtCookie(token, cookieNameUser, response);
 
         var auth = new UsernamePasswordAuthenticationToken(user, null, user.getAuthorities());
         SecurityContextHolder.getContext().setAuthentication(auth);
@@ -74,7 +80,7 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     public void logout(HttpServletResponse response) {
-        Cookie cookie = new Cookie("prime-user-token", null);
+        Cookie cookie = new Cookie(cookieNameUser, null);
         cookie.setHttpOnly(true);
         //cookie.setDomain("howdy.uz");
         cookie.setSecure(true);
@@ -83,7 +89,7 @@ public class AuthServiceImpl implements AuthService {
         cookie.setAttribute("SameSite", "None");
         response.addCookie(cookie);
 
-        Cookie cookieAdmin = new Cookie("prime-admin-token", null);
+        Cookie cookieAdmin = new Cookie(cookieNameAdmin, null);
         cookieAdmin.setHttpOnly(true);
         //cookieAdmin.setDomain("howdy.uz");
         cookieAdmin.setSecure(true);
