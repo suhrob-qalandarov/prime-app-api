@@ -7,7 +7,7 @@ import java.math.BigDecimal;
 @Builder
 public record UserOrderItemRes(
         String name,
-        String imageKey,
+        String imageUrl,
         String size,
         BigDecimal price,
         Integer discount,

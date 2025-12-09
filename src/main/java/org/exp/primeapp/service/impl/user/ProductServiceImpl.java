@@ -108,9 +108,9 @@ public class ProductServiceImpl implements ProductService {
     }
 
     public ProductRes convertToProductRes(Product product) {
-        List<String> attachmentKeys = product.getAttachments()
+        List<String> attachmentUrls = product.getAttachments()
                 .stream()
-                .map(Attachment::getKey)
+                .map(Attachment::getUrl)
                 .collect(toList());
 
         List<ProductSizeRes> productSizes = product.getSizes()
@@ -129,7 +129,7 @@ public class ProductServiceImpl implements ProductService {
                 product.getPrice(),
                 product.getPrice(),
                 product.getDiscount(),
-                attachmentKeys,
+                attachmentUrls,
                 productSizes
         );
     }

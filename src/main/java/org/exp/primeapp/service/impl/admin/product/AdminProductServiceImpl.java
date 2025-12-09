@@ -94,7 +94,7 @@ public class AdminProductServiceImpl implements AdminProductService {
                         .amount(size.getAmount())
                         .build())
                 .toList();
-        List<String> picturesKeyList = product.getAttachments().stream().map(Attachment::getKey).toList();
+        List<String> picturesUrlList = product.getAttachments().stream().map(Attachment::getUrl).toList();
         return AdminProductRes.builder()
                 .id(product.getId())
                 .name(product.getName())
@@ -106,7 +106,7 @@ public class AdminProductServiceImpl implements AdminProductService {
                 .active(product.getActive())
                 .discount(product.getDiscount())
                 .createdAt(product.getCreatedAt().format(formatter))
-                .picturesKeys(picturesKeyList)
+                .picturesUrls(picturesUrlList)
                 .productSizeRes(productSizeReslist)
                 .build();
     }
@@ -125,12 +125,12 @@ public class AdminProductServiceImpl implements AdminProductService {
         Category category = categoryRepository.findById(productReq.categoryId())
                 .orElseThrow(() -> new RuntimeException("Category not found with categoryId: " + productReq.categoryId()));
 
-        Set<String> attachmentIds = productReq.attachmentKeys();
-        if (attachmentIds == null || attachmentIds.isEmpty()) {
+        Set<String> attachmentUrls = productReq.attachmentUrls();
+        if (attachmentUrls == null || attachmentUrls.isEmpty()) {
             throw new RuntimeException("Attachments empty");
         }
 
-        Set<Attachment> attachments = attachmentRepository.findAllByKeyIn(attachmentIds);
+        Set<Attachment> attachments = attachmentRepository.findAllByUrlIn(attachmentUrls);
 
         Product product = createProductFromReq(productReq, category, attachments);
         product.setDiscount(0);

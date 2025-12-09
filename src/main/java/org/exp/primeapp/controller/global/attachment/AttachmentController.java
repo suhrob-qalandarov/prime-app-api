@@ -20,10 +20,10 @@ public class AttachmentController {
 
     private final AttachmentService attachmentService;
 
-    @GetMapping("/{key}")
-    public void getAttachment(@PathVariable String key, HttpServletResponse response) throws IOException {
-        log.debug("Fetching attachment with KEY: {}", key);
-        attachmentService.get(key, response);
-        log.info("Successfully served attachment: {}", key);
+    @GetMapping("/{url}")
+    public void getAttachment(@PathVariable String url, HttpServletResponse response) throws IOException {
+        log.debug("Fetching attachment with URL: {}", url);
+        attachmentService.get(url, response);
+        log.info("Successfully served attachment: {}", url);
     }
 }

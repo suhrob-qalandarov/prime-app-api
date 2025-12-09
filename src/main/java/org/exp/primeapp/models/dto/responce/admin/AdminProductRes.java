@@ -18,6 +18,6 @@ public record AdminProductRes(
         Boolean active,
         Integer discount,
         String createdAt,
-        List<String> picturesKeys,
+        List<String> picturesUrls,
         List<ProductSizeRes> productSizeRes
 ){}

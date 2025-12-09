@@ -112,7 +112,7 @@ public class FilterChainConfig {
                         .requestMatchers(
                                 HttpMethod.GET,
                                 API + V1 + ADMIN + ATTACHMENT + "/{attachmentId}",
-                                API + V1 + ADMIN + ATTACHMENT + "/with-key/{attachmentKey}"
+                                API + V1 + ADMIN + ATTACHMENT + "/with-url/{attachmentUrl}"
                         ).hasAnyRole("ADMIN", "VISITOR")
 
                         // Restrict all other AdminAttachmentController endpoints to ROLE_ADMIN

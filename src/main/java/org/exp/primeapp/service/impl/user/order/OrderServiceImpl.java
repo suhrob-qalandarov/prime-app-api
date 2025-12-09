@@ -64,9 +64,9 @@ public class OrderServiceImpl implements OrderService {
 
                             return UserOrderItemRes.builder()
                                     .name(orderItem.getProduct().getName())
-                                    .imageKey(orderItem.getProduct().getAttachments().stream()
+                                    .imageUrl(orderItem.getProduct().getAttachments().stream()
                                             .findFirst()
-                                            .map(Object::toString)
+                                            .map(attachment -> attachment.getUrl())
                                             .orElse(null))
                                     .size(orderItem.getProductSize().getSize().name())
                                     .price(itemPrice.setScale(2, RoundingMode.HALF_UP))

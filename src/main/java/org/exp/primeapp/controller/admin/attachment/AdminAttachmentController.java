@@ -5,7 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.exp.primeapp.models.dto.responce.global.AttachmentRes;
 import org.exp.primeapp.models.entities.Attachment;
 import org.exp.primeapp.service.face.admin.attachment.AdminAttachmentService;
-import org.exp.primeapp.utils.AttachmentUtilService;
+import org.exp.primeapp.service.face.global.attachment.AttachmentService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -22,19 +22,19 @@ import static org.exp.primeapp.utils.Const.*;
 public class AdminAttachmentController {
 
     private final AdminAttachmentService adminAttachmentService;
-    private final AttachmentUtilService attachmentUtilService;
+    private final AttachmentService attachmentService;
 
     @GetMapping("/{attachmentId}")
     @PreAuthorize("hasAnyRole('ADMIN', 'VISITOR')")
     public ResponseEntity<Attachment> getAttachment(@PathVariable Long attachmentId) {
         log.debug("Fetching attachment with ID: {}", attachmentId);
-        return ResponseEntity.ok(attachmentUtilService.getAttachment(attachmentId));
+        return ResponseEntity.ok(attachmentService.getAttachment(attachmentId));
     }
 
-    @GetMapping("/with-key/{attachmentKey}")
-    public ResponseEntity<Attachment> getAttachmentWithKey(@PathVariable String attachmentKey) {
-        log.debug("Fetching attachment with KEY: {}", attachmentKey);
-        return ResponseEntity.ok(attachmentUtilService.getAttachmentWithKey(attachmentKey));
+    @GetMapping("/with-url/{attachmentUrl}")
+    public ResponseEntity<Attachment> getAttachmentWithUrl(@PathVariable String attachmentUrl) {
+        log.debug("Fetching attachment with URL: {}", attachmentUrl);
+        return ResponseEntity.ok(attachmentService.getAttachmentWithUrl(attachmentUrl));
     }
 
     @PostMapping("/oneupload")
@@ -44,9 +44,12 @@ public class AdminAttachmentController {
         Attachment attachment = adminAttachmentService.uploadOne(file);
         AttachmentRes response = AttachmentRes.builder()
                 .id(attachment.getId())
-                .key(attachment.getKey())
+                .url(attachment.getUrl())
                 .filename(attachment.getFilename())
+                .originalFilename(attachment.getOriginalFilename())
                 .contentType(attachment.getContentType())
+                .fileSize(attachment.getFileSize())
+                .fileExtension(attachment.getFileExtension())
                 .build();
         return ResponseEntity.ok(response);
     }
@@ -56,7 +59,7 @@ public class AdminAttachmentController {
     public ResponseEntity<List<String>> uploadFiles(@RequestParam("files") MultipartFile[] files) {
         log.debug("Uploading multiple files: {}", files.length);
         List<Attachment> uploadedFiles = adminAttachmentService.uploadMultiple(files);
-        List<String> responses = attachmentUtilService.convertToAttachmentKeys(uploadedFiles);
+        List<String> responses = attachmentService.convertToAttachmentUrls(uploadedFiles);
         return ResponseEntity.ok(responses);
     }
 

@@ -28,7 +28,7 @@ public record ProductReq (
         @Positive(message = "Kategoriya ID musbat bo‘lishi kerak")
         Long categoryId,
 
-        @NotNull(message = "Rasm yoki fayl kalitlari bo‘sh bo‘lmasligi kerak")
+        @NotNull(message = "Rasm yoki fayl URL lari bo‘sh bo‘lmasligi kerak")
         @Size(max = 10, message = "Eng ko‘pi bilan 10 ta fayl yuklash mumkin")
-        Set<String> attachmentKeys
+        Set<String> attachmentUrls
 ) {}
