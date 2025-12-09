@@ -31,7 +31,10 @@ public class Product extends BaseEntity {
     private String name;
 
     @Column(nullable = false)
-    private String color;
+    private String colorName;
+
+    @Column(nullable = false)
+    private String colorHex;
 
     @Column(nullable = false)
     private String brand;

@@ -102,6 +102,8 @@ public class AdminProductServiceImpl implements AdminProductService {
                 .id(product.getId())
                 .name(product.getName())
                 .brand(product.getBrand())
+                .colorName(product.getColorName())
+                .colorHex(product.getColorHex())
                 .description(product.getDescription())
                 .categoryName(product.getCategory().getName())
                 .price(product.getPrice())
@@ -153,6 +155,8 @@ public class AdminProductServiceImpl implements AdminProductService {
         return Product.builder()
                 .name(req.name())
                 .brand(req.brand())
+                .colorName(req.colorName())
+                .colorHex(req.colorHex())
                 .description(req.description())
                 .price(req.price())
                 .active(false)
@@ -193,6 +197,18 @@ public class AdminProductServiceImpl implements AdminProductService {
 
         if (hasText(req.name())) {
             product.setName(req.name());
+        }
+
+        if (hasText(req.brand())) {
+            product.setBrand(req.brand());
+        }
+
+        if (hasText(req.colorName())) {
+            product.setColorName(req.colorName());
+        }
+
+        if (hasText(req.colorHex())) {
+            product.setColorHex(req.colorHex());
         }
 
         if (hasText(req.description())) {

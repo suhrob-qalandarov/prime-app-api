@@ -11,6 +11,8 @@ public record AdminProductRes(
         Long id,
         String name,
         String brand,
+        String colorName,
+        String colorHex,
         String description,
         String categoryName,
         BigDecimal price,
