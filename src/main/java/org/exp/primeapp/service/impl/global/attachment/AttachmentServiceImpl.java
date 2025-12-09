@@ -8,7 +8,6 @@ import org.exp.primeapp.models.dto.responce.global.AttachmentRes;
 import org.exp.primeapp.models.entities.Attachment;
 import org.exp.primeapp.repository.AttachmentRepository;
 import org.exp.primeapp.service.face.global.attachment.AttachmentService;
-import org.exp.primeapp.service.face.global.attachment.S3Service;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -17,14 +16,11 @@ import java.io.IOException;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import software.amazon.awssdk.services.s3.model.S3Exception;
-
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class AttachmentServiceImpl implements AttachmentService {
 
-    private final S3Service s3Service;
     private final AttachmentRepository attachmentRepository;
 
     @Value("${attachment.max.file.size.mb}")
@@ -47,17 +43,18 @@ public class AttachmentServiceImpl implements AttachmentService {
             response.setHeader("Content-Disposition", "inline; filename=\"" + (filename != null ? filename : "attachment") + "\"");
             response.getOutputStream().write(fileContent);
             response.getOutputStream().flush();
-        } catch (IOException | S3Exception e) {
+        } catch (IOException e) {
             log.error("Failed to fetch file for attachment URL {}: {}", attachmentUrl, e.getMessage());
             throw new IOException("Unable to retrieve file", e);
         }
     }
 
-    private byte[] getFileContent(String url) throws IOException, S3Exception {
+    private byte[] getFileContent(String url) throws IOException {
         if (url == null || url.isBlank()) {
             throw new IllegalArgumentException("Attachment URL cannot be null or empty");
         }
-        return s3Service.getFile(url);
+        // TODO: Implement local file reading from filePath
+        throw new UnsupportedOperationException("File reading from local storage not yet implemented");
     }
 
     @Override
