@@ -75,10 +75,16 @@ public class FilterChainConfig {
                                 API + V1 + CATEGORIES + WAY_ALL
                         ).permitAll()
 
-                        // Public attachment endpoint
+                        // Public attachment endpoints (token-protected)
                         .requestMatchers(
                                 HttpMethod.GET,
+                                API + V1 + ATTACHMENT + "/token",
                                 API + V1 + ATTACHMENT + "/*"
+                        ).permitAll()
+                        
+                        .requestMatchers(
+                                HttpMethod.POST,
+                                API + V1 + ATTACHMENT + "/token/refresh"
                         ).permitAll()
 
                         // Allow GET requests to AdminProductController for ROLE_ADMIN and ROLE_VISITOR

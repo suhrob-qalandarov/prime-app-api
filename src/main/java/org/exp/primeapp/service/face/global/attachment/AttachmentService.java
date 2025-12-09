@@ -12,7 +12,7 @@ import java.util.List;
 @Service
 public interface AttachmentService {
 
-    void get(String attachmentUrl, HttpServletResponse response) throws IOException;
+    void get(String attachmentUrl, String token, HttpServletResponse response) throws IOException;
 
     Attachment getAttachment(Long attachmentId);
 
@@ -27,4 +27,8 @@ public interface AttachmentService {
     AttachmentRes convertToAttachmentRes(Attachment attachment);
 
     List<String> convertToAttachmentUrls(List<Attachment> attachments);
+
+    String generateAttachmentToken();
+    
+    String refreshAttachmentToken(String oldToken);
 }

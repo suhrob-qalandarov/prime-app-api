@@ -8,6 +8,7 @@ import org.exp.primeapp.models.dto.responce.global.AttachmentRes;
 import org.exp.primeapp.models.entities.Attachment;
 import org.exp.primeapp.repository.AttachmentRepository;
 import org.exp.primeapp.service.face.global.attachment.AttachmentService;
+import org.exp.primeapp.service.face.global.attachment.AttachmentTokenService;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -22,12 +23,17 @@ import java.util.stream.Collectors;
 public class AttachmentServiceImpl implements AttachmentService {
 
     private final AttachmentRepository attachmentRepository;
+    private final AttachmentTokenService attachmentTokenService;
 
     @Value("${attachment.max.file.size.mb}")
     private Long maxFileSizeMB;
 
     @Override
-    public void get(String attachmentUrl, HttpServletResponse response) throws IOException {
+    public void get(String attachmentUrl, String token, HttpServletResponse response) throws IOException {
+        if (token == null || !attachmentTokenService.validateToken(token)) {
+            throw new IllegalArgumentException("Invalid or missing attachment token");
+        }
+
         try {
             Attachment attachment = getAttachmentWithUrl(attachmentUrl);
             if (attachment == null) {
@@ -47,6 +53,16 @@ public class AttachmentServiceImpl implements AttachmentService {
             log.error("Failed to fetch file for attachment URL {}: {}", attachmentUrl, e.getMessage());
             throw new IOException("Unable to retrieve file", e);
         }
+    }
+
+    @Override
+    public String generateAttachmentToken() {
+        return attachmentTokenService.generateToken();
+    }
+
+    @Override
+    public String refreshAttachmentToken(String oldToken) {
+        return attachmentTokenService.refreshToken(oldToken);
     }
 
     private byte[] getFileContent(String url) throws IOException {
