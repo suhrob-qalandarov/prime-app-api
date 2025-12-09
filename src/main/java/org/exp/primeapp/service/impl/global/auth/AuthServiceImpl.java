@@ -1,6 +1,7 @@
 package org.exp.primeapp.service.impl.global.auth;
 
 import jakarta.servlet.http.Cookie;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
@@ -10,9 +11,12 @@ import org.exp.primeapp.models.dto.responce.global.LoginRes;
 import org.exp.primeapp.models.dto.responce.order.UserProfileOrdersRes;
 import org.exp.primeapp.models.dto.responce.user.UserRes;
 import org.exp.primeapp.models.entities.User;
+import org.exp.primeapp.models.entities.UserIpInfo;
+import org.exp.primeapp.repository.UserIpInfoRepository;
 import org.exp.primeapp.repository.UserRepository;
 import org.exp.primeapp.service.face.global.auth.AuthService;
 import org.exp.primeapp.service.face.user.OrderService;
+import org.exp.primeapp.utils.IpAddressUtil;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -26,7 +30,9 @@ import java.time.LocalDateTime;
 public class AuthServiceImpl implements AuthService {
     private final JwtCookieService jwtService;
     private final UserRepository userRepository;
+    private final UserIpInfoRepository userIpInfoRepository;
     private final OrderService orderService;
+    private final IpAddressUtil ipAddressUtil;
 
     @Value("${cookie.max.age}")
     private Integer cookieMaxAge;
@@ -39,17 +45,50 @@ public class AuthServiceImpl implements AuthService {
 
     @Transactional
     @Override
-    public LoginRes verifyWithCodeAndSendUserData(Integer code, HttpServletResponse response) {
+    public LoginRes verifyWithCodeAndSendUserData(Integer code, HttpServletResponse response, HttpServletRequest request) {
         User user = userRepository.findOneByVerifyCode(code);
 
         if (user == null) {
-            throw new IllegalArgumentException("Code noto‘g‘ri");
+            throw new IllegalArgumentException("Code noto'g'ri");
         }
 
         if (user.getVerifyCodeExpiration().isBefore(LocalDateTime.now())) {
             throw new IllegalArgumentException("Code expired");
         }
+        
+        // IP va browser ma'lumotlarini olish va saqlash
+        String ip = ipAddressUtil.getClientIpAddress(request);
+        String browserInfo = ipAddressUtil.getBrowserInfo(request);
+        
+        // Agar register IP bo'lmasa, saqlash
+        boolean hasRegisterInfo = userIpInfoRepository.findByUserIdAndIsRegisterInfoTrue(user.getId()).isPresent();
+        if (!hasRegisterInfo) {
+            UserIpInfo registerInfo = UserIpInfo.builder()
+                    .user(user)
+                    .ip(ip)
+                    .browserInfo(browserInfo)
+                    .accessedAt(LocalDateTime.now())
+                    .isRegisterInfo(true)
+                    .build();
+            userIpInfoRepository.save(registerInfo);
+        }
+        
+        // Login IP ni saqlash (agar allaqachon yo'q bo'lsa)
+        boolean ipExists = userIpInfoRepository.existsByUserIdAndIpAndBrowserInfo(user.getId(), ip, browserInfo);
+        
+        if (!ipExists) {
+            UserIpInfo userIpInfo = UserIpInfo.builder()
+                    .user(user)
+                    .ip(ip)
+                    .browserInfo(browserInfo)
+                    .accessedAt(LocalDateTime.now())
+                    .isRegisterInfo(false)
+                    .build();
+            userIpInfoRepository.save(userIpInfo);
+        }
+        
         String token = jwtService.generateToken(user);
+        userRepository.save(user);
 
         jwtService.setJwtCookie(token, cookieNameUser, response);
 

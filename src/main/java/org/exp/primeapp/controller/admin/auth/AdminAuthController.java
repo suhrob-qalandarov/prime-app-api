@@ -1,5 +1,6 @@
 package org.exp.primeapp.controller.admin.auth;
 
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.exp.primeapp.models.dto.request.AdminLoginReq;
@@ -20,8 +21,11 @@ public class AdminAuthController {
     private final AdminAuthService adminAuthService;
 
     @PostMapping
-    public ResponseEntity<LoginRes> verifyAdminLogin(@RequestBody AdminLoginReq loginReq, HttpServletResponse response) {
-        LoginRes loginRes = adminAuthService.checkAdminLogin(loginReq, response);
+    public ResponseEntity<LoginRes> verifyAdminLogin(
+            @RequestBody AdminLoginReq loginReq, 
+            HttpServletResponse response,
+            HttpServletRequest request) {
+        LoginRes loginRes = adminAuthService.checkAdminLogin(loginReq, response, request);
         return new ResponseEntity<>(loginRes, HttpStatus.ACCEPTED);
     }
 }
