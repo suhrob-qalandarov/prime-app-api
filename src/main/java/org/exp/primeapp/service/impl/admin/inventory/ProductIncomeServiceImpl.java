@@ -4,11 +4,13 @@ import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.exp.primeapp.models.dto.request.IncomeRequest;
+import org.exp.primeapp.models.dto.response.admin.IncomeStatisticsResponse;
 import org.exp.primeapp.models.entities.Category;
 import org.exp.primeapp.models.entities.Product;
 import org.exp.primeapp.models.entities.ProductIncome;
 import org.exp.primeapp.models.entities.ProductSize;
 import org.exp.primeapp.models.entities.User;
+import org.exp.primeapp.models.enums.IncomeFilterType;
 import org.exp.primeapp.repository.CategoryRepository;
 import org.exp.primeapp.repository.ProductIncomeRepository;
 import org.exp.primeapp.repository.ProductRepository;
@@ -19,6 +21,11 @@ import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.time.format.DateTimeFormatter;
+import java.util.List;
 
 @Slf4j
 @Service
@@ -144,6 +151,78 @@ public class ProductIncomeServiceImpl implements ProductIncomeService {
         } catch (Exception e) {
             log.error("Error activating product and category for ProductIncome {}", productIncome.getId(), e);
         }
+    }
+
+    @Override
+    public IncomeStatisticsResponse getIncomeStatistics(IncomeFilterType filterType) {
+        LocalDateTime startDate;
+        LocalDateTime endDate;
+        String periodStart;
+        String periodEnd;
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm");
+
+        LocalDateTime now = LocalDateTime.now();
+
+        switch (filterType) {
+            case TODAY:
+                startDate = LocalDateTime.of(LocalDate.now(), LocalTime.MIN);
+                endDate = LocalDateTime.of(LocalDate.now(), LocalTime.MAX);
+                periodStart = startDate.format(formatter);
+                periodEnd = endDate.format(formatter);
+                break;
+            case WEEKLY:
+                startDate = now.minusDays(7).with(LocalTime.MIN);
+                endDate = now.with(LocalTime.MAX);
+                periodStart = startDate.format(formatter);
+                periodEnd = endDate.format(formatter);
+                break;
+            case MONTHLY:
+                startDate = now.minusDays(30).with(LocalTime.MIN);
+                endDate = now.with(LocalTime.MAX);
+                periodStart = startDate.format(formatter);
+                periodEnd = endDate.format(formatter);
+                break;
+            default:
+                startDate = LocalDateTime.of(LocalDate.now(), LocalTime.MIN);
+                endDate = LocalDateTime.of(LocalDate.now(), LocalTime.MAX);
+                periodStart = startDate.format(formatter);
+                periodEnd = endDate.format(formatter);
+        }
+
+        // Income larni olish
+        List<ProductIncome> incomes = productIncomeRepository.findIncomesByDateRange(startDate, endDate);
+
+        // Statistikalarni hisoblash
+        long totalCount = incomes.size();
+        int totalStockQuantity = incomes.stream()
+                .mapToInt(ProductIncome::getStockQuantity)
+                .sum();
+        
+        BigDecimal totalIncomeAmount = incomes.stream()
+                .map(ProductIncome::getTotalPrice)
+                .filter(price -> price != null)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        
+        BigDecimal totalUnitPrice = incomes.stream()
+                .map(ProductIncome::getUnitPrice)
+                .filter(price -> price != null)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        
+        BigDecimal averageUnitPrice = totalCount > 0 && totalUnitPrice.compareTo(BigDecimal.ZERO) > 0
+                ? totalUnitPrice.divide(BigDecimal.valueOf(totalCount), 2, RoundingMode.HALF_UP)
+                : BigDecimal.ZERO;
+
+        return IncomeStatisticsResponse.builder()
+                .totalCount(totalCount)
+                .totalStockQuantity(totalStockQuantity)
+                .totalIncomeAmount(totalIncomeAmount)
+                .totalUnitPrice(totalUnitPrice)
+                .averageUnitPrice(averageUnitPrice)
+                .incomes(incomes)
+                .filterType(filterType.name())
+                .periodStart(periodStart)
+                .periodEnd(periodEnd)
+                .build();
     }
 }
 

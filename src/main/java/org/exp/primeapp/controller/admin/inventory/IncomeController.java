@@ -3,7 +3,9 @@ package org.exp.primeapp.controller.admin.inventory;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.exp.primeapp.models.dto.request.IncomeRequest;
+import org.exp.primeapp.models.dto.response.admin.IncomeStatisticsResponse;
 import org.exp.primeapp.models.entities.ProductIncome;
+import org.exp.primeapp.models.enums.IncomeFilterType;
 import org.exp.primeapp.service.face.admin.inventory.ProductIncomeService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -24,5 +26,21 @@ public class IncomeController {
     public ResponseEntity<ProductIncome> createIncome(@Valid @RequestBody IncomeRequest incomeRequest) {
         ProductIncome productIncome = productIncomeService.createIncome(incomeRequest);
         return new ResponseEntity<>(productIncome, HttpStatus.CREATED);
+    }
+
+    @GetMapping("/statistics")
+    @PreAuthorize("hasAnyRole('ADMIN', 'VISITOR')")
+    public ResponseEntity<IncomeStatisticsResponse> getIncomeStatistics(
+            @RequestParam(value = "filter", defaultValue = "TODAY") IncomeFilterType filterType) {
+        IncomeStatisticsResponse statistics = productIncomeService.getIncomeStatistics(filterType);
+        return new ResponseEntity<>(statistics, HttpStatus.OK);
+    }
+
+    @GetMapping
+    @PreAuthorize("hasAnyRole('ADMIN', 'VISITOR')")
+    public ResponseEntity<IncomeStatisticsResponse> getAllIncomes(
+            @RequestParam(value = "filter", defaultValue = "TODAY") IncomeFilterType filterType) {
+        IncomeStatisticsResponse statistics = productIncomeService.getIncomeStatistics(filterType);
+        return new ResponseEntity<>(statistics, HttpStatus.OK);
     }
 }
