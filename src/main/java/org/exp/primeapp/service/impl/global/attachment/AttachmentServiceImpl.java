@@ -1,6 +1,7 @@
 package org.exp.primeapp.service.impl.global.attachment;
 
 import jakarta.persistence.EntityNotFoundException;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -9,6 +10,7 @@ import org.exp.primeapp.models.entities.Attachment;
 import org.exp.primeapp.repository.AttachmentRepository;
 import org.exp.primeapp.service.face.global.attachment.AttachmentService;
 import org.exp.primeapp.service.face.global.attachment.AttachmentTokenService;
+import org.exp.primeapp.service.face.global.session.SessionService;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -24,18 +26,31 @@ public class AttachmentServiceImpl implements AttachmentService {
 
     private final AttachmentRepository attachmentRepository;
     private final AttachmentTokenService attachmentTokenService;
+    private final SessionService sessionService;
 
     @Value("${attachment.max.file.size.mb}")
     private Long maxFileSizeMB;
 
     @Override
-    public void get(String attachmentUrl, String token, HttpServletResponse response) throws IOException {
-        // Token validation will be done in controller with user context
+    public void get(String attachmentUrl, String token, HttpServletRequest request, HttpServletResponse response) throws IOException {
+        // Token validation
+        if (!attachmentTokenService.validateToken(token)) {
+            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+            response.getWriter().write("Invalid or expired attachment token");
+            return;
+        }
+
+        // Session lastAccessedAt yangilash
+        String sessionId = sessionService.getSessionIdFromCookie(request);
+        if (sessionId != null) {
+            sessionService.updateLastAccessed(sessionId);
+        }
 
         try {
             Attachment attachment = getAttachmentWithUrl(attachmentUrl);
             if (attachment == null) {
-                throw new IllegalArgumentException("Attachment not found with URL: " + attachmentUrl);
+                response.setStatus(HttpServletResponse.SC_NOT_FOUND);
+                return;
             }
             
             byte[] fileContent = getFileContent(attachmentUrl);
@@ -45,27 +60,29 @@ public class AttachmentServiceImpl implements AttachmentService {
 
             response.setContentType(attachment.getContentType() != null ? attachment.getContentType() : "image/jpeg");
             response.setHeader("Content-Disposition", "inline; filename=\"" + (filename != null ? filename : "attachment") + "\"");
+            response.setContentLength(fileContent.length);
             response.getOutputStream().write(fileContent);
             response.getOutputStream().flush();
         } catch (IOException e) {
             log.error("Failed to fetch file for attachment URL {}: {}", attachmentUrl, e.getMessage());
+            response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
             throw new IOException("Unable to retrieve file", e);
         }
     }
 
     @Override
     public String generateAttachmentToken(org.exp.primeapp.models.entities.User user) {
-        return attachmentTokenService.generateToken(user);
+        return attachmentTokenService.generateTokenForUser(user);
     }
 
     @Override
-    public String refreshAttachmentToken(String oldToken, org.exp.primeapp.models.entities.User user) {
-        return attachmentTokenService.refreshToken(oldToken, user);
+    public String refreshAttachmentToken(String oldToken, HttpServletRequest request) {
+        return attachmentTokenService.refreshToken(oldToken, request);
     }
 
     @Override
-    public boolean validateAttachmentToken(String token, org.exp.primeapp.models.entities.User user) {
-        return attachmentTokenService.validateToken(token, user);
+    public boolean validateAttachmentToken(String token) {
+        return attachmentTokenService.validateToken(token);
     }
 
     private byte[] getFileContent(String url) throws IOException {

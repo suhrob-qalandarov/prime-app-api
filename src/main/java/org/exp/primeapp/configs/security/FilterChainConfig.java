@@ -95,7 +95,13 @@ public class FilterChainConfig {
                                 API + V1 + CATEGORIES + WAY_ALL
                         ).permitAll()
 
-                        // Attachment token endpoints require authentication
+                        // Attachment anonymous token endpoint - public
+                        .requestMatchers(
+                                HttpMethod.GET,
+                                API + V1 + ATTACHMENT + "/token/anonymous"
+                        ).permitAll()
+                        
+                        // Attachment token endpoint for authenticated users
                         .requestMatchers(
                                 HttpMethod.GET,
                                 API + V1 + ATTACHMENT + "/token"
@@ -104,13 +110,13 @@ public class FilterChainConfig {
                         .requestMatchers(
                                 HttpMethod.POST,
                                 API + V1 + ATTACHMENT + "/token/refresh"
-                        ).authenticated()
+                        ).permitAll() // Token bilan himoyalangan
                         
-                        // Attachment access endpoint (token-protected, but user must be authenticated)
+                        // Attachment access endpoint - public (token bilan himoyalangan)
                         .requestMatchers(
                                 HttpMethod.GET,
                                 API + V1 + ATTACHMENT + "/*"
-                        ).authenticated()
+                        ).permitAll() // Token validation controller/service da qilinadi
 
                         // Allow GET requests to AdminProductController for ROLE_ADMIN and ROLE_VISITOR
                         .requestMatchers(
