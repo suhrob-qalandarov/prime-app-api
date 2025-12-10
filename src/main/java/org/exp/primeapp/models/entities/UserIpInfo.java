@@ -38,3 +38,4 @@ public class UserIpInfo extends BaseEntity {
     private Boolean isRegisterInfo = false; // true bo'lsa register IP, false bo'lsa login IP
 }
 
+

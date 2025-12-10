@@ -51,3 +51,4 @@ public class Activity extends BaseEntity {
     private String details; // Additional details as JSON string or text
 }
 
+

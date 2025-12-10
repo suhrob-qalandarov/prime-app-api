@@ -39,3 +39,4 @@ public interface ActivityRepository extends JpaRepository<Activity, Long> {
     Page<Activity> findAllOrderByTimestampDesc(Pageable pageable);
 }
 
+

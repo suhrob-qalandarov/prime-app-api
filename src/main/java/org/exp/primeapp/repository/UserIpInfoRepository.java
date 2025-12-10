@@ -19,3 +19,4 @@ public interface UserIpInfoRepository extends JpaRepository<UserIpInfo, Long> {
     boolean existsByUserIdAndIpAndBrowserInfo(Long userId, String ip, String browserInfo);
 }
 
+
