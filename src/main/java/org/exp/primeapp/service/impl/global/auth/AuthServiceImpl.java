@@ -14,7 +14,10 @@ import org.exp.primeapp.models.entities.User;
 import org.exp.primeapp.models.entities.UserIpInfo;
 import org.exp.primeapp.repository.UserIpInfoRepository;
 import org.exp.primeapp.repository.UserRepository;
+import org.exp.primeapp.models.entities.Session;
 import org.exp.primeapp.service.face.global.auth.AuthService;
+import org.exp.primeapp.service.face.global.attachment.AttachmentTokenService;
+import org.exp.primeapp.service.face.global.session.SessionService;
 import org.exp.primeapp.service.face.user.OrderService;
 import org.exp.primeapp.utils.IpAddressUtil;
 import org.springframework.beans.factory.annotation.Value;
@@ -33,6 +36,8 @@ public class AuthServiceImpl implements AuthService {
     private final UserIpInfoRepository userIpInfoRepository;
     private final OrderService orderService;
     private final IpAddressUtil ipAddressUtil;
+    private final SessionService sessionService;
+    private final AttachmentTokenService attachmentTokenService;
 
     @Value("${cookie.max.age}")
     private Integer cookieMaxAge;
@@ -87,7 +92,41 @@ public class AuthServiceImpl implements AuthService {
             userIpInfoRepository.save(userIpInfo);
         }
         
-        String token = jwtService.generateToken(user);
+        // Session topish yoki yaratish
+        Session session = sessionService.getOrCreateSession(request, response);
+        
+        // Session ni user ga biriktirish (migration)
+        if (session.getUser() == null) {
+            sessionService.migrateSessionToUser(session.getSessionId(), user);
+        }
+        
+        // Access token yaratish yoki olish
+        String existingAccessToken = sessionService.getAccessToken(session.getSessionId());
+        String token;
+        
+        if (existingAccessToken != null) {
+            // Token expiry tekshirish (3 kun)
+            long expiryDays = getAccessTokenExpiryDays(existingAccessToken);
+            if (expiryDays >= 3) {
+                // 3 kun va undan oshiq - eski token ishlatiladi
+                token = existingAccessToken;
+            } else {
+                // 3 kundan kam - yangi token yaratiladi
+                token = jwtService.generateToken(user);
+                sessionService.setAccessToken(session.getSessionId(), token);
+            }
+        } else {
+            // Token yo'q - yangi yaratish
+            token = jwtService.generateToken(user);
+            sessionService.setAccessToken(session.getSessionId(), token);
+        }
+        
+        // Attachment token yaratish yoki olish
+        String attachmentToken = sessionService.getAttachmentToken(session.getSessionId());
+        if (attachmentToken == null || !attachmentTokenService.validateToken(attachmentToken)) {
+            attachmentToken = attachmentTokenService.generateTokenForSession(session);
+        }
+        
         userRepository.save(user);
 
         jwtService.setJwtCookie(token, cookieNameUser, response);
@@ -136,5 +175,31 @@ public class AuthServiceImpl implements AuthService {
         cookieAdmin.setMaxAge(0);
         cookieAdmin .setAttribute("SameSite", "None");
         response.addCookie(cookieAdmin );
+    }
+    
+    private long getAccessTokenExpiryDays(String token) {
+        try {
+            io.jsonwebtoken.Claims claims = io.jsonwebtoken.Jwts.parser()
+                    .verifyWith(jwtService.getSecretKey())
+                    .build()
+                    .parseSignedClaims(token)
+                    .getPayload();
+
+            java.util.Date expiration = claims.getExpiration();
+            if (expiration == null) {
+                return 0;
+            }
+
+            LocalDateTime expiryDateTime = LocalDateTime.ofInstant(
+                    expiration.toInstant(),
+                    java.time.ZoneId.systemDefault()
+            );
+            LocalDateTime now = LocalDateTime.now();
+
+            return java.time.temporal.ChronoUnit.DAYS.between(now, expiryDateTime);
+        } catch (Exception e) {
+            log.warn("Failed to get access token expiry: {}", e.getMessage());
+            return 0;
+        }
     }
 }

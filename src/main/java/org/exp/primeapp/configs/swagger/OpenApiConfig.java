@@ -31,10 +31,53 @@ public class OpenApiConfig {
     }
 
     @Bean
-    public GroupedOpenApi publicApi() {
+    public GroupedOpenApi userAuthApi() {
         return GroupedOpenApi.builder()
-                .group("public")
-                .pathsToMatch("/**")
+                .group("user-auth")
+                .pathsToMatch(
+                        "/api/v2/auth/**"
+                )
+                .build();
+    }
+
+    @Bean
+    public GroupedOpenApi adminAuthApi() {
+        return GroupedOpenApi.builder()
+                .group("admin-auth")
+                .pathsToMatch(
+                        "/api/v1/admin/auth/**"
+                )
+                .build();
+    }
+
+    @Bean
+    public GroupedOpenApi userApi() {
+        return GroupedOpenApi.builder()
+                .group("user")
+                .pathsToMatch(
+                        "/api/v1/user/**",
+                        "/api/v1/product/**",
+                        "/api/v1/products/**",
+                        "/api/v1/category/**",
+                        "/api/v1/categories/**",
+                        "/api/v1/order/**",
+                        "/api/v1/orders/**",
+                        "/api/v1/attachment/**"
+                )
+                .build();
+    }
+
+    @Bean
+    public GroupedOpenApi adminApi() {
+        return GroupedOpenApi.builder()
+                .group("admin")
+                .pathsToMatch(
+                        "/api/v1/admin/**",
+                        "/api/v2/admin/**"
+                )
+                .pathsToExclude(
+                        "/api/v1/admin/auth/**" // auth allaqachon admin-auth group da
+                )
                 .build();
     }
 }

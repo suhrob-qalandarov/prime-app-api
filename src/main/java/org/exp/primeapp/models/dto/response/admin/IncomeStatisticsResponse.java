@@ -24,3 +24,4 @@ public record IncomeStatisticsResponse(
         String periodEnd                    // Period tugash sanasi
 ) {}
 
+

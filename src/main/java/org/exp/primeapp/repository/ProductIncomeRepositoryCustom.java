@@ -6,3 +6,4 @@ public interface ProductIncomeRepositoryCustom {
     ProductIncome saveWithActivation(ProductIncome productIncome);
 }
 
+

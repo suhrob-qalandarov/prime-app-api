@@ -1,5 +1,6 @@
 package org.exp.primeapp.service.face.global.attachment;
 
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.exp.primeapp.models.dto.responce.global.AttachmentRes;
 import org.exp.primeapp.models.entities.Attachment;
@@ -12,7 +13,7 @@ import java.util.List;
 @Service
 public interface AttachmentService {
 
-    void get(String attachmentUrl, String token, HttpServletResponse response) throws IOException;
+    void get(String attachmentUrl, String token, HttpServletRequest request, HttpServletResponse response) throws IOException;
 
     Attachment getAttachment(Long attachmentId);
 
@@ -30,7 +31,7 @@ public interface AttachmentService {
 
     String generateAttachmentToken(org.exp.primeapp.models.entities.User user);
     
-    String refreshAttachmentToken(String oldToken, org.exp.primeapp.models.entities.User user);
+    String refreshAttachmentToken(String oldToken, HttpServletRequest request);
     
-    boolean validateAttachmentToken(String token, org.exp.primeapp.models.entities.User user);
+    boolean validateAttachmentToken(String token);
 }
