@@ -1,6 +1,7 @@
 package org.exp.primeapp.configs.security;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -10,9 +11,15 @@ import org.springframework.security.authentication.ProviderManager;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
+import org.springframework.security.core.userdetails.User;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.provisioning.InMemoryUserDetailsManager;
+import org.springframework.core.annotation.Order;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.cors.CorsConfiguration;
@@ -25,25 +32,38 @@ import java.util.List;
 import static org.exp.primeapp.utils.Const.*;
 
 @EnableMethodSecurity
+@EnableWebSecurity
 @Configuration
 @RequiredArgsConstructor
 public class FilterChainConfig {
 
     private final CustomUserDetailsService customUserDetailsService;
 
+    @Value("${swagger.ui.username:admin}")
+    private String swaggerUsername;
+
+    @Value("${swagger.ui.password:admin123}")
+    private String swaggerPassword;
+
     @Bean
+    @Order(1)
+    public SecurityFilterChain swaggerSecurityFilterChain(HttpSecurity http) throws Exception {
+        http.securityMatcher("/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**")
+                .csrf(AbstractHttpConfigurer::disable)
+                .authorizeHttpRequests(auth -> auth.anyRequest().authenticated())
+                .httpBasic(httpBasic -> httpBasic.realmName("Swagger UI"))
+                .userDetailsService(swaggerUserDetailsService());
+        return http.build();
+    }
+
+    @Bean
+    @Order(2)
     public SecurityFilterChain configure(HttpSecurity http, JwtCookieFilter mySecurityFilter) throws Exception {
         http.csrf(AbstractHttpConfigurer::disable);
         http.cors(cors -> cors.configurationSource(corsConfigurationSource()));
         http.authorizeHttpRequests(auth ->
                 auth
-                        // Public endpoints (Swagger, etc.)
-                        .requestMatchers(
-                                "/swagger-ui.html",
-                                "/swagger-ui/**",
-                                "/v3/api-docs/**"
-                        ).permitAll()
-
+                        // Swagger endpoints are handled by swaggerSecurityFilterChain
                         // Public auth endpoint
                         .requestMatchers(
                                 HttpMethod.POST,
@@ -143,6 +163,16 @@ public class FilterChainConfig {
         http.addFilterBefore(mySecurityFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
+    }
+
+    @Bean
+    public UserDetailsService swaggerUserDetailsService() {
+        UserDetails swaggerUser = User.builder()
+                .username(swaggerUsername)
+                .password(passwordEncoder().encode(swaggerPassword))
+                .roles("SWAGGER")
+                .build();
+        return new InMemoryUserDetailsManager(swaggerUser);
     }
 
     @Bean
