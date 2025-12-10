@@ -2,7 +2,7 @@ name: Build and Deploy Web App to Server
 
 on:
   push:
-    branches: [suhrob]
+    branches: [main]
 
 jobs:
   build:
