@@ -31,11 +31,20 @@ public class OpenApiConfig {
     }
 
     @Bean
-    public GroupedOpenApi authApi() {
+    public GroupedOpenApi userAuthApi() {
         return GroupedOpenApi.builder()
-                .group("auth")
+                .group("user-auth")
                 .pathsToMatch(
-                        "/api/v2/auth/**",
+                        "/api/v2/auth/**"
+                )
+                .build();
+    }
+
+    @Bean
+    public GroupedOpenApi adminAuthApi() {
+        return GroupedOpenApi.builder()
+                .group("admin-auth")
+                .pathsToMatch(
                         "/api/v1/admin/auth/**"
                 )
                 .build();
@@ -67,7 +76,7 @@ public class OpenApiConfig {
                         "/api/v2/admin/**"
                 )
                 .pathsToExclude(
-                        "/api/v1/admin/auth/**" // auth allaqachon auth group da
+                        "/api/v1/admin/auth/**" // auth allaqachon admin-auth group da
                 )
                 .build();
     }
