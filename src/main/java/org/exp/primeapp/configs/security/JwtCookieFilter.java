@@ -30,11 +30,12 @@ public class JwtCookieFilter extends OncePerRequestFilter {
             @NonNull FilterChain filterChain
     ) throws ServletException, IOException {
 
-        // Skip JWT validation for Swagger/OpenAPI endpoints
+        // Skip JWT validation for Swagger/OpenAPI endpoints (handled by swaggerSecurityFilterChain)
         String requestPath = request.getRequestURI();
         if (requestPath.startsWith("/swagger-ui") || 
             requestPath.startsWith("/v3/api-docs") ||
-            requestPath.equals("/swagger-ui.html")) {
+            requestPath.equals("/swagger-ui.html") ||
+            requestPath.startsWith("/swagger-ui.html/")) {
             filterChain.doFilter(request, response);
             return;
         }

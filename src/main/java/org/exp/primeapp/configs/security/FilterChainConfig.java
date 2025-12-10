@@ -19,7 +19,6 @@ import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.provisioning.InMemoryUserDetailsManager;
-import org.springframework.core.annotation.Order;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.cors.CorsConfiguration;
@@ -46,24 +45,21 @@ public class FilterChainConfig {
     private String swaggerPassword;
 
     @Bean
-    @Order(1)
-    public SecurityFilterChain swaggerSecurityFilterChain(HttpSecurity http) throws Exception {
-        http.securityMatcher("/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**")
-                .csrf(AbstractHttpConfigurer::disable)
-                .authorizeHttpRequests(auth -> auth.anyRequest().authenticated())
-                .httpBasic(httpBasic -> httpBasic.realmName("Swagger UI"))
-                .userDetailsService(swaggerUserDetailsService());
-        return http.build();
-    }
-
-    @Bean
-    @Order(2)
     public SecurityFilterChain configure(HttpSecurity http, JwtCookieFilter mySecurityFilter) throws Exception {
         http.csrf(AbstractHttpConfigurer::disable);
         http.cors(cors -> cors.configurationSource(corsConfigurationSource()));
         http.authorizeHttpRequests(auth ->
                 auth
-                        // Swagger endpoints are handled by swaggerSecurityFilterChain
+                        // Swagger endpoints - authenticated (httpBasic will handle authentication)
+                        .requestMatchers(
+                                "/swagger-ui/**",
+                                "/swagger-ui.html",
+                                "/swagger-ui.html/**",
+                                "/v3/api-docs/**",
+                                "/swagger-ui/index.html",
+                                "/swagger-ui/index.html/**"
+                        ).authenticated()
+                        
                         // Public auth endpoint
                         .requestMatchers(
                                 HttpMethod.POST,
@@ -167,6 +163,10 @@ public class FilterChainConfig {
         );
 
         http.addFilterBefore(mySecurityFilter, UsernamePasswordAuthenticationFilter.class);
+        
+        // Swagger endpoints uchun httpBasic authentication
+        http.httpBasic(httpBasic -> httpBasic.realmName("Swagger UI"));
+        http.userDetailsService(swaggerUserDetailsService());
 
         return http.build();
     }
