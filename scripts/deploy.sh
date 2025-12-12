@@ -37,12 +37,12 @@ cd "$DEPLOY_DIR"
 
 # Stop target environment if running
 echo "Stopping $TARGET_ENV environment..."
-docker-compose -f "$TARGET_COMPOSE" down || true
+docker compose -f "$TARGET_COMPOSE" down || true
 
 # Build and start target environment
 echo "Building and starting $TARGET_ENV environment..."
-docker-compose -f "$TARGET_COMPOSE" build --no-cache
-docker-compose -f "$TARGET_COMPOSE" up -d
+docker compose -f "$TARGET_COMPOSE" build --no-cache
+docker compose -f "$TARGET_COMPOSE" up -d
 
 # Wait for health check
 echo "Waiting for $TARGET_ENV to be healthy..."
@@ -61,7 +61,7 @@ done
 if [ $WAIT_TIME -ge $MAX_WAIT ]; then
     echo "ERROR: $TARGET_ENV failed to become healthy within $MAX_WAIT seconds"
     echo "Rolling back to $CURRENT_ACTIVE..."
-    docker-compose -f "$TARGET_COMPOSE" down
+    docker compose -f "$TARGET_COMPOSE" down
     exit 1
 fi
 
@@ -84,9 +84,9 @@ echo "$TARGET_ENV" > "$ACTIVE_ENV_FILE"
 # Stop old environment (optional - can keep for quick rollback)
 echo "Stopping old $CURRENT_ACTIVE environment..."
 if [ "$CURRENT_ACTIVE" == "blue" ]; then
-    docker-compose -f docker-compose.blue.yml down || true
+    docker compose -f docker-compose.blue.yml down || true
 else
-    docker-compose -f docker-compose.green.yml down || true
+    docker compose -f docker-compose.green.yml down || true
 fi
 
 echo "Deployment to $TARGET_ENV completed successfully!"
