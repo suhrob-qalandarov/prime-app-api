@@ -157,6 +157,11 @@ public class FilterChainConfig {
                                 API + V1 + ADMIN + SETTING + "/**"
                         ).hasRole("SUPER_ADMIN")
 
+                        // Actuator endpoints - public for health checks
+                        .requestMatchers(
+                                "/actuator/**"
+                        ).permitAll()
+
                         // All other requests require authentication
                         .anyRequest().authenticated()
         );
