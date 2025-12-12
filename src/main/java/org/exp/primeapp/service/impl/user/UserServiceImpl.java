@@ -3,14 +3,18 @@ package org.exp.primeapp.service.impl.user;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.exp.primeapp.models.dto.responce.admin.AdminUserDashboardRes;
+import org.exp.primeapp.models.dto.responce.admin.AdminUserDetailRes;
 import org.exp.primeapp.models.dto.responce.admin.AdminUserRes;
 import org.exp.primeapp.models.dto.responce.order.UserProfileOrdersRes;
 import org.exp.primeapp.models.dto.responce.user.UserRes;
+import org.exp.primeapp.models.dto.responce.user.page.PageRes;
 import org.exp.primeapp.models.entities.Role;
 import org.exp.primeapp.models.entities.User;
 import org.exp.primeapp.repository.UserRepository;
 import org.exp.primeapp.service.face.user.OrderService;
 import org.exp.primeapp.service.face.user.UserService;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -132,5 +136,45 @@ public class UserServiceImpl implements UserService {
                 user.getActive(),
                 user.getCreatedAt()
         );
+    }
+
+    @Override
+    public AdminUserDetailRes getAdminUserDetailById(Long userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found with id: " + userId));
+        return convertToAdminUserDetailRes(user);
+    }
+
+    @Override
+    public PageRes<AdminUserDetailRes> getAdminUsersWithFilter(Pageable pageable, Boolean active, String phone, String firstName) {
+        Page<User> userPage = userRepository.findAllWithFilters(active, phone, firstName, pageable);
+        Page<AdminUserDetailRes> detailResPage = userPage.map(this::convertToAdminUserDetailRes);
+        return toPageRes(detailResPage);
+    }
+
+    private AdminUserDetailRes convertToAdminUserDetailRes(User user) {
+        return AdminUserDetailRes.builder()
+                .id(user.getId())
+                .telegramId(user.getTelegramId())
+                .firstName(user.getFirstName())
+                .lastName(user.getLastName())
+                .tgUsername(user.getTgUsername())
+                .phone(user.getPhone())
+                .roles(user.getRoles().stream().map(Role::getName).toList())
+                .active(user.getActive())
+                .messageId(user.getMessageId())
+                .verifyCode(user.getVerifyCode())
+                .build();
+    }
+
+    private <T> PageRes<T> toPageRes(Page<T> page) {
+        return PageRes.<T>builder()
+                .content(page.getContent())
+                .page(page.getNumber())
+                .size(page.getSize())
+                .totalElements(page.getTotalElements())
+                .totalPages(page.getTotalPages())
+                .last(page.isLast())
+                .build();
     }
 }
