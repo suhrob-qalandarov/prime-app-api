@@ -48,9 +48,9 @@ echo "Stopping $TARGET_ENV environment container..."
 docker stop "$TARGET_CONTAINER" 2>/dev/null || echo "Container $TARGET_CONTAINER not running"
 docker rm "$TARGET_CONTAINER" 2>/dev/null || echo "Container $TARGET_CONTAINER not found"
 
-# Ensure db and nginx are running
-echo "Ensuring db and nginx are running..."
-docker compose -f docker-compose.yml up -d db nginx
+# Ensure db is running
+echo "Ensuring db is running..."
+docker compose -f docker-compose.yml up -d db
 
 # Build and start target environment (only the app service)
 echo "Building and starting $TARGET_ENV environment..."
@@ -79,23 +79,20 @@ if [ $WAIT_TIME -ge $MAX_WAIT ]; then
     exit 1
 fi
 
-# Update nginx configuration to point to target environment
-echo "Switching nginx to $TARGET_ENV..."
+# Print active environment info for manual nginx configuration
+echo "=========================================="
+echo "Active environment: $TARGET_ENV"
+echo "Application running on port: $TARGET_PORT"
+echo "Container: $TARGET_CONTAINER"
+echo "=========================================="
+echo "Please update your nginx configuration to point to:"
 if [ "$TARGET_ENV" == "blue" ]; then
-    sed -i 's/server prime_app_green:8081;/server prime_app_blue:8080;/' nginx/conf.d/app.conf
-    sed -i 's/# server prime_app_blue:8080 backup;/# server prime_app_green:8081 backup;/' nginx/conf.d/app.conf
+    echo "  - Blue environment: localhost:8080"
 else
-    sed -i 's/server prime_app_blue:8080;/server prime_app_green:8081;/' nginx/conf.d/app.conf
-    sed -i 's/# server prime_app_green:8081 backup;/# server prime_app_blue:8080 backup;/' nginx/conf.d/app.conf
+    echo "  - Green environment: localhost:8081"
 fi
-
-# Reload nginx (ensure it's running first)
-if ! docker ps | grep -q prime_nginx; then
-    echo "Starting nginx..."
-    docker compose -f docker-compose.yml up -d nginx
-    sleep 2
-fi
-docker exec prime_nginx nginx -s reload
+echo "Then reload nginx: sudo nginx -s reload"
+echo "=========================================="
 
 # Update active environment file
 echo "$TARGET_ENV" > "$ACTIVE_ENV_FILE"

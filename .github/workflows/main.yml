@@ -43,93 +43,10 @@ jobs:
             scripts/
           retention-days: 1
 
-  setup-server:
-    name: Setup Server Tools
-    runs-on: ubuntu-latest
-    needs: build
-    if: success()
-
-    steps:
-      - name: Check and Install Docker, Docker Compose, Nginx, Certbot
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ vars.HOST_IP }}
-          username: ${{ vars.HOST_USER }}
-          key: ${{ vars.HOST_SSH_KEY }}
-          port: ${{ vars.HOST_PORT || '22' }}
-          script: |
-            # Function to check if command exists
-            command_exists() {
-              command -v "$1" >/dev/null 2>&1
-            }
-            
-            # Check Docker
-            if ! command_exists docker; then
-              echo "Docker not found. Installing Docker..."
-              # Update package index
-              sudo apt-get update -y
-              # Install prerequisites
-              sudo apt-get install -y ca-certificates curl gnupg lsb-release
-              # Add Docker's official GPG key
-              sudo mkdir -p /etc/apt/keyrings
-              curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
-              # Set up repository
-              echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
-              # Install Docker
-              sudo apt-get update -y
-              sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
-              # Add user to docker group
-              sudo usermod -aG docker $USER
-              echo "Docker installed successfully"
-            else
-              echo "Docker is already installed: $(docker --version)"
-            fi
-            
-            # Check Docker Compose (plugin version)
-            if ! docker compose version >/dev/null 2>&1; then
-              echo "Docker Compose plugin not found. Installing..."
-              # Docker Compose plugin should be installed with docker-ce
-              # If still missing, install it separately
-              sudo apt-get update -y
-              sudo apt-get install -y docker-compose-plugin
-              echo "Docker Compose plugin installed successfully"
-            else
-              echo "Docker Compose is already installed: $(docker compose version)"
-            fi
-            
-            # Check Nginx
-            if ! command_exists nginx; then
-              echo "Nginx not found. Installing Nginx..."
-              sudo apt-get update -y
-              sudo apt-get install -y nginx
-              # Start and enable nginx (but we'll use Docker nginx, so just install)
-              echo "Nginx installed successfully"
-            else
-              echo "Nginx is already installed: $(nginx -v 2>&1)"
-            fi
-            
-            # Check Certbot
-            if ! command_exists certbot; then
-              echo "Certbot not found. Installing Certbot..."
-              sudo apt-get update -y
-              sudo apt-get install -y certbot python3-certbot-nginx
-              echo "Certbot installed successfully"
-            else
-              echo "Certbot is already installed: $(certbot --version)"
-            fi
-            
-            # Verify installations
-            echo "=== Verification ==="
-            docker --version || echo "Docker verification failed"
-            docker compose version || echo "Docker Compose verification failed"
-            nginx -v || echo "Nginx verification failed"
-            certbot --version || echo "Certbot verification failed"
-            echo "=== Setup Complete ==="
-
   deploy:
     name: Deploy to Server
     runs-on: ubuntu-latest
-    needs: [build, setup-server]
+    needs: build
     if: success()
 
     steps:
@@ -215,7 +132,7 @@ jobs:
             echo "IP_WHITELIST_ENABLED=${IP_WHITELIST_ENABLED:-false}" >> .env
             echo "IP_WHITELIST=${IP_WHITELIST:-}" >> .env
 
-      - name: Start database and nginx (if not running)
+      - name: Start database (if not running)
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ vars.HOST_IP }}
@@ -226,40 +143,7 @@ jobs:
             cd /home/${{ vars.HOST_USER }}/prime_app
             # Ensure network exists
             docker network create app-network 2>/dev/null || echo "Network app-network already exists"
-            docker compose up -d db nginx || true
-
-      - name: Setup SSL Certificate with Certbot
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ vars.HOST_IP }}
-          username: ${{ vars.HOST_USER }}
-          key: ${{ vars.HOST_SSH_KEY }}
-          port: ${{ vars.HOST_PORT || '22' }}
-          script: |
-            # Create directory for certbot challenges
-            sudo mkdir -p /var/www/certbot
-            
-            # Check if certificate already exists
-            if [ ! -f "/etc/letsencrypt/live/api.gourmet.uz/fullchain.pem" ]; then
-              echo "SSL certificate not found. Obtaining certificate..."
-              # Stop nginx temporarily for certbot standalone mode
-              docker stop prime_nginx || true
-              
-              # Obtain certificate using certbot
-              sudo certbot certonly --standalone \
-                --preferred-challenges http \
-                -d api.gourmet.uz \
-                --email ${{ vars.CERTBOT_EMAIL || 'admin@gourmet.uz' }} \
-                --agree-tos \
-                --non-interactive \
-                --keep-until-expiring || echo "Certificate obtainment failed or already exists"
-              
-              # Start nginx again
-              docker start prime_nginx || docker compose -f docker-compose.yml up -d nginx
-            else
-              echo "SSL certificate already exists. Renewing if needed..."
-              sudo certbot renew --quiet || echo "Certificate renewal check completed"
-            fi
+            docker compose up -d db || true
 
       - name: Deploy using blue-green script
         uses: appleboy/ssh-action@v1.0.3
@@ -283,6 +167,10 @@ jobs:
           script: |
             sleep 5
             docker ps -a
-            docker logs prime_nginx --tail 20 || echo "Nginx logs not available"
             ACTIVE_ENV=$(cat /home/${{ vars.HOST_USER }}/prime_app/.active_env 2>/dev/null || echo "unknown")
             echo "Active environment: $ACTIVE_ENV"
+            if [ "$ACTIVE_ENV" == "blue" ]; then
+              echo "Application running on port: 8080"
+            else
+              echo "Application running on port: 8081"
+            fi
