@@ -138,6 +138,18 @@ jobs:
         with:
           name: deployment-files
 
+      - name: Prepare deployment files
+        run: |
+          # Move app.jar from target/ to root for deployment
+          if [ -f "target/app.jar" ]; then
+            cp target/app.jar app.jar
+            echo "app.jar copied successfully"
+          else
+            echo "ERROR: target/app.jar not found!"
+            exit 1
+          fi
+          ls -la app.jar
+
       - name: Setup deployment directory
         uses: appleboy/ssh-action@v1.0.3
         with:
