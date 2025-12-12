@@ -157,7 +157,12 @@ public class FilterChainConfig {
                                 API + V1 + ADMIN + SETTING + "/**"
                         ).hasRole("SUPER_ADMIN")
 
-                        // Actuator endpoints - only for SWAGGER role
+                        // Actuator health endpoint - public for health checks
+                        .requestMatchers(
+                                "/actuator/health"
+                        ).permitAll()
+
+                        // Actuator endpoints - only for SWE role
                         .requestMatchers(
                                 "/actuator/**"
                         ).hasRole("SWE")
