@@ -157,10 +157,10 @@ public class FilterChainConfig {
                                 API + V1 + ADMIN + SETTING + "/**"
                         ).hasRole("SUPER_ADMIN")
 
-                        // Actuator endpoints - public for health checks
+                        // Actuator endpoints - only for SWAGGER role
                         .requestMatchers(
                                 "/actuator/**"
-                        ).permitAll()
+                        ).hasRole("SWE")
 
                         // All other requests require authentication
                         .anyRequest().authenticated()
@@ -182,7 +182,7 @@ public class FilterChainConfig {
         UserDetails swaggerUser = User.builder()
                 .username(swaggerUsername)
                 .password(passwordEncoder().encode(swaggerPassword))
-                .roles("SWAGGER")
+                .roles("SWE")
                 .build();
         return new InMemoryUserDetailsManager(swaggerUser);
     }
