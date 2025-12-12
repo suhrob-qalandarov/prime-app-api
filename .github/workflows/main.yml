@@ -224,6 +224,8 @@ jobs:
           port: ${{ vars.HOST_PORT || '22' }}
           script: |
             cd /home/${{ vars.HOST_USER }}/prime_app
+            # Ensure network exists
+            docker network create app-network 2>/dev/null || echo "Network app-network already exists"
             docker compose up -d db nginx || true
 
       - name: Setup SSL Certificate with Certbot
