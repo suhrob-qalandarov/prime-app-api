@@ -26,7 +26,6 @@ import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import java.util.Arrays;
-import java.util.List;
 
 import static org.exp.primeapp.utils.Const.*;
 
@@ -45,7 +44,7 @@ public class FilterChainConfig {
     private String swaggerPassword;
 
     @Bean
-    public SecurityFilterChain configure(HttpSecurity http, JwtCookieFilter mySecurityFilter) throws Exception {
+    public SecurityFilterChain configure(HttpSecurity http, JwtCookieFilter mySecurityFilter, IpWhitelistFilter ipWhitelistFilter) throws Exception {
         http.csrf(AbstractHttpConfigurer::disable);
         http.cors(cors -> cors.configurationSource(corsConfigurationSource()));
         http.authorizeHttpRequests(auth ->
@@ -162,6 +161,8 @@ public class FilterChainConfig {
                         .anyRequest().authenticated()
         );
 
+        // Add IP whitelist filter before JWT filter
+        http.addFilterBefore(ipWhitelistFilter, UsernamePasswordAuthenticationFilter.class);
         http.addFilterBefore(mySecurityFilter, UsernamePasswordAuthenticationFilter.class);
         
         // Swagger endpoints uchun httpBasic authentication
@@ -188,14 +189,29 @@ public class FilterChainConfig {
         configuration.setAllowedOrigins(Arrays.asList(
                 "https://prime.howdy.uz", "https://api.howdy.uz",  "https://admin.howdy.uz",
                 "https://prime77.uz",  "https://api.prime77.uz", "https://admin.prime77.uz",
-                "http://localhost:3000", "http://localhost:3001",
+                "http://localhost", "http://localhost:3000", "http://localhost:3001",
                 "http://192.168.1.2:3000", "http://192.168.1.2"
         ));
 
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
-        configuration.setAllowedHeaders(List.of("*"));
+        configuration.setAllowedHeaders(Arrays.asList(
+                "Authorization", 
+                "Content-Type", 
+                "X-Requested-With",
+                "Accept",
+                "Origin",
+                "Access-Control-Request-Method",
+                "Access-Control-Request-Headers",
+                "X-Forwarded-For",
+                "X-Real-IP"
+        ));
         configuration.setAllowCredentials(true);
-        configuration.setAllowedHeaders(Arrays.asList("Authorization", "Content-Type", "X-Requested-With"));
+        configuration.setExposedHeaders(Arrays.asList(
+                "Authorization",
+                "Content-Type",
+                "Access-Control-Allow-Origin",
+                "Access-Control-Allow-Credentials"
+        ));
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);

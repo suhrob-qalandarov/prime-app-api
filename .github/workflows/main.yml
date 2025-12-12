@@ -43,10 +43,93 @@ jobs:
             scripts/
           retention-days: 1
 
+  setup-server:
+    name: Setup Server Tools
+    runs-on: ubuntu-latest
+    needs: build
+    if: success()
+
+    steps:
+      - name: Check and Install Docker, Docker Compose, Nginx, Certbot
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ vars.HOST_IP }}
+          username: ${{ vars.HOST_USER }}
+          key: ${{ vars.HOST_SSH_KEY }}
+          port: ${{ vars.HOST_PORT || '22' }}
+          script: |
+            # Function to check if command exists
+            command_exists() {
+              command -v "$1" >/dev/null 2>&1
+            }
+            
+            # Check Docker
+            if ! command_exists docker; then
+              echo "Docker not found. Installing Docker..."
+              # Update package index
+              sudo apt-get update -y
+              # Install prerequisites
+              sudo apt-get install -y ca-certificates curl gnupg lsb-release
+              # Add Docker's official GPG key
+              sudo mkdir -p /etc/apt/keyrings
+              curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+              # Set up repository
+              echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+              # Install Docker
+              sudo apt-get update -y
+              sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+              # Add user to docker group
+              sudo usermod -aG docker $USER
+              echo "Docker installed successfully"
+            else
+              echo "Docker is already installed: $(docker --version)"
+            fi
+            
+            # Check Docker Compose (plugin version)
+            if ! docker compose version >/dev/null 2>&1; then
+              echo "Docker Compose plugin not found. Installing..."
+              # Docker Compose plugin should be installed with docker-ce
+              # If still missing, install it separately
+              sudo apt-get update -y
+              sudo apt-get install -y docker-compose-plugin
+              echo "Docker Compose plugin installed successfully"
+            else
+              echo "Docker Compose is already installed: $(docker compose version)"
+            fi
+            
+            # Check Nginx
+            if ! command_exists nginx; then
+              echo "Nginx not found. Installing Nginx..."
+              sudo apt-get update -y
+              sudo apt-get install -y nginx
+              # Start and enable nginx (but we'll use Docker nginx, so just install)
+              echo "Nginx installed successfully"
+            else
+              echo "Nginx is already installed: $(nginx -v 2>&1)"
+            fi
+            
+            # Check Certbot
+            if ! command_exists certbot; then
+              echo "Certbot not found. Installing Certbot..."
+              sudo apt-get update -y
+              sudo apt-get install -y certbot python3-certbot-nginx
+              echo "Certbot installed successfully"
+            else
+              echo "Certbot is already installed: $(certbot --version)"
+            fi
+            
+            # Verify installations
+            echo "=== Verification ==="
+            docker --version || echo "Docker verification failed"
+            docker compose version || echo "Docker Compose verification failed"
+            nginx -v || echo "Nginx verification failed"
+            certbot --version || echo "Certbot verification failed"
+            echo "=== Setup Complete ==="
+
   deploy:
     name: Deploy to Server
     runs-on: ubuntu-latest
-    needs: build
+    needs: [build, setup-server]
     if: success()
 
     steps:
@@ -58,23 +141,23 @@ jobs:
       - name: Setup deployment directory
         uses: appleboy/ssh-action@v1.0.3
         with:
-          host: ${{ secrets.HOST_IP }}
-          username: ${{ secrets.HOST_USER }}
-          key: ${{ secrets.HOST_SSH_KEY }}
-          port: ${{ secrets.HOST_PORT }}
+          host: ${{ vars.HOST_IP }}
+          username: ${{ vars.HOST_USER }}
+          key: ${{ vars.HOST_SSH_KEY }}
+          port: ${{ vars.HOST_PORT || '22' }}
           script: |
-            mkdir -p /home/${{ secrets.HOST_USER }}/prime_app/nginx/conf.d
-            mkdir -p /home/${{ secrets.HOST_USER }}/prime_app/scripts
+            mkdir -p /home/${{ vars.HOST_USER }}/prime_app/nginx/conf.d
+            mkdir -p /home/${{ vars.HOST_USER }}/prime_app/scripts
 
       - name: Copy files to server
         uses: appleboy/scp-action@v0.1.4
         with:
-          host: ${{ secrets.HOST_IP }}
-          username: ${{ secrets.HOST_USER }}
-          key: ${{ secrets.HOST_SSH_KEY }}
+          host: ${{ vars.HOST_IP }}
+          username: ${{ vars.HOST_USER }}
+          key: ${{ vars.HOST_SSH_KEY }}
           source: "app.jar,docker-compose.yml,docker-compose.blue.yml,docker-compose.green.yml,Dockerfile,nginx,scripts"
-          target: /home/${{ secrets.HOST_USER }}/prime_app
-          port: ${{ secrets.HOST_PORT }}
+          target: /home/${{ vars.HOST_USER }}/prime_app
+          port: ${{ vars.HOST_PORT || '22' }}
           timeout: 30s
           command_timeout: 10m
           debug: true
@@ -84,59 +167,75 @@ jobs:
       - name: Create .env file
         uses: appleboy/ssh-action@v1.0.3
         with:
-          host: ${{ secrets.HOST_IP }}
-          username: ${{ secrets.HOST_USER }}
-          key: ${{ secrets.HOST_SSH_KEY }}
-          port: ${{ secrets.HOST_PORT }}
+          host: ${{ vars.HOST_IP }}
+          username: ${{ vars.HOST_USER }}
+          key: ${{ vars.HOST_SSH_KEY }}
+          port: ${{ vars.HOST_PORT || '22' }}
           script: |
-            cd /home/${{ secrets.HOST_USER }}/prime_app
+            cd /home/${{ vars.HOST_USER }}/prime_app
+            HOST_USER="${{ vars.HOST_USER }}"
+            DATASOURCE_USER="${{ vars.DATASOURCE_USER }}"
+            DATASOURCE_PASS="${{ vars.DATASOURCE_PASS }}"
+            DATASOURCE_DRIVER="${{ vars.DATASOURCE_DRIVER }}"
+            SERVER_PORT="${{ vars.SERVER_PORT }}"
+            JPA_SHOW_SQL="${{ vars.JPA_SHOW_SQL }}"
+            JPA_DIALECT="${{ vars.JPA_DIALECT }}"
+            TGM_BOT_TOKEN="${{ vars.TGM_BOT_TOKEN }}"
+            JWT_SECRET="${{ vars.JWT_SECRET }}"
+            SWAGGER_UI_USERNAME="${{ vars.SWAGGER_UI_USERNAME }}"
+            SWAGGER_UI_PASSWORD="${{ vars.SWAGGER_UI_PASSWORD }}"
+            IP_WHITELIST_ENABLED="${{ vars.IP_WHITELIST_ENABLED }}"
+            IP_WHITELIST="${{ vars.IP_WHITELIST }}"
+            
             echo "SPRING_DATASOURCE_URL=jdbc:postgresql://db:5432/prime_db" > .env
-            echo "SPRING_DATASOURCE_USERNAME=${{ secrets.DATASOURCE_USER }}" >> .env
-            echo "SPRING_DATASOURCE_PASSWORD=${{ secrets.DATASOURCE_PASS }}" >> .env
-            echo "SPRING_DATASOURCE_DRIVER=${{ secrets.DATASOURCE_DRIVER }}" >> .env
+            echo "SPRING_DATASOURCE_USERNAME=${DATASOURCE_USER}" >> .env
+            echo "SPRING_DATASOURCE_PASSWORD=${DATASOURCE_PASS}" >> .env
+            echo "SPRING_DATASOURCE_DRIVER=${DATASOURCE_DRIVER:-org.postgresql.Driver}" >> .env
             echo "POSTGRES_DB=prime_db" >> .env
-            echo "POSTGRES_USER=${{ secrets.DATASOURCE_USER }}" >> .env
-            echo "TELEGRAM_BOT_TOKEN=${{ secrets.TGM_BOT_TOKEN }}" >> .env
-            echo "JWT_SECRET_KEY=${{ secrets.JWT_SECRET }}" >> .env
-            echo "SERVER_PORT=8080" >> .env
-            echo "JPA_SHOW_SQL=${{ secrets.JPA_SHOW_SQL }}" >> .env
-            echo "JPA_DIALECT=${{ secrets.JPA_DIALECT }}" >> .env
-            echo "SWAGGER_UI_USERNAME=${{ secrets.SWAGGER_UI_USERNAME }}" >> .env
-            echo "SWAGGER_UI_PASSWORD=${{ secrets.SWAGGER_UI_PASSWORD }}" >> .env
+            echo "POSTGRES_USER=${DATASOURCE_USER}" >> .env
+            echo "TELEGRAM_BOT_TOKEN=${TGM_BOT_TOKEN}" >> .env
+            echo "JWT_SECRET_KEY=${JWT_SECRET}" >> .env
+            echo "SERVER_PORT=${SERVER_PORT:-8080}" >> .env
+            echo "JPA_SHOW_SQL=${JPA_SHOW_SQL:-false}" >> .env
+            echo "JPA_DIALECT=${JPA_DIALECT:-org.hibernate.dialect.PostgreSQLDialect}" >> .env
+            echo "SWAGGER_UI_USERNAME=${SWAGGER_UI_USERNAME}" >> .env
+            echo "SWAGGER_UI_PASSWORD=${SWAGGER_UI_PASSWORD}" >> .env
+            echo "IP_WHITELIST_ENABLED=${IP_WHITELIST_ENABLED:-false}" >> .env
+            echo "IP_WHITELIST=${IP_WHITELIST:-}" >> .env
 
       - name: Start database and nginx (if not running)
         uses: appleboy/ssh-action@v1.0.3
         with:
-          host: ${{ secrets.HOST_IP }}
-          username: ${{ secrets.HOST_USER }}
-          key: ${{ secrets.HOST_SSH_KEY }}
-          port: ${{ secrets.HOST_PORT }}
+          host: ${{ vars.HOST_IP }}
+          username: ${{ vars.HOST_USER }}
+          key: ${{ vars.HOST_SSH_KEY }}
+          port: ${{ vars.HOST_PORT || '22' }}
           script: |
-            cd /home/${{ secrets.HOST_USER }}/prime_app
+            cd /home/${{ vars.HOST_USER }}/prime_app
             docker-compose up -d db nginx || true
 
       - name: Deploy using blue-green script
         uses: appleboy/ssh-action@v1.0.3
         with:
-          host: ${{ secrets.HOST_IP }}
-          username: ${{ secrets.HOST_USER }}
-          key: ${{ secrets.HOST_SSH_KEY }}
-          port: ${{ secrets.HOST_PORT }}
+          host: ${{ vars.HOST_IP }}
+          username: ${{ vars.HOST_USER }}
+          key: ${{ vars.HOST_SSH_KEY }}
+          port: ${{ vars.HOST_PORT || '22' }}
           script: |
-            cd /home/${{ secrets.HOST_USER }}/prime_app
+            cd /home/${{ vars.HOST_USER }}/prime_app
             chmod +x scripts/deploy.sh
             ./scripts/deploy.sh
 
       - name: Verify deployment
         uses: appleboy/ssh-action@v1.0.3
         with:
-          host: ${{ secrets.HOST_IP }}
-          username: ${{ secrets.HOST_USER }}
-          key: ${{ secrets.HOST_SSH_KEY }}
-          port: ${{ secrets.HOST_PORT }}
+          host: ${{ vars.HOST_IP }}
+          username: ${{ vars.HOST_USER }}
+          key: ${{ vars.HOST_SSH_KEY }}
+          port: ${{ vars.HOST_PORT || '22' }}
           script: |
             sleep 5
             docker ps -a
             docker logs prime_nginx --tail 20 || echo "Nginx logs not available"
-            ACTIVE_ENV=$(cat /home/${{ secrets.HOST_USER }}/prime_app/.active_env 2>/dev/null || echo "unknown")
+            ACTIVE_ENV=$(cat /home/${{ vars.HOST_USER }}/prime_app/.active_env 2>/dev/null || echo "unknown")
             echo "Active environment: $ACTIVE_ENV"
