@@ -195,6 +195,7 @@ public class FilterChainConfig {
                 "https://prime.howdy.uz", "https://api.howdy.uz",  "https://admin.howdy.uz",
                 "https://prime77.uz",  "https://api.prime77.uz", "https://admin.prime77.uz",
                 "http://localhost", "http://localhost:3000", "http://localhost:3001",
+                "https://gourmet.uz", "https://dashboard.gourmet.uz", "https://api.gourmet.uz",
                 "http://192.168.1.2:3000", "http://192.168.1.2"
         ));
 
