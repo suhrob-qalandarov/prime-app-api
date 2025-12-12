@@ -59,7 +59,7 @@ docker compose -f docker-compose.yml -f "$TARGET_COMPOSE" up -d "$TARGET_SERVICE
 
 # Wait for health check
 echo "Waiting for $TARGET_ENV to be healthy..."
-MAX_WAIT=180
+MAX_WAIT=40
 WAIT_TIME=0
 HEALTHY=false
 
