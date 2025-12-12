@@ -20,13 +20,17 @@ if [ "$CURRENT_ACTIVE" == "blue" ]; then
     TARGET_ENV="green"
     TARGET_PORT=$GREEN_PORT
     TARGET_COMPOSE="docker-compose.green.yml"
+    TARGET_SERVICE="app_green"
     TARGET_CONTAINER="prime_app_green"
+    CURRENT_SERVICE="app_blue"
     CURRENT_CONTAINER="prime_app_blue"
 else
     TARGET_ENV="blue"
     TARGET_PORT=$BLUE_PORT
     TARGET_COMPOSE="docker-compose.blue.yml"
+    TARGET_SERVICE="app_blue"
     TARGET_CONTAINER="prime_app_blue"
+    CURRENT_SERVICE="app_green"
     CURRENT_CONTAINER="prime_app_green"
 fi
 
@@ -39,14 +43,19 @@ cd "$DEPLOY_DIR"
 echo "Ensuring app-network exists..."
 docker network create app-network 2>/dev/null || echo "Network app-network already exists or created"
 
-# Stop target environment if running
-echo "Stopping $TARGET_ENV environment..."
-docker compose -f docker-compose.yml -f "$TARGET_COMPOSE" down || true
+# Stop target environment container if running (only the app container, not db/nginx)
+echo "Stopping $TARGET_ENV environment container..."
+docker stop "$TARGET_CONTAINER" 2>/dev/null || echo "Container $TARGET_CONTAINER not running"
+docker rm "$TARGET_CONTAINER" 2>/dev/null || echo "Container $TARGET_CONTAINER not found"
 
-# Build and start target environment
+# Ensure db and nginx are running
+echo "Ensuring db and nginx are running..."
+docker compose -f docker-compose.yml up -d db nginx
+
+# Build and start target environment (only the app service)
 echo "Building and starting $TARGET_ENV environment..."
-docker compose -f docker-compose.yml -f "$TARGET_COMPOSE" build --no-cache
-docker compose -f docker-compose.yml -f "$TARGET_COMPOSE" up -d
+docker compose -f docker-compose.yml -f "$TARGET_COMPOSE" build --no-cache "$TARGET_SERVICE"
+docker compose -f docker-compose.yml -f "$TARGET_COMPOSE" up -d "$TARGET_SERVICE"
 
 # Wait for health check
 echo "Waiting for $TARGET_ENV to be healthy..."
@@ -65,7 +74,8 @@ done
 if [ $WAIT_TIME -ge $MAX_WAIT ]; then
     echo "ERROR: $TARGET_ENV failed to become healthy within $MAX_WAIT seconds"
     echo "Rolling back to $CURRENT_ACTIVE..."
-    docker compose -f docker-compose.yml -f "$TARGET_COMPOSE" down
+    docker stop "$TARGET_CONTAINER" 2>/dev/null || true
+    docker rm "$TARGET_CONTAINER" 2>/dev/null || true
     exit 1
 fi
 
@@ -90,13 +100,10 @@ docker exec prime_nginx nginx -s reload
 # Update active environment file
 echo "$TARGET_ENV" > "$ACTIVE_ENV_FILE"
 
-# Stop old environment (optional - can keep for quick rollback)
-echo "Stopping old $CURRENT_ACTIVE environment..."
-if [ "$CURRENT_ACTIVE" == "blue" ]; then
-    docker compose -f docker-compose.yml -f docker-compose.blue.yml down || true
-else
-    docker compose -f docker-compose.yml -f docker-compose.green.yml down || true
-fi
+# Stop old environment container (optional - can keep for quick rollback)
+echo "Stopping old $CURRENT_ACTIVE environment container..."
+docker stop "$CURRENT_CONTAINER" 2>/dev/null || echo "Container $CURRENT_CONTAINER not running"
+docker rm "$CURRENT_CONTAINER" 2>/dev/null || echo "Container $CURRENT_CONTAINER not found"
 
 echo "Deployment to $TARGET_ENV completed successfully!"
 echo "Active environment: $TARGET_ENV"
