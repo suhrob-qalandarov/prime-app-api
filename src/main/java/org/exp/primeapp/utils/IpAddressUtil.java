@@ -30,10 +30,43 @@ public class IpAddressUtil {
         }
         
         if (ip != null && ip.contains(",")) {
-            ip = ip.split(",")[0].trim();
+            // If multiple IPs, try to find IPv4 first
+            String[] ips = ip.split(",");
+            for (String candidateIp : ips) {
+                candidateIp = candidateIp.trim();
+                if (isIPv4(candidateIp)) {
+                    ip = candidateIp;
+                    break;
+                }
+            }
+            // If no IPv4 found, use first one
+            if (!isIPv4(ip)) {
+                ip = ips[0].trim();
+            }
+        }
+        
+        // Convert IPv6 localhost to IPv4
+        if (ip != null && (ip.equals("0:0:0:0:0:0:0:1") || ip.equals("::1"))) {
+            ip = "127.0.0.1";
+        }
+        
+        // If still IPv6 and we want only IPv4, try to get from RemoteAddr
+        if (ip != null && !isIPv4(ip)) {
+            String remoteAddr = request.getRemoteAddr();
+            if (remoteAddr != null && isIPv4(remoteAddr)) {
+                ip = remoteAddr;
+            }
         }
         
         return ip != null ? ip : "unknown";
+    }
+    
+    private boolean isIPv4(String ip) {
+        if (ip == null || ip.isEmpty()) {
+            return false;
+        }
+        // Simple IPv4 check: contains dots and no colons
+        return ip.contains(".") && !ip.contains(":");
     }
     
     public String getBrowserInfo(HttpServletRequest request) {

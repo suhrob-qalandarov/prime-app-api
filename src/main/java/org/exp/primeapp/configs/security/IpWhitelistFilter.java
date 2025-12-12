@@ -72,6 +72,13 @@ public class IpWhitelistFilter extends OncePerRequestFilter {
         }
 
         String requestPath = request.getRequestURI();
+        String requestMethod = request.getMethod();
+
+        // Allow OPTIONS requests (CORS preflight) to pass through
+        if ("OPTIONS".equalsIgnoreCase(requestMethod)) {
+            filterChain.doFilter(request, response);
+            return;
+        }
 
         // Check if path should be excluded (admin endpoints)
         boolean isExcluded = EXCLUDED_PATHS.stream()
@@ -100,8 +107,10 @@ public class IpWhitelistFilter extends OncePerRequestFilter {
 
         // Check if IP is in whitelist
         if (allowedIps.isEmpty()) {
-            log.warn("IP whitelist is enabled but no IPs configured. Allowing request from: {}", clientIp);
-            filterChain.doFilter(request, response);
+            log.error("IP whitelist is enabled but no IPs configured. Blocking request from: {}", clientIp);
+            response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+            response.setContentType("application/json");
+            response.getWriter().write("{\"error\":\"your ip address is not whitelisted." + clientIp + "\"}");
             return;
         }
 
