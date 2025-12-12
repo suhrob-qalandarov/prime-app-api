@@ -79,19 +79,31 @@ if [ $WAIT_TIME -ge $MAX_WAIT ]; then
     exit 1
 fi
 
-# Print active environment info for manual nginx configuration
+# Update nginx configuration to point to target environment
+echo "Updating nginx configuration to $TARGET_ENV environment (port $TARGET_PORT)..."
+if [ -f "/etc/nginx/sites-available/api.gourmet.uz" ]; then
+    # Update proxy_pass port in nginx config
+    sudo sed -i "s/proxy_pass http:\/\/localhost:[0-9]*;/proxy_pass http:\/\/localhost:$TARGET_PORT;/" /etc/nginx/sites-available/api.gourmet.uz
+    
+    # Test nginx config
+    if sudo nginx -t > /dev/null 2>&1; then
+        # Reload nginx
+        sudo systemctl reload nginx
+        echo "Nginx configuration updated and reloaded successfully"
+    else
+        echo "ERROR: Nginx configuration test failed. Please check manually."
+        sudo nginx -t
+    fi
+else
+    echo "WARNING: Nginx config file not found at /etc/nginx/sites-available/api.gourmet.uz"
+    echo "Please manually update nginx to point to port $TARGET_PORT"
+fi
+
+# Print active environment info
 echo "=========================================="
 echo "Active environment: $TARGET_ENV"
 echo "Application running on port: $TARGET_PORT"
 echo "Container: $TARGET_CONTAINER"
-echo "=========================================="
-echo "Please update your nginx configuration to point to:"
-if [ "$TARGET_ENV" == "blue" ]; then
-    echo "  - Blue environment: localhost:8080"
-else
-    echo "  - Green environment: localhost:8081"
-fi
-echo "Then reload nginx: sudo nginx -s reload"
 echo "=========================================="
 
 # Update active environment file
