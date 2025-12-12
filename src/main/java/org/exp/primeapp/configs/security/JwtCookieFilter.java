@@ -30,25 +30,30 @@ public class JwtCookieFilter extends OncePerRequestFilter {
             @NonNull FilterChain filterChain
     ) throws ServletException, IOException {
 
-        // Skip JWT validation for Swagger/OpenAPI and Actuator endpoints
+        // Skip JWT validation for Swagger/OpenAPI endpoints (Actuator endpoints require SWE role via Spring Security)
         String requestPath = request.getRequestURI();
         if (requestPath.startsWith("/swagger-ui") || 
             requestPath.startsWith("/v3/api-docs") ||
             requestPath.equals("/swagger-ui.html") ||
-            requestPath.startsWith("/swagger-ui.html/") ||
-            requestPath.startsWith("/actuator/")) {
+            requestPath.startsWith("/swagger-ui.html/")) {
             filterChain.doFilter(request, response);
             return;
         }
 
         // Get token from header
-        String token = request.getHeader(AUTHORIZATION);
-        log.info("Token extracted from header: {}", token);
+        String authHeader = request.getHeader(AUTHORIZATION);
+        
+        // Only process JWT tokens (Bearer), skip Basic auth
+        String token = null;
+        if (authHeader != null && authHeader.startsWith(TOKEN_PREFIX)) {
+            token = authHeader.substring(TOKEN_PREFIX.length());
+            log.info("Token extracted from header: {}", token != null ? "***" : null);
+        }
 
-        // Check id doesn't exist, get from cookie
+        // Check if token doesn't exist, get from cookie
         if (token == null) {
             token = jwtService.extractTokenFromCookie(request);
-            log.info("Token extracted from cookie: {}", token);
+            log.info("Token extracted from cookie: {}", token != null ? "***" : null);
         }
 
         if (token != null) {
