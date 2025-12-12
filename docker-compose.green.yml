@@ -9,6 +9,8 @@ services:
     environment:
       SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/${POSTGRES_DB:-prime_db}
       SERVER_PORT: 8081
+    ports:
+      - "8081:8081"
     networks:
       - app-network
     depends_on:
