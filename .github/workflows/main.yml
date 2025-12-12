@@ -214,6 +214,39 @@ jobs:
             cd /home/${{ vars.HOST_USER }}/prime_app
             docker compose up -d db nginx || true
 
+      - name: Setup SSL Certificate with Certbot
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ vars.HOST_IP }}
+          username: ${{ vars.HOST_USER }}
+          key: ${{ vars.HOST_SSH_KEY }}
+          port: ${{ vars.HOST_PORT || '22' }}
+          script: |
+            # Create directory for certbot challenges
+            sudo mkdir -p /var/www/certbot
+            
+            # Check if certificate already exists
+            if [ ! -f "/etc/letsencrypt/live/api.gourmet.uz/fullchain.pem" ]; then
+              echo "SSL certificate not found. Obtaining certificate..."
+              # Stop nginx temporarily for certbot standalone mode
+              docker stop prime_nginx || true
+              
+              # Obtain certificate using certbot
+              sudo certbot certonly --standalone \
+                --preferred-challenges http \
+                -d api.gourmet.uz \
+                --email ${{ vars.CERTBOT_EMAIL || 'admin@gourmet.uz' }} \
+                --agree-tos \
+                --non-interactive \
+                --keep-until-expiring || echo "Certificate obtainment failed or already exists"
+              
+              # Start nginx again
+              docker start prime_nginx || docker compose -f docker-compose.yml up -d nginx
+            else
+              echo "SSL certificate already exists. Renewing if needed..."
+              sudo certbot renew --quiet || echo "Certificate renewal check completed"
+            fi
+
       - name: Deploy using blue-green script
         uses: appleboy/ssh-action@v1.0.3
         with:
