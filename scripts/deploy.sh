@@ -59,20 +59,36 @@ docker compose -f docker-compose.yml -f "$TARGET_COMPOSE" up -d "$TARGET_SERVICE
 
 # Wait for health check
 echo "Waiting for $TARGET_ENV to be healthy..."
-MAX_WAIT=120
+MAX_WAIT=40
 WAIT_TIME=0
+HEALTHY=false
+
 while [ $WAIT_TIME -lt $MAX_WAIT ]; do
-    if docker exec "$TARGET_CONTAINER" curl -f http://localhost:$TARGET_PORT/actuator/health > /dev/null 2>&1; then
+    # Check Docker healthcheck status
+    HEALTH_STATUS=$(docker inspect --format='{{.State.Health.Status}}' "$TARGET_CONTAINER" 2>/dev/null || echo "starting")
+    
+    if [ "$HEALTH_STATUS" == "healthy" ]; then
         echo "$TARGET_ENV is healthy!"
+        HEALTHY=true
         break
     fi
-    echo "Waiting for $TARGET_ENV to be healthy... ($WAIT_TIME/$MAX_WAIT seconds)"
+    
+    # Also try direct curl check as fallback
+    if docker exec "$TARGET_CONTAINER" curl -f http://localhost:$TARGET_PORT/actuator/health > /dev/null 2>&1; then
+        echo "$TARGET_ENV is healthy (via curl)!"
+        HEALTHY=true
+        break
+    fi
+    
+    echo "Waiting for $TARGET_ENV to be healthy... ($WAIT_TIME/$MAX_WAIT seconds) [Status: $HEALTH_STATUS]"
     sleep 5
     WAIT_TIME=$((WAIT_TIME + 5))
 done
 
-if [ $WAIT_TIME -ge $MAX_WAIT ]; then
+if [ "$HEALTHY" != "true" ]; then
     echo "ERROR: $TARGET_ENV failed to become healthy within $MAX_WAIT seconds"
+    echo "Container logs:"
+    docker logs --tail 50 "$TARGET_CONTAINER" 2>/dev/null || true
     echo "Rolling back to $CURRENT_ACTIVE..."
     docker stop "$TARGET_CONTAINER" 2>/dev/null || true
     docker rm "$TARGET_CONTAINER" 2>/dev/null || true
