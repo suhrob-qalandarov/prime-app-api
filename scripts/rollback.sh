@@ -29,7 +29,7 @@ echo "Rolling back from $CURRENT_ACTIVE to $TARGET_ENV..."
 cd "$DEPLOY_DIR"
 
 # Start target environment
-docker-compose -f "$TARGET_COMPOSE" up -d
+docker compose -f "$TARGET_COMPOSE" up -d
 
 # Wait for health check
 echo "Waiting for $TARGET_ENV to be healthy..."

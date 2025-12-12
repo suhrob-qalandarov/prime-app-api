@@ -212,7 +212,7 @@ jobs:
           port: ${{ vars.HOST_PORT || '22' }}
           script: |
             cd /home/${{ vars.HOST_USER }}/prime_app
-            docker-compose up -d db nginx || true
+            docker compose up -d db nginx || true
 
       - name: Deploy using blue-green script
         uses: appleboy/ssh-action@v1.0.3
