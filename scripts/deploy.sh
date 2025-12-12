@@ -35,6 +35,10 @@ echo "Deploying to: $TARGET_ENV"
 
 cd "$DEPLOY_DIR"
 
+# Ensure network exists
+echo "Ensuring app-network exists..."
+docker network create app-network 2>/dev/null || echo "Network app-network already exists or created"
+
 # Stop target environment if running
 echo "Stopping $TARGET_ENV environment..."
 docker compose -f docker-compose.yml -f "$TARGET_COMPOSE" down || true
