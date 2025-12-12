@@ -48,9 +48,9 @@ echo "Stopping $TARGET_ENV environment container..."
 docker stop "$TARGET_CONTAINER" 2>/dev/null || echo "Container $TARGET_CONTAINER not running"
 docker rm "$TARGET_CONTAINER" 2>/dev/null || echo "Container $TARGET_CONTAINER not found"
 
-# Ensure db and nginx are running
-echo "Ensuring db and nginx are running..."
-docker compose -f docker-compose.yml up -d db nginx
+# Ensure db is running
+echo "Ensuring db is running..."
+docker compose -f docker-compose.yml up -d db
 
 # Build and start target environment (only the app service)
 echo "Building and starting $TARGET_ENV environment..."
@@ -80,22 +80,31 @@ if [ $WAIT_TIME -ge $MAX_WAIT ]; then
 fi
 
 # Update nginx configuration to point to target environment
-echo "Switching nginx to $TARGET_ENV..."
-if [ "$TARGET_ENV" == "blue" ]; then
-    sed -i 's/server prime_app_green:8081;/server prime_app_blue:8080;/' nginx/conf.d/app.conf
-    sed -i 's/# server prime_app_blue:8080 backup;/# server prime_app_green:8081 backup;/' nginx/conf.d/app.conf
+echo "Updating nginx configuration to $TARGET_ENV environment (port $TARGET_PORT)..."
+if [ -f "/etc/nginx/sites-available/api.gourmet.uz" ]; then
+    # Update proxy_pass port in nginx config
+    sudo sed -i "s/proxy_pass http:\/\/localhost:[0-9]*;/proxy_pass http:\/\/localhost:$TARGET_PORT;/" /etc/nginx/sites-available/api.gourmet.uz
+    
+    # Test nginx config
+    if sudo nginx -t > /dev/null 2>&1; then
+        # Reload nginx
+        sudo systemctl reload nginx
+        echo "Nginx configuration updated and reloaded successfully"
+    else
+        echo "ERROR: Nginx configuration test failed. Please check manually."
+        sudo nginx -t
+    fi
 else
-    sed -i 's/server prime_app_blue:8080;/server prime_app_green:8081;/' nginx/conf.d/app.conf
-    sed -i 's/# server prime_app_green:8081 backup;/# server prime_app_blue:8080 backup;/' nginx/conf.d/app.conf
+    echo "WARNING: Nginx config file not found at /etc/nginx/sites-available/api.gourmet.uz"
+    echo "Please manually update nginx to point to port $TARGET_PORT"
 fi
 
-# Reload nginx (ensure it's running first)
-if ! docker ps | grep -q prime_nginx; then
-    echo "Starting nginx..."
-    docker compose -f docker-compose.yml up -d nginx
-    sleep 2
-fi
-docker exec prime_nginx nginx -s reload
+# Print active environment info
+echo "=========================================="
+echo "Active environment: $TARGET_ENV"
+echo "Application running on port: $TARGET_PORT"
+echo "Container: $TARGET_CONTAINER"
+echo "=========================================="
 
 # Update active environment file
 echo "$TARGET_ENV" > "$ACTIVE_ENV_FILE"
