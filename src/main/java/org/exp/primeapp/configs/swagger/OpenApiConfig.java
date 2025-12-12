@@ -21,6 +21,9 @@ public class OpenApiConfig {
     @Value("${swagger.server.url}")
     private String serverUrl;
 
+    @Value("${swagger.server.localhost.url:http://localhost:8080}")
+    private String localhostUrl;
+
     @Bean
     public OpenAPI customOpenAPI() {
         final String SCHEME_NAME = "Authorization";
@@ -28,6 +31,9 @@ public class OpenApiConfig {
                 .addServersItem(new Server()
                         .url(serverUrl)
                         .description("Production Server"))
+                .addServersItem(new Server()
+                        .url(localhostUrl)
+                        .description("Local Development Server"))
                 .addSecurityItem(new SecurityRequirement().addList(SCHEME_NAME))
                 .components(new Components().addSecuritySchemes(SCHEME_NAME,
                         new SecurityScheme()
