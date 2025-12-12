@@ -45,7 +45,7 @@ public class FilterChainConfig {
     private String swaggerPassword;
 
     @Bean
-    public SecurityFilterChain configure(HttpSecurity http, JwtCookieFilter mySecurityFilter) throws Exception {
+    public SecurityFilterChain configure(HttpSecurity http, JwtCookieFilter mySecurityFilter, IpWhitelistFilter ipWhitelistFilter) throws Exception {
         http.csrf(AbstractHttpConfigurer::disable);
         http.cors(cors -> cors.configurationSource(corsConfigurationSource()));
         http.authorizeHttpRequests(auth ->
@@ -162,6 +162,8 @@ public class FilterChainConfig {
                         .anyRequest().authenticated()
         );
 
+        // Add IP whitelist filter before JWT filter
+        http.addFilterBefore(ipWhitelistFilter, UsernamePasswordAuthenticationFilter.class);
         http.addFilterBefore(mySecurityFilter, UsernamePasswordAuthenticationFilter.class);
         
         // Swagger endpoints uchun httpBasic authentication
