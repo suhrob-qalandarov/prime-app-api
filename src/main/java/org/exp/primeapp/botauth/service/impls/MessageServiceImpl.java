@@ -27,7 +27,7 @@ public class MessageServiceImpl implements MessageService {
 
     @Override
     public void sendStartMsg(Long chatId, String firstName) {
-        SendResponse execute = telegramBot.execute(new SendMessage(chatId,
+        telegramBot.execute(new SendMessage(chatId,
                 """
                         🇺🇿
                         Salom """ + firstName + "👋\n" +
