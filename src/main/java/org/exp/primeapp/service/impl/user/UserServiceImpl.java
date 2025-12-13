@@ -116,12 +116,11 @@ public class UserServiceImpl implements UserService {
                 .firstName(user.getFirstName())
                 .phone(user.getPhone())
                 .username(user.getTgUsername())
+                .orders(profileOrdersById)
                 .isAdmin(user.getRoles().stream()
-                        .anyMatch(role -> role.getName().equals("ROLE_ADMIN")))
-                .isVisitor(user.getRoles().stream()
-                        .anyMatch(role -> role.getName().equals("ROLE_VISITOR")))
-                .isSuperAdmin(user.getRoles().stream()
-                        .anyMatch(role -> role.getName().equals("ROLE_SUPER_ADMIN")))
+                        .anyMatch(role -> role.getName().equals("ROLE_ADMIN") || role.getName().equals("ROLE_VISITOR")))
+                .isVisitor(null)
+                .isSuperAdmin(null)
                 .build();
     }
 
