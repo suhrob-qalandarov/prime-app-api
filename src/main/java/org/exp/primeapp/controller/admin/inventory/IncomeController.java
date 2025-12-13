@@ -1,5 +1,7 @@
 package org.exp.primeapp.controller.admin.inventory;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.exp.primeapp.models.dto.request.IncomeRequest;
@@ -21,6 +23,7 @@ public class IncomeController {
 
     private final ProductIncomeService productIncomeService;
 
+    @Operation(security = @SecurityRequirement(name = "Authorization"))
     @PostMapping
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ProductIncome> createIncome(@Valid @RequestBody IncomeRequest incomeRequest) {
@@ -28,6 +31,7 @@ public class IncomeController {
         return new ResponseEntity<>(productIncome, HttpStatus.CREATED);
     }
 
+    @Operation(security = @SecurityRequirement(name = "Authorization"))
     @GetMapping("/statistics")
     @PreAuthorize("hasAnyRole('ADMIN', 'VISITOR')")
     public ResponseEntity<IncomeStatisticsResponse> getIncomeStatistics(
@@ -36,6 +40,7 @@ public class IncomeController {
         return new ResponseEntity<>(statistics, HttpStatus.OK);
     }
 
+    @Operation(security = @SecurityRequirement(name = "Authorization"))
     @GetMapping
     @PreAuthorize("hasAnyRole('ADMIN', 'VISITOR')")
     public ResponseEntity<IncomeStatisticsResponse> getAllIncomes(

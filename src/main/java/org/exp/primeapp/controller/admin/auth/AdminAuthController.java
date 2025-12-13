@@ -1,5 +1,7 @@
 package org.exp.primeapp.controller.admin.auth;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
@@ -20,6 +22,7 @@ public class AdminAuthController {
 
     private final AdminAuthService adminAuthService;
 
+    @Operation(security = @SecurityRequirement(name = "Authorization"))
     @PostMapping
     public ResponseEntity<LoginRes> verifyAdminLogin(
             @RequestBody AdminLoginReq loginReq, 

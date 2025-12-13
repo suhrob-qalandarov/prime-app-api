@@ -1,5 +1,7 @@
 package org.exp.primeapp.controller.admin.product;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import lombok.RequiredArgsConstructor;
 import org.exp.primeapp.models.dto.responce.admin.AdminSizeRes;
 import org.exp.primeapp.service.face.admin.product.AdminSizeService;
@@ -19,6 +21,7 @@ public class AdminProductSizeController {
 
     private final AdminSizeService adminSizeService;
 
+    @Operation(security = @SecurityRequirement(name = "Authorization"))
     @GetMapping
     @PreAuthorize("hasAnyRole('ADMIN', 'VISITOR')")
     public ResponseEntity<List<AdminSizeRes>> getSizes() {

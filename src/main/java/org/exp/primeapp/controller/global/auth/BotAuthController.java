@@ -1,5 +1,7 @@
 package org.exp.primeapp.controller.global.auth;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
@@ -23,12 +25,14 @@ public class BotAuthController {
     private final AuthService authService;
     private final UserService userService;
 
+    @Operation(security = @SecurityRequirement(name = "Authorization"))
     @GetMapping("/me")
     public ResponseEntity<UserRes> getUserData(@AuthenticationPrincipal User user) {
         UserRes userRes = userService.getUserDataFromToken(user);
         return ResponseEntity.ok(userRes);
     }
 
+    @Operation(security = @SecurityRequirement(name = "Authorization"))
     @GetMapping("/admin")
     public ResponseEntity<Boolean> checkUserAdminRole(@AuthenticationPrincipal User user) {
         Boolean isAdmin = userService.getUserHasAdminFromToken(user);
@@ -44,6 +48,7 @@ public class BotAuthController {
         return new ResponseEntity<>(loginRes, HttpStatus.ACCEPTED);
     }
 
+    @Operation(security = @SecurityRequirement(name = "Authorization"))
     @PostMapping("/logout")
     public ResponseEntity<LoginRes> logout(HttpServletResponse response) {
         authService.logout(response);
