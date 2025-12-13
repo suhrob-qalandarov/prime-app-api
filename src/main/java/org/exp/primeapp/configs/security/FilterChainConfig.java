@@ -43,6 +43,12 @@ public class FilterChainConfig {
     @Value("${swagger.ui.password:admin123}")
     private String swaggerPassword;
 
+    @Value("${app.main.url:https://prime.howdy.uz}")
+    private String mainUrl;
+
+    @Value("${app.api.url:https://api.howdy.uz}")
+    private String apiUrl;
+
     @Bean
     public SecurityFilterChain configure(HttpSecurity http, JwtCookieFilter mySecurityFilter, IpWhitelistFilter ipWhitelistFilter) throws Exception {
         http.csrf(AbstractHttpConfigurer::disable);
@@ -197,7 +203,7 @@ public class FilterChainConfig {
         CorsConfiguration configuration = new CorsConfiguration();
 
         configuration.setAllowedOrigins(Arrays.asList(
-                "https://prime.howdy.uz", "https://api.howdy.uz",  "https://admin.howdy.uz",
+                mainUrl, apiUrl, "https://admin.howdy.uz",
                 "https://prime77.uz",  "https://api.prime77.uz", "https://admin.prime77.uz",
                 "http://localhost", "http://localhost:3000", "http://localhost:3001",
                 "https://gourmet.uz", "https://dashboard.gourmet.uz", "https://api.gourmet.uz",
