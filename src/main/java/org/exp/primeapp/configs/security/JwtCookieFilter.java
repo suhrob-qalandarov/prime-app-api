@@ -35,7 +35,8 @@ public class JwtCookieFilter extends OncePerRequestFilter {
         if (requestPath.startsWith("/swagger-ui") || 
             requestPath.startsWith("/v3/api-docs") ||
             requestPath.equals("/swagger-ui.html") ||
-            requestPath.startsWith("/swagger-ui.html/")) {
+            requestPath.startsWith("/swagger-ui.html/") ||
+            requestPath.startsWith("/actuator/health")) {
             filterChain.doFilter(request, response);
             return;
         }
@@ -47,7 +48,10 @@ public class JwtCookieFilter extends OncePerRequestFilter {
         String token = null;
         if (authHeader != null && authHeader.startsWith(TOKEN_PREFIX)) {
             token = authHeader.substring(TOKEN_PREFIX.length());
-            log.info("Token extracted from header: {}", token != null ? "***" : null);
+            // Skip logging for actuator health endpoint to reduce log noise
+            if (!requestPath.startsWith("/actuator/health")) {
+                log.info("Token extracted from header: {}", token != null ? "***" : null);
+            }
         }
 
         // Check if token doesn't exist, get from cookie
@@ -55,10 +59,13 @@ public class JwtCookieFilter extends OncePerRequestFilter {
             log.debug("No token in header, checking cookies. Request URI: {}, Origin: {}", 
                     request.getRequestURI(), request.getHeader("Origin"));
             token = jwtService.extractTokenFromCookie(request);
-            log.info("Token extracted from cookie: {}", token != null ? "***" : null);
-            if (token == null) {
-                log.warn("No JWT token found in cookies or header for request: {} from origin: {}", 
-                        request.getRequestURI(), request.getHeader("Origin"));
+            // Skip logging for actuator health endpoint to reduce log noise
+            if (!requestPath.startsWith("/actuator/health")) {
+                log.info("Token extracted from cookie: {}", token != null ? "***" : null);
+                if (token == null) {
+                    log.warn("No JWT token found in cookies or header for request: {} from origin: {}", 
+                            request.getRequestURI(), request.getHeader("Origin"));
+                }
             }
         }
 

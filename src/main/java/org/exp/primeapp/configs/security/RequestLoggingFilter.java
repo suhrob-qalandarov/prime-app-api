@@ -19,8 +19,12 @@ public class RequestLoggingFilter extends OncePerRequestFilter {
     @Override
     protected void doFilterInternal(HttpServletRequest request, @NonNull HttpServletResponse response, FilterChain filterChain)
             throws ServletException, IOException {
-        logger.info("Request URL: {}", request.getRequestURL());
-        logger.info("Request Content-Type: {}", request.getContentType());
+        // Skip logging for actuator health endpoint to reduce log noise
+        String requestPath = request.getRequestURI();
+        if (!requestPath.startsWith("/actuator/health")) {
+            logger.info("Request URL: {}", request.getRequestURL());
+            logger.info("Request Content-Type: {}", request.getContentType());
+        }
         filterChain.doFilter(request, response);
     }
 }
