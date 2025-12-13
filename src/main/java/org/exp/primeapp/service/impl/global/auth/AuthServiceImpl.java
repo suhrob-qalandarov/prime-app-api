@@ -20,6 +20,7 @@ import org.exp.primeapp.service.face.global.attachment.AttachmentTokenService;
 import org.exp.primeapp.service.face.global.session.SessionService;
 import org.exp.primeapp.service.face.user.OrderService;
 import org.exp.primeapp.utils.IpAddressUtil;
+import org.exp.primeapp.utils.UserUtil;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -38,6 +39,7 @@ public class AuthServiceImpl implements AuthService {
     private final IpAddressUtil ipAddressUtil;
     private final SessionService sessionService;
     private final AttachmentTokenService attachmentTokenService;
+    private final UserUtil userUtil;
 
     @Value("${cookie.max.age}")
     private Integer cookieMaxAge;
@@ -138,7 +140,8 @@ public class AuthServiceImpl implements AuthService {
 
         UserRes userRes = UserRes.builder()
                 .id(user.getId())
-                .firstName(user.getFirstName())
+                .firstName(userUtil.truncateName(user.getFirstName()))
+                .lastName(userUtil.truncateName(user.getLastName()))
                 .phone(user.getPhone())
                 .username(user.getTgUsername())
                 //.roles(user.getRoles().stream().map(Role::getName).toList())

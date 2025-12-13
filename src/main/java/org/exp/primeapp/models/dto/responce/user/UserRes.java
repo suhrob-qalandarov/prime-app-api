@@ -7,6 +7,7 @@ import org.exp.primeapp.models.dto.responce.order.UserProfileOrdersRes;
 public record UserRes(
         Long id,
         String firstName,
+        String lastName,
         String phone,
         String username,
         UserProfileOrdersRes orders,

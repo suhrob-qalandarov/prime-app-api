@@ -13,6 +13,7 @@ import org.exp.primeapp.models.entities.User;
 import org.exp.primeapp.repository.UserRepository;
 import org.exp.primeapp.service.face.user.OrderService;
 import org.exp.primeapp.service.face.user.UserService;
+import org.exp.primeapp.utils.UserUtil;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -26,6 +27,7 @@ public class UserServiceImpl implements UserService {
 
     private final UserRepository userRepository;
     private final OrderService orderService;
+    private final UserUtil userUtil;
 
     @Override
     public UserRes getUserData(User user) {
@@ -57,7 +59,8 @@ public class UserServiceImpl implements UserService {
         User user = userRepository.findByTgUsername(tgUsername);
         return UserRes.builder()
                 .id(user.getId())
-                .firstName(user.getFirstName())
+                .firstName(userUtil.truncateName(user.getFirstName()))
+                .lastName(userUtil.truncateName(user.getLastName()))
                 .phone(user.getPhone())
                 .build();
     }
@@ -72,7 +75,8 @@ public class UserServiceImpl implements UserService {
         User user = userRepository.findByPhone(phoneNumber);
         return UserRes.builder()
                 .id(user.getId())
-                .firstName(user.getFirstName())
+                .firstName(userUtil.truncateName(user.getFirstName()))
+                .lastName(userUtil.truncateName(user.getLastName()))
                 .phone(user.getPhone())
                 .build();
     }
@@ -113,7 +117,8 @@ public class UserServiceImpl implements UserService {
 
         return UserRes.builder()
                 .id(user.getId())
-                .firstName(user.getFirstName())
+                .firstName(userUtil.truncateName(user.getFirstName()))
+                .lastName(userUtil.truncateName(user.getLastName()))
                 .phone(user.getPhone())
                 .username(user.getTgUsername())
                 .orders(profileOrdersById)
