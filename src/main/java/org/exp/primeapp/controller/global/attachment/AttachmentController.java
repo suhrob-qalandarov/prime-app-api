@@ -1,5 +1,7 @@
 package org.exp.primeapp.controller.global.attachment;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.servlet.annotation.MultipartConfig;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -55,6 +57,7 @@ public class AttachmentController {
     /**
      * Authenticated user uchun token olish
      */
+    @Operation(security = @SecurityRequirement(name = "Authorization"))
     @GetMapping("/token")
     public ResponseEntity<Map<String, String>> getAttachmentToken(HttpServletRequest request) {
         User user = getCurrentUser();
