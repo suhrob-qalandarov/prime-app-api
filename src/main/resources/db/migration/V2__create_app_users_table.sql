@@ -66,6 +66,7 @@ END $$;
 DO $$
 DECLARE
     r RECORD;
+    col_name TEXT;
 BEGIN
     -- Update user_ip_infos
     IF EXISTS (SELECT FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'user_ip_infos') THEN
@@ -208,38 +209,51 @@ BEGIN
     
     -- Handle existing join tables: rename or copy data
     -- Check if users_roles exists (Hibernate default naming)
-    IF EXISTS (SELECT FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'users_roles') THEN
-        -- Copy data from users_roles to app_users_roles
-        INSERT INTO app_users_roles (user_id, roles_id)
-        SELECT 
-            CASE 
-                WHEN EXISTS (SELECT FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'users_roles' AND column_name = 'users_id') 
-                THEN users_id
-                ELSE user_id
-            END,
-            roles_id
-        FROM users_roles
-        ON CONFLICT (user_id, roles_id) DO NOTHING;
-        
-        -- Drop old table after copying
-        DROP TABLE IF EXISTS users_roles CASCADE;
-    -- Check if user_roles exists (alternative naming)
-    ELSIF EXISTS (SELECT FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'user_roles') THEN
-        -- Copy data from user_roles to app_users_roles
-        INSERT INTO app_users_roles (user_id, roles_id)
-        SELECT 
-            CASE 
-                WHEN EXISTS (SELECT FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'user_roles' AND column_name = 'users_id') 
-                THEN users_id
-                ELSE user_id
-            END,
-            roles_id
-        FROM user_roles
-        ON CONFLICT (user_id, roles_id) DO NOTHING;
-        
-        -- Drop old table after copying
-        DROP TABLE IF EXISTS user_roles CASCADE;
-    END IF;
+        IF EXISTS (SELECT FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'users_roles') THEN
+            -- Determine column name
+            SELECT column_name INTO col_name
+            FROM information_schema.columns
+            WHERE table_schema = 'public' AND table_name = 'users_roles' 
+            AND column_name IN ('users_id', 'user_id')
+            LIMIT 1;
+            
+            -- Copy data based on column name
+            IF col_name = 'users_id' THEN
+                INSERT INTO app_users_roles (user_id, roles_id)
+                SELECT users_id, roles_id FROM users_roles
+                ON CONFLICT (user_id, roles_id) DO NOTHING;
+            ELSIF col_name = 'user_id' THEN
+                INSERT INTO app_users_roles (user_id, roles_id)
+                SELECT user_id, roles_id FROM users_roles
+                ON CONFLICT (user_id, roles_id) DO NOTHING;
+            END IF;
+            
+            -- Drop old table after copying
+            DROP TABLE IF EXISTS users_roles CASCADE;
+        -- Check if user_roles exists (alternative naming)
+        ELSIF EXISTS (SELECT FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'user_roles') THEN
+            -- Determine column name
+            SELECT column_name INTO col_name
+            FROM information_schema.columns
+            WHERE table_schema = 'public' AND table_name = 'user_roles' 
+            AND column_name IN ('users_id', 'user_id')
+            LIMIT 1;
+            
+            -- Copy data based on column name
+            IF col_name = 'users_id' THEN
+                INSERT INTO app_users_roles (user_id, roles_id)
+                SELECT users_id, roles_id FROM user_roles
+                ON CONFLICT (user_id, roles_id) DO NOTHING;
+            ELSIF col_name = 'user_id' THEN
+                INSERT INTO app_users_roles (user_id, roles_id)
+                SELECT user_id, roles_id FROM user_roles
+                ON CONFLICT (user_id, roles_id) DO NOTHING;
+            END IF;
+            
+            -- Drop old table after copying
+            DROP TABLE IF EXISTS user_roles CASCADE;
+        END IF;
+    END;
 END $$;
 
 -- Step 4: Update sequence to continue from max id
