@@ -56,20 +56,17 @@ public class FilterChainConfig {
 
     @Bean
     public SecurityFilterChain configure(HttpSecurity http, JwtCookieFilter mySecurityFilter, IpWhitelistFilter ipWhitelistFilter) throws Exception {
+        // Exclude Swagger endpoints from main filter chain (handled by swaggerSecurityFilterChain)
+        http.securityMatcher(request -> {
+            String path = request.getRequestURI();
+            return !path.startsWith("/swagger-ui") && 
+                   !path.startsWith("/v3/api-docs") && 
+                   !path.equals("/swagger-ui.html");
+        });
         http.csrf(AbstractHttpConfigurer::disable);
         http.cors(cors -> cors.configurationSource(corsConfigurationSource()));
         http.authorizeHttpRequests(auth ->
                 auth
-                        // Swagger endpoints - authenticated (httpBasic will handle authentication)
-                        .requestMatchers(
-                                "/swagger-ui/**",
-                                "/swagger-ui.html",
-                                "/swagger-ui.html/**",
-                                "/v3/api-docs/**",
-                                "/swagger-ui/index.html",
-                                "/swagger-ui/index.html/**"
-                        ).authenticated()
-
                         // Public auth endpoint
                         .requestMatchers(
                                 HttpMethod.POST,
@@ -186,10 +183,40 @@ public class FilterChainConfig {
         http.addFilterBefore(ipWhitelistFilter, UsernamePasswordAuthenticationFilter.class);
         http.addFilterBefore(mySecurityFilter, UsernamePasswordAuthenticationFilter.class);
 
-        // Swagger endpoints uchun httpBasic authentication
-        http.httpBasic(httpBasic -> httpBasic.realmName("Swagger UI"));
-        http.userDetailsService(swaggerUserDetailsService());
+        return http.build();
+    }
 
+    @Bean
+    public SecurityFilterChain swaggerSecurityFilterChain(HttpSecurity http) throws Exception {
+        // Create authentication provider for Swagger Basic Auth
+        var swaggerAuthProvider = new DaoAuthenticationProvider();
+        swaggerAuthProvider.setPasswordEncoder(passwordEncoder());
+        swaggerAuthProvider.setUserDetailsService(swaggerUserDetailsService());
+        var swaggerAuthManager = new ProviderManager(swaggerAuthProvider);
+        
+        http.securityMatcher("/swagger-ui/**", "/swagger-ui.html", "/swagger-ui.html/**", 
+                            "/swagger-ui/index.html", "/swagger-ui/index.html/**")
+                .csrf(AbstractHttpConfigurer::disable)
+                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+                .authorizeHttpRequests(auth -> auth
+                        // Localhost uchun public, production uchun authenticated
+                        .requestMatchers(request -> {
+                            String host = request.getServerName();
+                            return host != null && (host.equals("localhost") || host.equals("127.0.0.1"));
+                        }).permitAll()
+                        .anyRequest().authenticated())
+                .httpBasic(httpBasic -> httpBasic.realmName("Swagger UI"))
+                .authenticationManager(swaggerAuthManager);
+        return http.build();
+    }
+    
+    @Bean
+    public SecurityFilterChain apiDocsSecurityFilterChain(HttpSecurity http) throws Exception {
+        // /v3/api-docs/** endpointlari public bo'lishi kerak (Swagger UI ularga murojaat qiladi)
+        http.securityMatcher("/v3/api-docs/**")
+                .csrf(AbstractHttpConfigurer::disable)
+                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+                .authorizeHttpRequests(auth -> auth.anyRequest().permitAll());
         return http.build();
     }
 
