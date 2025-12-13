@@ -10,14 +10,11 @@ import org.exp.primeapp.models.dto.request.AdminLoginReq;
 import org.exp.primeapp.models.dto.responce.global.LoginRes;
 import org.exp.primeapp.models.dto.responce.user.UserRes;
 import org.exp.primeapp.models.entities.User;
-import org.exp.primeapp.models.entities.UserIpInfo;
 import org.exp.primeapp.models.entities.Session;
-import org.exp.primeapp.repository.UserIpInfoRepository;
 import org.exp.primeapp.repository.UserRepository;
 import org.exp.primeapp.service.face.admin.auth.AdminAuthService;
 import org.exp.primeapp.service.face.global.attachment.AttachmentTokenService;
 import org.exp.primeapp.service.face.global.session.SessionService;
-import org.exp.primeapp.utils.IpAddressUtil;
 import org.exp.primeapp.utils.UserUtil;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -32,9 +29,7 @@ import java.time.LocalDateTime;
 public class AdminAuthServiceImpl implements AdminAuthService {
 
     private final UserRepository userRepository;
-    private final UserIpInfoRepository userIpInfoRepository;
     private final JwtCookieService jwtService;
-    private final IpAddressUtil ipAddressUtil;
     private final SessionService sessionService;
     private final AttachmentTokenService attachmentTokenService;
     private final UserUtil userUtil;
@@ -51,37 +46,6 @@ public class AdminAuthServiceImpl implements AdminAuthService {
         User u = userRepository.findByPhoneAndVerifyCode(loginReq.phoneNumber(), loginReq.verifyCode())
                 .orElseThrow();
 
-        // IP va browser ma'lumotlarini olish va saqlash
-        String ip = ipAddressUtil.getClientIpAddress(request);
-        String browserInfo = ipAddressUtil.getBrowserInfo(request);
-        
-        // Agar register IP bo'lmasa, saqlash
-        boolean hasRegisterInfo = userIpInfoRepository.findByUserIdAndIsRegisterInfoTrue(u.getId()).isPresent();
-        if (!hasRegisterInfo) {
-            UserIpInfo registerInfo = UserIpInfo.builder()
-                    .user(u)
-                    .ip(ip)
-                    .browserInfo(browserInfo)
-                    .accessedAt(LocalDateTime.now())
-                    .isRegisterInfo(true)
-                    .build();
-            userIpInfoRepository.save(registerInfo);
-        }
-        
-        // Login IP ni saqlash (agar allaqachon yo'q bo'lsa)
-        boolean ipExists = userIpInfoRepository.existsByUserIdAndIpAndBrowserInfo(u.getId(), ip, browserInfo);
-        
-        if (!ipExists) {
-            UserIpInfo userIpInfo = UserIpInfo.builder()
-                    .user(u)
-                    .ip(ip)
-                    .browserInfo(browserInfo)
-                    .accessedAt(LocalDateTime.now())
-                    .isRegisterInfo(false)
-                    .build();
-            userIpInfoRepository.save(userIpInfo);
-        }
-        
         // Session topish yoki yaratish
         Session session = sessionService.getOrCreateSession(request, response);
         

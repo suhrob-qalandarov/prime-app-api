@@ -11,15 +11,12 @@ import org.exp.primeapp.models.dto.responce.global.LoginRes;
 import org.exp.primeapp.models.dto.responce.order.UserProfileOrdersRes;
 import org.exp.primeapp.models.dto.responce.user.UserRes;
 import org.exp.primeapp.models.entities.User;
-import org.exp.primeapp.models.entities.UserIpInfo;
-import org.exp.primeapp.repository.UserIpInfoRepository;
 import org.exp.primeapp.repository.UserRepository;
 import org.exp.primeapp.models.entities.Session;
 import org.exp.primeapp.service.face.global.auth.AuthService;
 import org.exp.primeapp.service.face.global.attachment.AttachmentTokenService;
 import org.exp.primeapp.service.face.global.session.SessionService;
 import org.exp.primeapp.service.face.user.OrderService;
-import org.exp.primeapp.utils.IpAddressUtil;
 import org.exp.primeapp.utils.UserUtil;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -34,9 +31,7 @@ import java.time.LocalDateTime;
 public class AuthServiceImpl implements AuthService {
     private final JwtCookieService jwtService;
     private final UserRepository userRepository;
-    private final UserIpInfoRepository userIpInfoRepository;
     private final OrderService orderService;
-    private final IpAddressUtil ipAddressUtil;
     private final SessionService sessionService;
     private final AttachmentTokenService attachmentTokenService;
     private final UserUtil userUtil;
@@ -61,37 +56,6 @@ public class AuthServiceImpl implements AuthService {
 
         if (user.getVerifyCodeExpiration().isBefore(LocalDateTime.now())) {
             throw new IllegalArgumentException("Code expired");
-        }
-        
-        // IP va browser ma'lumotlarini olish va saqlash
-        String ip = ipAddressUtil.getClientIpAddress(request);
-        String browserInfo = ipAddressUtil.getBrowserInfo(request);
-        
-        // Agar register IP bo'lmasa, saqlash
-        boolean hasRegisterInfo = userIpInfoRepository.findByUserIdAndIsRegisterInfoTrue(user.getId()).isPresent();
-        if (!hasRegisterInfo) {
-            UserIpInfo registerInfo = UserIpInfo.builder()
-                    .user(user)
-                    .ip(ip)
-                    .browserInfo(browserInfo)
-                    .accessedAt(LocalDateTime.now())
-                    .isRegisterInfo(true)
-                    .build();
-            userIpInfoRepository.save(registerInfo);
-        }
-        
-        // Login IP ni saqlash (agar allaqachon yo'q bo'lsa)
-        boolean ipExists = userIpInfoRepository.existsByUserIdAndIpAndBrowserInfo(user.getId(), ip, browserInfo);
-        
-        if (!ipExists) {
-            UserIpInfo userIpInfo = UserIpInfo.builder()
-                    .user(user)
-                    .ip(ip)
-                    .browserInfo(browserInfo)
-                    .accessedAt(LocalDateTime.now())
-                    .isRegisterInfo(false)
-                    .build();
-            userIpInfoRepository.save(userIpInfo);
         }
         
         // Session topish yoki yaratish
