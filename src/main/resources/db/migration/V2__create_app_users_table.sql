@@ -209,51 +209,50 @@ BEGIN
     
     -- Handle existing join tables: rename or copy data
     -- Check if users_roles exists (Hibernate default naming)
-        IF EXISTS (SELECT FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'users_roles') THEN
-            -- Determine column name
-            SELECT column_name INTO col_name
-            FROM information_schema.columns
-            WHERE table_schema = 'public' AND table_name = 'users_roles' 
-            AND column_name IN ('users_id', 'user_id')
-            LIMIT 1;
-            
-            -- Copy data based on column name
-            IF col_name = 'users_id' THEN
-                INSERT INTO app_users_roles (user_id, roles_id)
-                SELECT users_id, roles_id FROM users_roles
-                ON CONFLICT (user_id, roles_id) DO NOTHING;
-            ELSIF col_name = 'user_id' THEN
-                INSERT INTO app_users_roles (user_id, roles_id)
-                SELECT user_id, roles_id FROM users_roles
-                ON CONFLICT (user_id, roles_id) DO NOTHING;
-            END IF;
-            
-            -- Drop old table after copying
-            DROP TABLE IF EXISTS users_roles CASCADE;
-        -- Check if user_roles exists (alternative naming)
-        ELSIF EXISTS (SELECT FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'user_roles') THEN
-            -- Determine column name
-            SELECT column_name INTO col_name
-            FROM information_schema.columns
-            WHERE table_schema = 'public' AND table_name = 'user_roles' 
-            AND column_name IN ('users_id', 'user_id')
-            LIMIT 1;
-            
-            -- Copy data based on column name
-            IF col_name = 'users_id' THEN
-                INSERT INTO app_users_roles (user_id, roles_id)
-                SELECT users_id, roles_id FROM user_roles
-                ON CONFLICT (user_id, roles_id) DO NOTHING;
-            ELSIF col_name = 'user_id' THEN
-                INSERT INTO app_users_roles (user_id, roles_id)
-                SELECT user_id, roles_id FROM user_roles
-                ON CONFLICT (user_id, roles_id) DO NOTHING;
-            END IF;
-            
-            -- Drop old table after copying
-            DROP TABLE IF EXISTS user_roles CASCADE;
+    IF EXISTS (SELECT FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'users_roles') THEN
+        -- Determine column name
+        SELECT column_name INTO col_name
+        FROM information_schema.columns
+        WHERE table_schema = 'public' AND table_name = 'users_roles' 
+        AND column_name IN ('users_id', 'user_id')
+        LIMIT 1;
+        
+        -- Copy data based on column name
+        IF col_name = 'users_id' THEN
+            INSERT INTO app_users_roles (user_id, roles_id)
+            SELECT users_id, roles_id FROM users_roles
+            ON CONFLICT (user_id, roles_id) DO NOTHING;
+        ELSIF col_name = 'user_id' THEN
+            INSERT INTO app_users_roles (user_id, roles_id)
+            SELECT user_id, roles_id FROM users_roles
+            ON CONFLICT (user_id, roles_id) DO NOTHING;
         END IF;
-    END;
+        
+        -- Drop old table after copying
+        DROP TABLE IF EXISTS users_roles CASCADE;
+    -- Check if user_roles exists (alternative naming)
+    ELSIF EXISTS (SELECT FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'user_roles') THEN
+        -- Determine column name
+        SELECT column_name INTO col_name
+        FROM information_schema.columns
+        WHERE table_schema = 'public' AND table_name = 'user_roles' 
+        AND column_name IN ('users_id', 'user_id')
+        LIMIT 1;
+        
+        -- Copy data based on column name
+        IF col_name = 'users_id' THEN
+            INSERT INTO app_users_roles (user_id, roles_id)
+            SELECT users_id, roles_id FROM user_roles
+            ON CONFLICT (user_id, roles_id) DO NOTHING;
+        ELSIF col_name = 'user_id' THEN
+            INSERT INTO app_users_roles (user_id, roles_id)
+            SELECT user_id, roles_id FROM user_roles
+            ON CONFLICT (user_id, roles_id) DO NOTHING;
+        END IF;
+        
+        -- Drop old table after copying
+        DROP TABLE IF EXISTS user_roles CASCADE;
+    END IF;
 END $$;
 
 -- Step 4: Update sequence to continue from max id
