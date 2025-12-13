@@ -44,13 +44,34 @@ public class JwtCookieFilter extends OncePerRequestFilter {
         // Get token from header
         String authHeader = request.getHeader(AUTHORIZATION);
         
-        // Only process JWT tokens (Bearer), skip Basic auth
+        // Extract token from header - supports both "Bearer <token>" and "<token>" formats
         String token = null;
-        if (authHeader != null && authHeader.startsWith(TOKEN_PREFIX)) {
-            token = authHeader.substring(TOKEN_PREFIX.length());
+        if (authHeader != null && !authHeader.trim().isEmpty()) {
             // Skip logging for actuator health endpoint to reduce log noise
             if (!requestPath.startsWith("/actuator/health")) {
-                log.info("Token extracted from header: {}", token != null ? "***" : null);
+                log.debug("Authorization header found: {}", authHeader.startsWith(TOKEN_PREFIX) ? "Bearer token" : "Direct token");
+            }
+            
+            // Check if header starts with "Bearer " prefix
+            if (authHeader.startsWith(TOKEN_PREFIX)) {
+                token = authHeader.substring(TOKEN_PREFIX.length()).trim();
+                if (!requestPath.startsWith("/actuator/health")) {
+                    log.info("Token extracted from header (Bearer format): ***");
+                }
+            } else {
+                // Token without Bearer prefix (for Swagger UI and direct token usage)
+                // Only accept if it doesn't contain spaces (to avoid Basic auth)
+                String trimmedHeader = authHeader.trim();
+                if (!trimmedHeader.contains(" ") && trimmedHeader.length() > 0) {
+                    token = trimmedHeader;
+                    if (!requestPath.startsWith("/actuator/health")) {
+                        log.info("Token extracted from header (direct format): ***");
+                    }
+                } else {
+                    if (!requestPath.startsWith("/actuator/health")) {
+                        log.debug("Authorization header ignored (contains spaces, likely Basic auth)");
+                    }
+                }
             }
         }
 
