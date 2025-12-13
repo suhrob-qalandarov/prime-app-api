@@ -9,6 +9,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.exp.primeapp.configs.security.JwtCookieService;
 import org.exp.primeapp.models.dto.responce.global.LoginRes;
 import org.exp.primeapp.models.dto.responce.order.UserProfileOrdersRes;
+import org.exp.primeapp.models.dto.responce.user.SessionRes;
 import org.exp.primeapp.models.dto.responce.user.UserRes;
 import org.exp.primeapp.models.entities.User;
 import org.exp.primeapp.repository.UserRepository;
@@ -24,6 +25,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Slf4j
 @Service
@@ -102,6 +104,19 @@ public class AuthServiceImpl implements AuthService {
 
         UserProfileOrdersRes profileOrdersById = orderService.getUserProfileOrdersById(user.getId());
 
+        // Convert sessions to SessionRes
+        List<SessionRes> sessions = user.getSessions() != null ? user.getSessions().stream()
+                .map(s -> SessionRes.builder()
+                        .sessionId(s.getSessionId())
+                        .ip(s.getIp())
+                        .browserInfo(s.getBrowserInfo())
+                        .expiresAt(s.getExpiresAt())
+                        .isActive(s.getIsActive())
+                        .lastAccessedAt(s.getLastAccessedAt())
+                        .migratedAt(s.getMigratedAt())
+                        .build())
+                .toList() : List.of();
+
         UserRes userRes = UserRes.builder()
                 .id(user.getId())
                 .firstName(userUtil.truncateName(user.getFirstName()))
@@ -110,6 +125,7 @@ public class AuthServiceImpl implements AuthService {
                 .username(user.getTgUsername())
                 //.roles(user.getRoles().stream().map(Role::getName).toList())
                 .orders(profileOrdersById)
+                .sessions(sessions)
                 .isAdmin(user.getRoles().stream().anyMatch(role -> role.getName().equals("ROLE_ADMIN") || role.getName().equals("ROLE_VISITOR")))
                 .isVisitor(user.getRoles().stream().anyMatch(role -> role.getName().equals("ROLE_VISITOR")))
                 .isSuperAdmin(user.getRoles().stream().anyMatch(role -> role.getName().equals("ROLE_SUPER_ADMIN")))

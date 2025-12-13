@@ -40,6 +40,7 @@ public class AdminOrderServiceImpl implements AdminOrderService {
                             .firstName(userUtil.truncateName(order.getUser().getFirstName()))
                             .lastName(userUtil.truncateName(order.getUser().getLastName()))
                             .phone(order.getUser().getPhone())
+                            .sessions(List.of()) // Sessions not needed in order context
                             .build())
                     .totalPrice(order.getTotalPrice())
                     .status(order.getStatus())

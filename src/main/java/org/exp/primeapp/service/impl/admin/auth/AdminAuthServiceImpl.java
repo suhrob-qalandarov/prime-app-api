@@ -8,6 +8,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.exp.primeapp.configs.security.JwtCookieService;
 import org.exp.primeapp.models.dto.request.AdminLoginReq;
 import org.exp.primeapp.models.dto.responce.global.LoginRes;
+import org.exp.primeapp.models.dto.responce.user.SessionRes;
 import org.exp.primeapp.models.dto.responce.user.UserRes;
 import org.exp.primeapp.models.entities.User;
 import org.exp.primeapp.models.entities.Session;
@@ -22,6 +23,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Slf4j
 @Service
@@ -88,12 +90,26 @@ public class AdminAuthServiceImpl implements AdminAuthService {
         var auth = new UsernamePasswordAuthenticationToken(u, null, u.getAuthorities());
         SecurityContextHolder.getContext().setAuthentication(auth);
 
+        // Convert sessions to SessionRes
+        List<SessionRes> sessions = u.getSessions() != null ? u.getSessions().stream()
+                .map(s -> SessionRes.builder()
+                        .sessionId(s.getSessionId())
+                        .ip(s.getIp())
+                        .browserInfo(s.getBrowserInfo())
+                        .expiresAt(s.getExpiresAt())
+                        .isActive(s.getIsActive())
+                        .lastAccessedAt(s.getLastAccessedAt())
+                        .migratedAt(s.getMigratedAt())
+                        .build())
+                .toList() : List.of();
+
         UserRes userRes = UserRes.builder()
                 .id(u.getId())
                 .firstName(userUtil.truncateName(u.getFirstName()))
                 .lastName(userUtil.truncateName(u.getLastName()))
                 .phone(u.getPhone())
                 .username(u.getTgUsername())
+                .sessions(sessions)
                 .isAdmin(u.getRoles().stream()
                         .anyMatch(role -> role.getName().equals("ROLE_ADMIN")))
                 .isVisitor(u.getRoles().stream()
