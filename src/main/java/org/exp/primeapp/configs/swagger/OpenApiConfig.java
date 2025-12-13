@@ -28,9 +28,6 @@ public class OpenApiConfig {
         final String SCHEME_NAME = "Authorization";
         return new OpenAPI()
                 .addServersItem(new Server()
-                        .url(serverUrl)
-                        .description("Production Server"))
-                .addServersItem(new Server()
                         .url(localhostUrl)
                         .description("Local Development Server"))
                 // Global security requirement removed - security will be added per endpoint
@@ -39,7 +36,10 @@ public class OpenApiConfig {
                                 .name(SCHEME_NAME)
                                 .type(SecurityScheme.Type.APIKEY)
                                 .in(SecurityScheme.In.HEADER)
-                ));
+                ))
+                .addServersItem(new Server()
+                        .url(serverUrl)
+                        .description("Production Server"));
     }
 
     @Bean
