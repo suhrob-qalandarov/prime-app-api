@@ -1,6 +1,10 @@
 package org.exp.primeapp.controller.admin.attachment;
 
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -41,10 +45,27 @@ public class AdminAttachmentController {
         return ResponseEntity.ok(attachmentService.getAttachmentWithUrl(attachmentUrl));
     }
 
-    @Operation(security = @SecurityRequirement(name = "Authorization"))
-    @PostMapping("/oneupload")
+    @Operation(
+            summary = "Upload single file",
+            description = "Upload a single file attachment",
+            security = @SecurityRequirement(name = "Authorization"),
+            requestBody = @RequestBody(
+                    content = @Content(
+                            mediaType = "multipart/form-data",
+                            schema = @Schema(type = "object")
+                    ),
+                    required = true
+            )
+    )
+    @PostMapping(value = "/oneupload", consumes = "multipart/form-data")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<AttachmentRes> uploadFile(@RequestParam("file") MultipartFile file) {
+    public ResponseEntity<AttachmentRes> uploadFile(
+            @Parameter(
+                    description = "File to upload",
+                    required = true,
+                    content = @Content(mediaType = "multipart/form-data", schema = @Schema(type = "string", format = "binary"))
+            )
+            @RequestParam("file") MultipartFile file) {
         log.debug("Uploading single file: {}", file.getOriginalFilename());
         Attachment attachment = adminAttachmentService.uploadOne(file);
         AttachmentRes response = AttachmentRes.builder()
@@ -59,10 +80,27 @@ public class AdminAttachmentController {
         return ResponseEntity.ok(response);
     }
 
-    @Operation(security = @SecurityRequirement(name = "Authorization"))
-    @PostMapping("/multiupload")
+    @Operation(
+            summary = "Upload multiple files",
+            description = "Upload multiple file attachments",
+            security = @SecurityRequirement(name = "Authorization"),
+            requestBody = @RequestBody(
+                    content = @Content(
+                            mediaType = "multipart/form-data",
+                            schema = @Schema(type = "object")
+                    ),
+                    required = true
+            )
+    )
+    @PostMapping(value = "/multiupload", consumes = "multipart/form-data")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<List<String>> uploadFiles(@RequestParam("files") MultipartFile[] files) {
+    public ResponseEntity<List<String>> uploadFiles(
+            @Parameter(
+                    description = "Files to upload",
+                    required = true,
+                    content = @Content(mediaType = "multipart/form-data", schema = @Schema(type = "array", format = "binary"))
+            )
+            @RequestParam("files") MultipartFile[] files) {
         log.debug("Uploading multiple files: {}", files.length);
         List<Attachment> uploadedFiles = adminAttachmentService.uploadMultiple(files);
         List<String> responses = attachmentService.convertToAttachmentUrls(uploadedFiles);
@@ -70,10 +108,29 @@ public class AdminAttachmentController {
     }
 
 
-    @Operation(security = @SecurityRequirement(name = "Authorization"))
-    @PutMapping("/{attachmentId}")
+    @Operation(
+            summary = "Update attachment file",
+            description = "Update an existing attachment file",
+            security = @SecurityRequirement(name = "Authorization"),
+            requestBody = @RequestBody(
+                    content = @Content(
+                            mediaType = "multipart/form-data",
+                            schema = @Schema(type = "object")
+                    ),
+                    required = true
+            )
+    )
+    @PutMapping(value = "/{attachmentId}", consumes = "multipart/form-data")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<AttachmentRes> updateFile(@PathVariable Long attachmentId, @RequestParam("file") MultipartFile file) {
+    public ResponseEntity<AttachmentRes> updateFile(
+            @Parameter(description = "Attachment ID", required = true)
+            @PathVariable Long attachmentId,
+            @Parameter(
+                    description = "File to upload",
+                    required = true,
+                    content = @Content(mediaType = "multipart/form-data", schema = @Schema(type = "string", format = "binary"))
+            )
+            @RequestParam("file") MultipartFile file) {
         log.debug("Updating attachment ID: {}", attachmentId);
         AttachmentRes response = adminAttachmentService.update(attachmentId, file);
         return ResponseEntity.ok(response);
