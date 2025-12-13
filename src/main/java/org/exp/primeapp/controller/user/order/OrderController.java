@@ -1,5 +1,7 @@
 package org.exp.primeapp.controller.user.order;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.exp.primeapp.models.dto.request.CreateOrderReq;
@@ -20,12 +22,14 @@ public class OrderController {
 
     private final OrderService orderService;
 
+    @Operation(security = @SecurityRequirement(name = "Authorization"))
     @GetMapping("/{id}")
     public ResponseEntity<UserProfileOrdersRes> getUserOrdersById(@PathVariable Long id) {
         UserProfileOrdersRes profileOrderRes = orderService.getUserProfileOrdersById(id);
         return new ResponseEntity<>(profileOrderRes, HttpStatus.OK);
     }
 
+    @Operation(security = @SecurityRequirement(name = "Authorization"))
     @PostMapping
     public ResponseEntity<UserOrderRes> createOrder(@RequestBody CreateOrderReq request) {
         UserOrderRes orderRes = orderService.createOrder(request.getUserId(), request.getOrderItems());

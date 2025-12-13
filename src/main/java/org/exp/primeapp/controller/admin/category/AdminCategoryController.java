@@ -1,5 +1,7 @@
 package org.exp.primeapp.controller.admin.category;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import lombok.RequiredArgsConstructor;
 import org.exp.primeapp.models.dto.request.CategoryReq;
 import org.exp.primeapp.models.dto.responce.admin.AdminCategoryDashboardRes;
@@ -22,6 +24,7 @@ public class AdminCategoryController {
 
     private final CategoryService categoryService;
 
+    @Operation(security = @SecurityRequirement(name = "Authorization"))
     @PostMapping
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<AdminCategoryRes> createCategory(@RequestBody CategoryReq categoryReq) {
@@ -29,6 +32,7 @@ public class AdminCategoryController {
         return new ResponseEntity<>(adminCategoryRes, HttpStatus.CREATED);
     }
 
+    @Operation(security = @SecurityRequirement(name = "Authorization"))
     @GetMapping("/{categoryId}")
     @PreAuthorize("hasAnyRole('ADMIN', 'VISITOR')")
     public ResponseEntity<AdminCategoryRes> getCategoryById(@PathVariable Long categoryId) {
@@ -36,6 +40,7 @@ public class AdminCategoryController {
         return new ResponseEntity<>(adminCategoryRes, HttpStatus.OK);
     }
 
+    @Operation(security = @SecurityRequirement(name = "Authorization"))
     @PutMapping("/{categoryId}")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<AdminCategoryRes> updateCategory(
@@ -46,6 +51,7 @@ public class AdminCategoryController {
         return new ResponseEntity<>(categoryRes, HttpStatus.ACCEPTED);
     }
 
+    @Operation(security = @SecurityRequirement(name = "Authorization"))
     @GetMapping("/dashboard")
     @PreAuthorize("hasAnyRole('ADMIN', 'VISITOR')")
     public ResponseEntity<AdminCategoryDashboardRes> getCategoryDashboard() {
@@ -53,6 +59,7 @@ public class AdminCategoryController {
         return new ResponseEntity<>(categoryDashboardRes, HttpStatus.ACCEPTED);
     }
 
+    @Operation(security = @SecurityRequirement(name = "Authorization"))
     @PatchMapping("/order")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<List<AdminCategoryRes>> updateCategoriesOrder(@RequestBody Map<Long, Long> categoryOrderMap) {
@@ -60,6 +67,7 @@ public class AdminCategoryController {
         return new ResponseEntity<>(updatedCategories, HttpStatus.ACCEPTED);
     }
 
+    @Operation(security = @SecurityRequirement(name = "Authorization"))
     @PatchMapping("/toggle/{categoryId}")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Void> toggleCategory(@PathVariable Long categoryId) {
@@ -67,6 +75,7 @@ public class AdminCategoryController {
         return new ResponseEntity<>(HttpStatus.ACCEPTED);
     }
 
+    @Operation(security = @SecurityRequirement(name = "Authorization"))
     @PatchMapping("/toggle-with-products/{categoryId}")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Void> toggleCategoryWithProducts(@PathVariable Long categoryId) {

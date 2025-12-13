@@ -1,5 +1,7 @@
 package org.exp.primeapp.controller.admin.user;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import lombok.RequiredArgsConstructor;
 import org.exp.primeapp.models.dto.responce.admin.AdminUserDashboardRes;
 import org.exp.primeapp.models.dto.responce.admin.AdminUserDetailRes;
@@ -18,18 +20,21 @@ import static org.exp.primeapp.utils.Const.*;
 public class AdminUserController {
     private final UserService userService;
 
+    @Operation(security = @SecurityRequirement(name = "Authorization"))
     @GetMapping("/dashboard")
     public ResponseEntity<AdminUserDashboardRes> getAllUsers() {
         AdminUserDashboardRes users = userService.getAdminAllUsers();
         return new ResponseEntity<>(users, HttpStatus.OK);
     }
 
+    @Operation(security = @SecurityRequirement(name = "Authorization"))
     @GetMapping("/{userId}")
     public ResponseEntity<AdminUserDetailRes> getUser(@PathVariable Long userId) {
         AdminUserDetailRes user = userService.getAdminUserDetailById(userId);
         return ResponseEntity.ok(user);
     }
 
+    @Operation(security = @SecurityRequirement(name = "Authorization"))
     @GetMapping
     public ResponseEntity<PageRes<AdminUserDetailRes>> getUsers(
             Pageable pageable,
@@ -41,6 +46,7 @@ public class AdminUserController {
         return new ResponseEntity<>(users, HttpStatus.OK);
     }
 
+    @Operation(security = @SecurityRequirement(name = "Authorization"))
     @PatchMapping("/toggle/{userId}")
     public ResponseEntity<?> toggleUser(@PathVariable Long userId) {
         userService.toggleUserUpdate(userId);

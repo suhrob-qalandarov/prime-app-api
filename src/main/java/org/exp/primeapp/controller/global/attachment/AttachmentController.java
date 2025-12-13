@@ -88,6 +88,7 @@ public class AttachmentController {
     /**
      * Attachment olish - public endpoint (token bilan himoyalangan)
      */
+    @Operation(security = @SecurityRequirement(name = "Authorization"))
     @GetMapping("/{url}")
     public void getAttachment(
             @PathVariable String url,

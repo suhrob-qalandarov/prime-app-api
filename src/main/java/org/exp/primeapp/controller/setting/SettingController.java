@@ -1,5 +1,7 @@
 package org.exp.primeapp.controller.setting;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.exp.primeapp.models.entities.Setting;
@@ -24,6 +26,7 @@ public class SettingController {
     /**
      * Hamma sozlamalarni olish
      */
+    @Operation(security = @SecurityRequirement(name = "Authorization"))
     @GetMapping
     @PreAuthorize("hasRole('SUPER_ADMIN')")
     public ResponseEntity<List<Setting>> getAll() {
@@ -35,6 +38,7 @@ public class SettingController {
     /**
      * Bitta sozlamani olish (key bo‘yicha)
      */
+    @Operation(security = @SecurityRequirement(name = "Authorization"))
     @GetMapping("/{key}")
     @PreAuthorize("hasRole('SUPER_ADMIN')")
     public ResponseEntity<?> getOne(@PathVariable String key) {
@@ -48,6 +52,7 @@ public class SettingController {
     /**
      * Sozlamani yangilash yoki yaratish
      */
+    @Operation(security = @SecurityRequirement(name = "Authorization"))
     @PutMapping
     @PreAuthorize("hasRole('SUPER_ADMIN')")
     public ResponseEntity<?> update(
@@ -64,6 +69,7 @@ public class SettingController {
     /**
      * Cache’ni DB’dan yangilash
      */
+    @Operation(security = @SecurityRequirement(name = "Authorization"))
     @PostMapping("/reload")
     @PreAuthorize("hasRole('SUPER_ADMIN')")
     public ResponseEntity<?> reload() {
@@ -75,6 +81,7 @@ public class SettingController {
     /**
      * Misol uchun: typed get — string, int, bool
      */
+    @Operation(security = @SecurityRequirement(name = "Authorization"))
     @GetMapping("/value")
     @PreAuthorize("hasRole('SUPER_ADMIN')")
     public ResponseEntity<?> getValue(

@@ -1,5 +1,7 @@
 package org.exp.primeapp.controller.admin.product;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.exp.primeapp.models.dto.request.ProductReq;
@@ -20,6 +22,7 @@ public class AdminProductController {
 
     private final AdminProductService adminProductService;
 
+    @Operation(security = @SecurityRequirement(name = "Authorization"))
     @GetMapping("/dashboard")
     @PreAuthorize("hasAnyRole('ADMIN', 'VISITOR')")
     public ResponseEntity<AdminProductDashboardRes> adminProducts() {
@@ -27,6 +30,7 @@ public class AdminProductController {
         return new ResponseEntity<>(adminDashboardProductsRes, HttpStatus.OK);
     }
 
+    @Operation(security = @SecurityRequirement(name = "Authorization"))
     @GetMapping("/{productId}")
     @PreAuthorize("hasAnyRole('ADMIN', 'VISITOR')")
     public ResponseEntity<AdminProductRes> getProduct(@PathVariable Long productId) {
@@ -34,6 +38,7 @@ public class AdminProductController {
         return new ResponseEntity<>(adminProductRes, HttpStatus.OK);
     }
 
+    @Operation(security = @SecurityRequirement(name = "Authorization"))
     @PostMapping
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<AdminProductRes> addProduct(@Valid @RequestBody ProductReq productReq) {
@@ -41,6 +46,7 @@ public class AdminProductController {
         return new ResponseEntity<>(adminProductRes, HttpStatus.CREATED);
     }
 
+    @Operation(security = @SecurityRequirement(name = "Authorization"))
     @PutMapping("/{productId}")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<AdminProductRes> updateProduct(@PathVariable Long productId, @RequestBody ProductReq productReq) {
@@ -48,6 +54,7 @@ public class AdminProductController {
         return new ResponseEntity<>(adminProductRes, HttpStatus.ACCEPTED);
     }
 
+    @Operation(security = @SecurityRequirement(name = "Authorization"))
     @DeleteMapping("/toggle/{productId}")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<AdminProductRes> activateProduct(@PathVariable Long productId) {

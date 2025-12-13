@@ -1,5 +1,7 @@
 package org.exp.primeapp.controller.admin.attachment;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.exp.primeapp.models.dto.responce.global.AttachmentRes;
@@ -24,6 +26,7 @@ public class AdminAttachmentController {
     private final AdminAttachmentService adminAttachmentService;
     private final AttachmentService attachmentService;
 
+    @Operation(security = @SecurityRequirement(name = "Authorization"))
     @GetMapping("/{attachmentId}")
     @PreAuthorize("hasAnyRole('ADMIN', 'VISITOR')")
     public ResponseEntity<Attachment> getAttachment(@PathVariable Long attachmentId) {
@@ -31,12 +34,14 @@ public class AdminAttachmentController {
         return ResponseEntity.ok(attachmentService.getAttachment(attachmentId));
     }
 
+    @Operation(security = @SecurityRequirement(name = "Authorization"))
     @GetMapping("/with-url/{attachmentUrl}")
     public ResponseEntity<Attachment> getAttachmentWithUrl(@PathVariable String attachmentUrl) {
         log.debug("Fetching attachment with URL: {}", attachmentUrl);
         return ResponseEntity.ok(attachmentService.getAttachmentWithUrl(attachmentUrl));
     }
 
+    @Operation(security = @SecurityRequirement(name = "Authorization"))
     @PostMapping("/oneupload")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<AttachmentRes> uploadFile(@RequestParam("file") MultipartFile file) {
@@ -54,6 +59,7 @@ public class AdminAttachmentController {
         return ResponseEntity.ok(response);
     }
 
+    @Operation(security = @SecurityRequirement(name = "Authorization"))
     @PostMapping("/multiupload")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<List<String>> uploadFiles(@RequestParam("files") MultipartFile[] files) {
@@ -64,6 +70,7 @@ public class AdminAttachmentController {
     }
 
 
+    @Operation(security = @SecurityRequirement(name = "Authorization"))
     @PutMapping("/{attachmentId}")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<AttachmentRes> updateFile(@PathVariable Long attachmentId, @RequestParam("file") MultipartFile file) {
