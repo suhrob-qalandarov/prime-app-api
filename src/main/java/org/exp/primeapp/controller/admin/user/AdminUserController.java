@@ -2,9 +2,10 @@ package org.exp.primeapp.controller.admin.user;
 
 import lombok.RequiredArgsConstructor;
 import org.exp.primeapp.models.dto.responce.admin.AdminUserDashboardRes;
-import org.exp.primeapp.models.entities.User;
-import org.exp.primeapp.repository.UserRepository;
+import org.exp.primeapp.models.dto.responce.admin.AdminUserDetailRes;
+import org.exp.primeapp.models.dto.responce.user.page.PageRes;
 import org.exp.primeapp.service.face.user.UserService;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -15,7 +16,6 @@ import static org.exp.primeapp.utils.Const.*;
 @RequestMapping(API + V1 + ADMIN + USER)
 @RequiredArgsConstructor
 public class AdminUserController {
-    private final UserRepository userRepository;
     private final UserService userService;
 
     @GetMapping("/dashboard")
@@ -24,10 +24,21 @@ public class AdminUserController {
         return new ResponseEntity<>(users, HttpStatus.OK);
     }
 
-    @GetMapping("{userId}")
-    public ResponseEntity<User> getUser(@PathVariable Long userId) {
-        User user = userRepository.getById(userId);
+    @GetMapping("/{userId}")
+    public ResponseEntity<AdminUserDetailRes> getUser(@PathVariable Long userId) {
+        AdminUserDetailRes user = userService.getAdminUserDetailById(userId);
         return ResponseEntity.ok(user);
+    }
+
+    @GetMapping
+    public ResponseEntity<PageRes<AdminUserDetailRes>> getUsers(
+            Pageable pageable,
+            @RequestParam(required = false) Boolean active,
+            @RequestParam(required = false) String phone,
+            @RequestParam(required = false) String firstName
+    ) {
+        PageRes<AdminUserDetailRes> users = userService.getAdminUsersWithFilter(pageable, active, phone, firstName);
+        return new ResponseEntity<>(users, HttpStatus.OK);
     }
 
     @PatchMapping("/toggle/{userId}")

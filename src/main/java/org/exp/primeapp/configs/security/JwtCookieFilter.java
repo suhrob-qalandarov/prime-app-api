@@ -52,8 +52,14 @@ public class JwtCookieFilter extends OncePerRequestFilter {
 
         // Check if token doesn't exist, get from cookie
         if (token == null) {
+            log.debug("No token in header, checking cookies. Request URI: {}, Origin: {}", 
+                    request.getRequestURI(), request.getHeader("Origin"));
             token = jwtService.extractTokenFromCookie(request);
             log.info("Token extracted from cookie: {}", token != null ? "***" : null);
+            if (token == null) {
+                log.warn("No JWT token found in cookies or header for request: {} from origin: {}", 
+                        request.getRequestURI(), request.getHeader("Origin"));
+            }
         }
 
         if (token != null) {

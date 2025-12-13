@@ -153,25 +153,64 @@ public class JwtCookieService {
 
     public String extractTokenFromCookie(HttpServletRequest request) {
         if (request.getCookies() != null) {
+            log.debug("Received {} cookies", request.getCookies().length);
             for (Cookie cookie : request.getCookies()) {
+                log.debug("Cookie name: {}, value: {}", cookie.getName(), cookie.getValue() != null ? "***" : null);
                 if (cookieNameUser.equals(cookie.getName())
                         || cookieNameAdmin.equals(cookie.getName())) {
-
+                    log.info("Found JWT cookie: {}", cookie.getName());
                     return cookie.getValue();
                 }
             }
+        } else {
+            log.debug("No cookies in request");
         }
         return null;
     }
 
     public void setJwtCookie(String token, String key, HttpServletResponse response) {
+        setJwtCookie(token, key, response, null);
+    }
+
+    public void setJwtCookie(String token, String key, HttpServletResponse response, HttpServletRequest request) {
         Cookie cookie = new Cookie(key, token);
         cookie.setHttpOnly(cookieIsHttpOnly);
-        cookie.setSecure(cookieIsSecure);
-        cookie.setDomain(cookieDomain);
+        
+        // Detect if request is to localhost
+        boolean isLocalhost = false;
+        if (request != null) {
+            String host = request.getServerName();
+            String scheme = request.getScheme();
+            isLocalhost = host != null && (host.equals("localhost") || host.equals("127.0.0.1") || scheme.equals("http"));
+            log.debug("Request host: {}, scheme: {}, isLocalhost: {}", host, scheme, isLocalhost);
+        }
+        
+        // For localhost HTTP requests, set Secure=false
+        // For production HTTPS, use configured Secure value
+        boolean shouldBeSecure = isLocalhost ? false : cookieIsSecure;
+        cookie.setSecure(shouldBeSecure);
+        
+        // For localhost, don't set domain (allows localhost to work)
+        // For production, use configured domain
+        if (!isLocalhost && cookieDomain != null && !cookieDomain.isEmpty()) {
+            cookie.setDomain(cookieDomain);
+        }
+        
         cookie.setPath(cookiePath);
         cookie.setMaxAge(cookieMaxAge);
-        cookie.setAttribute(cookieAttributeName, cookieAttributeValue);
+        
+        // For localhost, use SameSite=Lax instead of None
+        // SameSite=None requires Secure=true, which doesn't work with HTTP
+        if (isLocalhost) {
+            cookie.setAttribute("SameSite", "Lax");
+        } else {
+            cookie.setAttribute(cookieAttributeName, cookieAttributeValue);
+        }
+        
+        log.debug("Setting cookie: name={}, secure={}, domain={}, sameSite={}", 
+                key, shouldBeSecure, isLocalhost ? "not set" : cookieDomain, 
+                isLocalhost ? "Lax" : cookieAttributeValue);
+        
         response.addCookie(cookie);
     }
 }

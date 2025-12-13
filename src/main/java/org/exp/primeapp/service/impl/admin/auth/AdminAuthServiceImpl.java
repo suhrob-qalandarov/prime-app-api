@@ -117,7 +117,7 @@ public class AdminAuthServiceImpl implements AdminAuthService {
         
         userRepository.save(u);
 
-        jwtService.setJwtCookie(token, cookieNameAdmin, response);
+        jwtService.setJwtCookie(token, cookieNameAdmin, response, request);
 
         var auth = new UsernamePasswordAuthenticationToken(u, null, u.getAuthorities());
         SecurityContextHolder.getContext().setAuthentication(auth);

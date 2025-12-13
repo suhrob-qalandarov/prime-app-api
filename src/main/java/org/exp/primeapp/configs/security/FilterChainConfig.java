@@ -25,7 +25,9 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 
 import static org.exp.primeapp.utils.Const.*;
 
@@ -43,6 +45,15 @@ public class FilterChainConfig {
     @Value("${swagger.ui.password:admin123}")
     private String swaggerPassword;
 
+    @Value("${app.main.url:https://prime.howdy.uz}")
+    private String mainUrl;
+
+    @Value("${app.api.url:https://api.howdy.uz}")
+    private String apiUrl;
+
+    @Value("${app.local.urls}")
+    private String localUrls;
+
     @Bean
     public SecurityFilterChain configure(HttpSecurity http, JwtCookieFilter mySecurityFilter, IpWhitelistFilter ipWhitelistFilter) throws Exception {
         http.csrf(AbstractHttpConfigurer::disable);
@@ -58,7 +69,7 @@ public class FilterChainConfig {
                                 "/swagger-ui/index.html",
                                 "/swagger-ui/index.html/**"
                         ).authenticated()
-                        
+
                         // Public auth endpoint
                         .requestMatchers(
                                 HttpMethod.POST,
@@ -95,18 +106,18 @@ public class FilterChainConfig {
                                 HttpMethod.GET,
                                 API + V1 + ATTACHMENT + "/token/anonymous"
                         ).permitAll()
-                        
+
                         // Attachment token endpoint for authenticated users
                         .requestMatchers(
                                 HttpMethod.GET,
                                 API + V1 + ATTACHMENT + "/token"
                         ).authenticated()
-                        
+
                         .requestMatchers(
                                 HttpMethod.POST,
                                 API + V1 + ATTACHMENT + "/token/refresh"
                         ).permitAll() // Token bilan himoyalangan
-                        
+
                         // Attachment access endpoint - public (token bilan himoyalangan)
                         .requestMatchers(
                                 HttpMethod.GET,
@@ -174,7 +185,7 @@ public class FilterChainConfig {
         // Add IP whitelist filter before JWT filter
         http.addFilterBefore(ipWhitelistFilter, UsernamePasswordAuthenticationFilter.class);
         http.addFilterBefore(mySecurityFilter, UsernamePasswordAuthenticationFilter.class);
-        
+
         // Swagger endpoints uchun httpBasic authentication
         http.httpBasic(httpBasic -> httpBasic.realmName("Swagger UI"));
         http.userDetailsService(swaggerUserDetailsService());
@@ -196,13 +207,22 @@ public class FilterChainConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
 
-        configuration.setAllowedOrigins(Arrays.asList(
-                "https://prime.howdy.uz", "https://api.howdy.uz",  "https://admin.howdy.uz",
-                "https://prime77.uz",  "https://api.prime77.uz", "https://admin.prime77.uz",
-                "http://localhost", "http://localhost:3000", "http://localhost:3001",
-                "https://gourmet.uz", "https://dashboard.gourmet.uz", "https://api.gourmet.uz",
-                "http://192.168.1.2:3000", "http://192.168.1.2"
-        ));
+        List<String> allowedOrigins = new ArrayList<>();
+        allowedOrigins.add(mainUrl);
+        allowedOrigins.add(apiUrl);
+
+        // Add local URLs from properties (comma-separated)
+        if (localUrls != null && !localUrls.isEmpty()) {
+            String[] localUrlArray = localUrls.split(",");
+            for (String url : localUrlArray) {
+                String trimmedUrl = url.trim();
+                if (!trimmedUrl.isEmpty()) {
+                    allowedOrigins.add(trimmedUrl);
+                }
+            }
+        }
+
+        configuration.setAllowedOrigins(allowedOrigins);
 
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(Arrays.asList(

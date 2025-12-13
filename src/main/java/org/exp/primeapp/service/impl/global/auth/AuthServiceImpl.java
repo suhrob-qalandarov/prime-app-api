@@ -144,6 +144,8 @@ public class AuthServiceImpl implements AuthService {
                 //.roles(user.getRoles().stream().map(Role::getName).toList())
                 .orders(profileOrdersById)
                 .isAdmin(user.getRoles().stream().anyMatch(role -> role.getName().equals("ROLE_ADMIN") || role.getName().equals("ROLE_VISITOR")))
+                .isVisitor(user.getRoles().stream().anyMatch(role -> role.getName().equals("ROLE_VISITOR")))
+                .isSuperAdmin(user.getRoles().stream().anyMatch(role -> role.getName().equals("ROLE_SUPER_ADMIN")))
                 .build();
 
         long nowMillis = System.currentTimeMillis();

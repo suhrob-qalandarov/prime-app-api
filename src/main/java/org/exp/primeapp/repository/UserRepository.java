@@ -1,7 +1,10 @@
 package org.exp.primeapp.repository;
 
 import org.exp.primeapp.models.entities.User;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -13,7 +16,7 @@ import java.util.List;
 import java.util.Optional;
 
 @Repository
-public interface UserRepository extends JpaRepository<User, Long> {
+public interface UserRepository extends JpaRepository<User, Long>, JpaSpecificationExecutor<User> {
 
     User findOneByVerifyCode(Integer verifyCode);
 
@@ -54,4 +57,15 @@ public interface UserRepository extends JpaRepository<User, Long> {
     @Transactional
     @Query("UPDATE User u SET u.messageId = :messageId WHERE u.telegramId = :telegramId")
     void updateMessageId(@Param("telegramId") Long telegramId, @Param("messageId") Integer messageId);
+
+    @Query("SELECT u FROM User u WHERE " +
+           "(:active IS NULL OR u.active = :active) AND " +
+           "(:phone IS NULL OR LOWER(u.phone) LIKE LOWER(CONCAT('%', :phone, '%'))) AND " +
+           "(:firstName IS NULL OR LOWER(u.firstName) LIKE LOWER(CONCAT('%', :firstName, '%')))")
+    Page<User> findAllWithFilters(
+            @Param("active") Boolean active,
+            @Param("phone") String phone,
+            @Param("firstName") String firstName,
+            Pageable pageable
+    );
 }
