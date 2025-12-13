@@ -129,7 +129,7 @@ public class AuthServiceImpl implements AuthService {
         
         userRepository.save(user);
 
-        jwtService.setJwtCookie(token, cookieNameUser, response);
+        jwtService.setJwtCookie(token, cookieNameUser, response, request);
 
         var auth = new UsernamePasswordAuthenticationToken(user, null, user.getAuthorities());
         SecurityContextHolder.getContext().setAuthentication(auth);
