@@ -9,17 +9,15 @@ import lombok.extern.slf4j.Slf4j;
 import org.exp.primeapp.configs.security.JwtCookieService;
 import org.exp.primeapp.models.dto.responce.global.LoginRes;
 import org.exp.primeapp.models.dto.responce.order.UserProfileOrdersRes;
+import org.exp.primeapp.models.dto.responce.user.SessionRes;
 import org.exp.primeapp.models.dto.responce.user.UserRes;
 import org.exp.primeapp.models.entities.User;
-import org.exp.primeapp.models.entities.UserIpInfo;
-import org.exp.primeapp.repository.UserIpInfoRepository;
 import org.exp.primeapp.repository.UserRepository;
 import org.exp.primeapp.models.entities.Session;
 import org.exp.primeapp.service.face.global.auth.AuthService;
 import org.exp.primeapp.service.face.global.attachment.AttachmentTokenService;
 import org.exp.primeapp.service.face.global.session.SessionService;
 import org.exp.primeapp.service.face.user.OrderService;
-import org.exp.primeapp.utils.IpAddressUtil;
 import org.exp.primeapp.utils.UserUtil;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -27,6 +25,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Slf4j
 @Service
@@ -34,9 +33,7 @@ import java.time.LocalDateTime;
 public class AuthServiceImpl implements AuthService {
     private final JwtCookieService jwtService;
     private final UserRepository userRepository;
-    private final UserIpInfoRepository userIpInfoRepository;
     private final OrderService orderService;
-    private final IpAddressUtil ipAddressUtil;
     private final SessionService sessionService;
     private final AttachmentTokenService attachmentTokenService;
     private final UserUtil userUtil;
@@ -61,37 +58,6 @@ public class AuthServiceImpl implements AuthService {
 
         if (user.getVerifyCodeExpiration().isBefore(LocalDateTime.now())) {
             throw new IllegalArgumentException("Code expired");
-        }
-        
-        // IP va browser ma'lumotlarini olish va saqlash
-        String ip = ipAddressUtil.getClientIpAddress(request);
-        String browserInfo = ipAddressUtil.getBrowserInfo(request);
-        
-        // Agar register IP bo'lmasa, saqlash
-        boolean hasRegisterInfo = userIpInfoRepository.findByUserIdAndIsRegisterInfoTrue(user.getId()).isPresent();
-        if (!hasRegisterInfo) {
-            UserIpInfo registerInfo = UserIpInfo.builder()
-                    .user(user)
-                    .ip(ip)
-                    .browserInfo(browserInfo)
-                    .accessedAt(LocalDateTime.now())
-                    .isRegisterInfo(true)
-                    .build();
-            userIpInfoRepository.save(registerInfo);
-        }
-        
-        // Login IP ni saqlash (agar allaqachon yo'q bo'lsa)
-        boolean ipExists = userIpInfoRepository.existsByUserIdAndIpAndBrowserInfo(user.getId(), ip, browserInfo);
-        
-        if (!ipExists) {
-            UserIpInfo userIpInfo = UserIpInfo.builder()
-                    .user(user)
-                    .ip(ip)
-                    .browserInfo(browserInfo)
-                    .accessedAt(LocalDateTime.now())
-                    .isRegisterInfo(false)
-                    .build();
-            userIpInfoRepository.save(userIpInfo);
         }
         
         // Session topish yoki yaratish
@@ -138,6 +104,19 @@ public class AuthServiceImpl implements AuthService {
 
         UserProfileOrdersRes profileOrdersById = orderService.getUserProfileOrdersById(user.getId());
 
+        // Convert sessions to SessionRes
+        List<SessionRes> sessions = user.getSessions() != null ? user.getSessions().stream()
+                .map(s -> SessionRes.builder()
+                        .sessionId(s.getSessionId())
+                        .ip(s.getIp())
+                        .browserInfo(s.getBrowserInfo())
+                        .expiresAt(s.getExpiresAt())
+                        .isActive(s.getIsActive())
+                        .lastAccessedAt(s.getLastAccessedAt())
+                        .migratedAt(s.getMigratedAt())
+                        .build())
+                .toList() : List.of();
+
         UserRes userRes = UserRes.builder()
                 .id(user.getId())
                 .firstName(userUtil.truncateName(user.getFirstName()))
@@ -146,6 +125,7 @@ public class AuthServiceImpl implements AuthService {
                 .username(user.getTgUsername())
                 //.roles(user.getRoles().stream().map(Role::getName).toList())
                 .orders(profileOrdersById)
+                .sessions(sessions)
                 .isAdmin(user.getRoles().stream().anyMatch(role -> role.getName().equals("ROLE_ADMIN") || role.getName().equals("ROLE_VISITOR")))
                 .isVisitor(user.getRoles().stream().anyMatch(role -> role.getName().equals("ROLE_VISITOR")))
                 .isSuperAdmin(user.getRoles().stream().anyMatch(role -> role.getName().equals("ROLE_SUPER_ADMIN")))

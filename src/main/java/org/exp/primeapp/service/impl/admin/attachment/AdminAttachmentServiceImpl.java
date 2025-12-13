@@ -8,12 +8,18 @@ import org.exp.primeapp.models.entities.Attachment;
 import org.exp.primeapp.repository.AttachmentRepository;
 import org.exp.primeapp.service.face.admin.attachment.AdminAttachmentService;
 import org.exp.primeapp.service.face.global.attachment.AttachmentService;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.util.Arrays;
 import java.util.List;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -23,6 +29,12 @@ public class AdminAttachmentServiceImpl implements AdminAttachmentService {
 
     private final AttachmentRepository attachmentRepository;
     private final AttachmentService attachmentService;
+
+    @Value("${app.attachment.base.url:${app.api.url:https://api.howdy.uz}}")
+    private String attachmentBaseUrl;
+
+    @Value("${app.attachment.folder.path:uploads}")
+    private String attachmentFolderPath;
 
     @Override
     public List<AttachmentRes> getAttachments() {
@@ -47,7 +59,6 @@ public class AdminAttachmentServiceImpl implements AdminAttachmentService {
     @Override
     public Attachment uploadOne(MultipartFile file) {
         attachmentService.validateFile(file);
-        // TODO: Implement local file storage
         String url = saveFileLocally(file);
         return saveAttachment(file, url);
     }
@@ -61,7 +72,6 @@ public class AdminAttachmentServiceImpl implements AdminAttachmentService {
         return Arrays.stream(files)
                 .map(file -> {
                     attachmentService.validateFile(file);
-                    // TODO: Implement local file storage
                     String url = saveFileLocally(file);
                     return saveAttachment(file, url);
                 })
@@ -74,7 +84,6 @@ public class AdminAttachmentServiceImpl implements AdminAttachmentService {
         attachmentService.validateFile(file);
         Attachment attachment = attachmentService.getAttachment(attachmentId);
         String oldUrl = attachment.getUrl();
-        // TODO: Implement local file storage
         String newUrl = saveFileLocally(file);
 
         attachment.setUrl(newUrl);
@@ -127,7 +136,6 @@ public class AdminAttachmentServiceImpl implements AdminAttachmentService {
             throw new RuntimeException("Unable to soft-delete attachment in database", e);
         }
 
-        // TODO: Implement local file deletion
         deleteLocalFile(url);
     }
 
@@ -150,14 +158,53 @@ public class AdminAttachmentServiceImpl implements AdminAttachmentService {
     }
 
     private String saveFileLocally(MultipartFile file) {
-        // TODO: Implement local file storage
-        // For now, return a placeholder URL
-        String filename = file.getOriginalFilename() != null ? file.getOriginalFilename() : file.getName();
-        return "/uploads/" + System.currentTimeMillis() + "_" + filename;
+        try {
+            // Create upload directory if it doesn't exist
+            Path uploadDir = Paths.get(attachmentFolderPath);
+            if (!Files.exists(uploadDir)) {
+                Files.createDirectories(uploadDir);
+                log.info("Created upload directory: {}", uploadDir.toAbsolutePath());
+            }
+
+            // Generate unique filename
+            String originalFilename = file.getOriginalFilename();
+            if (originalFilename == null || originalFilename.isEmpty()) {
+                originalFilename = file.getName();
+            }
+            String fileExtension = getFileExtension(originalFilename);
+            String uniqueFilename = UUID.randomUUID().toString() + "_" + System.currentTimeMillis();
+            if (!fileExtension.isEmpty()) {
+                uniqueFilename += "." + fileExtension;
+            }
+
+            // Save file to disk
+            Path filePath = uploadDir.resolve(uniqueFilename);
+            Files.copy(file.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);
+            log.info("File saved successfully: {}", filePath.toAbsolutePath());
+
+            // Generate URL: base_url + folder_path + filename
+            String baseUrl = attachmentBaseUrl.endsWith("/") 
+                    ? attachmentBaseUrl.substring(0, attachmentBaseUrl.length() - 1) 
+                    : attachmentBaseUrl;
+            String folderPath = attachmentFolderPath.startsWith("/") 
+                    ? attachmentFolderPath 
+                    : "/" + attachmentFolderPath;
+            String url = baseUrl + folderPath + "/" + uniqueFilename;
+            
+            return url;
+        } catch (IOException e) {
+            log.error("Failed to save file {}: {}", file.getOriginalFilename(), e.getMessage());
+            throw new RuntimeException("Unable to save file to disk", e);
+        }
     }
 
     private Attachment saveAttachment(MultipartFile file, String url) {
-        String filePath = url; // TODO: Update when implementing local file storage
+        // Extract file path from URL (relative path)
+        String filePath = url.replace(attachmentBaseUrl, "");
+        if (!filePath.startsWith("/")) {
+            filePath = "/" + filePath;
+        }
+        
         Attachment newAttachment = Attachment.builder()
                 .url(url)
                 .filePath(filePath)
@@ -186,7 +233,26 @@ public class AdminAttachmentServiceImpl implements AdminAttachmentService {
     }
 
     private void deleteLocalFile(String url) {
-        // TODO: Implement local file deletion
-        log.debug("File deletion not yet implemented for URL: {}", url);
+        try {
+            // Extract file path from URL
+            String baseUrl = attachmentBaseUrl.endsWith("/") 
+                    ? attachmentBaseUrl.substring(0, attachmentBaseUrl.length() - 1) 
+                    : attachmentBaseUrl;
+            String filePath = url.replace(baseUrl, "");
+            if (filePath.startsWith("/")) {
+                filePath = filePath.substring(1);
+            }
+            
+            Path fileToDelete = Paths.get(filePath);
+            if (Files.exists(fileToDelete)) {
+                Files.delete(fileToDelete);
+                log.info("File deleted successfully: {}", fileToDelete.toAbsolutePath());
+            } else {
+                log.warn("File not found for deletion: {}", fileToDelete.toAbsolutePath());
+            }
+        } catch (IOException e) {
+            log.error("Failed to delete file with URL {}: {}", url, e.getMessage());
+            // Don't throw exception - file deletion failure shouldn't break the flow
+        }
     }
 }

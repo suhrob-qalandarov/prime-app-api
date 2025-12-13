@@ -37,8 +37,8 @@ public class User extends BaseEntity implements UserDetails {
     @Column(length = 1000)
     private String accessToken;
 
-    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    private List<UserIpInfo> ipInfos; // Barcha IP ma'lumotlari (register va login)
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.EAGER)
+    private List<Session> sessions; // User ning barcha session lari
 
     @ManyToMany(fetch = FetchType.EAGER)
     private List<Role> roles;

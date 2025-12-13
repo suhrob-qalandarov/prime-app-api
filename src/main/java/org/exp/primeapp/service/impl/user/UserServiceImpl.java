@@ -6,6 +6,7 @@ import org.exp.primeapp.models.dto.responce.admin.AdminUserDashboardRes;
 import org.exp.primeapp.models.dto.responce.admin.AdminUserDetailRes;
 import org.exp.primeapp.models.dto.responce.admin.AdminUserRes;
 import org.exp.primeapp.models.dto.responce.order.UserProfileOrdersRes;
+import org.exp.primeapp.models.dto.responce.user.SessionRes;
 import org.exp.primeapp.models.dto.responce.user.UserRes;
 import org.exp.primeapp.models.dto.responce.user.page.PageRes;
 import org.exp.primeapp.models.entities.Role;
@@ -57,12 +58,7 @@ public class UserServiceImpl implements UserService {
     @Override
     public UserRes getByUsername(String tgUsername) {
         User user = userRepository.findByTgUsername(tgUsername);
-        return UserRes.builder()
-                .id(user.getId())
-                .firstName(userUtil.truncateName(user.getFirstName()))
-                .lastName(userUtil.truncateName(user.getLastName()))
-                .phone(user.getPhone())
-                .build();
+        return convertToUserRes(user);
     }
 
     @Override
@@ -73,12 +69,7 @@ public class UserServiceImpl implements UserService {
     @Override
     public UserRes getByPhoneNumber(String phoneNumber) {
         User user = userRepository.findByPhone(phoneNumber);
-        return UserRes.builder()
-                .id(user.getId())
-                .firstName(userUtil.truncateName(user.getFirstName()))
-                .lastName(userUtil.truncateName(user.getLastName()))
-                .phone(user.getPhone())
-                .build();
+        return convertToUserRes(user);
     }
 
     @Override
@@ -115,6 +106,19 @@ public class UserServiceImpl implements UserService {
                 .map(Role::getName)
                 .toList();*/
 
+        // Convert sessions to SessionRes
+        List<SessionRes> sessions = user.getSessions() != null ? user.getSessions().stream()
+                .map(s -> SessionRes.builder()
+                        .sessionId(s.getSessionId())
+                        .ip(s.getIp())
+                        .browserInfo(s.getBrowserInfo())
+                        .expiresAt(s.getExpiresAt())
+                        .isActive(s.getIsActive())
+                        .lastAccessedAt(s.getLastAccessedAt())
+                        .migratedAt(s.getMigratedAt())
+                        .build())
+                .toList() : List.of();
+
         return UserRes.builder()
                 .id(user.getId())
                 .firstName(userUtil.truncateName(user.getFirstName()))
@@ -122,6 +126,7 @@ public class UserServiceImpl implements UserService {
                 .phone(user.getPhone())
                 .username(user.getTgUsername())
                 .orders(profileOrdersById)
+                .sessions(sessions)
                 .isAdmin(user.getRoles().stream()
                         .anyMatch(role -> role.getName().equals("ROLE_ADMIN") || role.getName().equals("ROLE_VISITOR")))
                 .isVisitor(user.getRoles().stream()
