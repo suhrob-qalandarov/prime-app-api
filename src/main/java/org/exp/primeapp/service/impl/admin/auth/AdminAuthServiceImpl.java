@@ -18,6 +18,7 @@ import org.exp.primeapp.service.face.admin.auth.AdminAuthService;
 import org.exp.primeapp.service.face.global.attachment.AttachmentTokenService;
 import org.exp.primeapp.service.face.global.session.SessionService;
 import org.exp.primeapp.utils.IpAddressUtil;
+import org.exp.primeapp.utils.UserUtil;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -36,6 +37,7 @@ public class AdminAuthServiceImpl implements AdminAuthService {
     private final IpAddressUtil ipAddressUtil;
     private final SessionService sessionService;
     private final AttachmentTokenService attachmentTokenService;
+    private final UserUtil userUtil;
 
     @Value("${cookie.max.age}")
     private Integer cookieMaxAge;
@@ -124,7 +126,8 @@ public class AdminAuthServiceImpl implements AdminAuthService {
 
         UserRes userRes = UserRes.builder()
                 .id(u.getId())
-                .firstName(u.getFirstName())
+                .firstName(userUtil.truncateName(u.getFirstName()))
+                .lastName(userUtil.truncateName(u.getLastName()))
                 .phone(u.getPhone())
                 .username(u.getTgUsername())
                 .isAdmin(u.getRoles().stream()

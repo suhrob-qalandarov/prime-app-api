@@ -12,6 +12,7 @@ import org.exp.primeapp.repository.OrderItemRepository;
 import org.exp.primeapp.repository.OrderRepository;
 import org.exp.primeapp.service.impl.user.ProductServiceImpl;
 import org.exp.primeapp.service.face.admin.order.AdminOrderService;
+import org.exp.primeapp.utils.UserUtil;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
@@ -23,6 +24,7 @@ public class AdminOrderServiceImpl implements AdminOrderService {
     private final OrderRepository orderRepository;
     private final OrderItemRepository orderItemRepository;
     private final ProductServiceImpl productServiceImpl;
+    private final UserUtil userUtil;
 
     @Transactional
     @Override
@@ -35,7 +37,8 @@ public class AdminOrderServiceImpl implements AdminOrderService {
                     .id(order.getId())
                     .user(UserRes.builder()
                             .id(order.getUser().getId())
-                            .firstName(order.getUser().getFirstName())
+                            .firstName(userUtil.truncateName(order.getUser().getFirstName()))
+                            .lastName(userUtil.truncateName(order.getUser().getLastName()))
                             .phone(order.getUser().getPhone())
                             .build())
                     .totalPrice(order.getTotalPrice())

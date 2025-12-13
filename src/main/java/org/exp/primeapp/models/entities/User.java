@@ -17,7 +17,7 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 @Entity
-@Table(name = "users")
+@Table(name = "app_users")
 public class User extends BaseEntity implements UserDetails {
 
     private Long telegramId;
