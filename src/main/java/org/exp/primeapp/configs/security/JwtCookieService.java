@@ -387,4 +387,12 @@ public class JwtCookieService {
         
         response.addCookie(cookie);
     }
+    
+    public String getCookieNameUser() {
+        return cookieNameUser;
+    }
+    
+    public String getCookieNameAdmin() {
+        return cookieNameAdmin;
+    }
 }

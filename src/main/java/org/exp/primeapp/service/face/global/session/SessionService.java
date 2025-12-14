@@ -67,5 +67,12 @@ public interface SessionService {
      * Agar isMain = true bo'lsa, o'chirish mumkin emas
      */
     void deleteSession(String sessionId);
+    
+    /**
+     * Session yaratish, token generate qilish va cookie ga saqlash
+     * User bo'lsa, session ni user ga biriktirish va user token generate qilish
+     * User bo'lmasa, anonymous token generate qilish
+     */
+    Session createSessionWithToken(User user, HttpServletRequest request, HttpServletResponse response);
 }
 

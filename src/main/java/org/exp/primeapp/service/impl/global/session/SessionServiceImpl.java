@@ -6,6 +6,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.exp.primeapp.configs.security.JwtCookieService;
 import org.exp.primeapp.models.entities.Session;
 import org.exp.primeapp.models.entities.User;
 import org.exp.primeapp.repository.SessionRepository;
@@ -25,6 +26,7 @@ public class SessionServiceImpl implements SessionService {
 
     private final SessionRepository sessionRepository;
     private final IpAddressUtil ipAddressUtil;
+    private final JwtCookieService jwtCookieService;
 
     @Value("${session.cookie.name:ANONYMOUS_SESSION}")
     private String sessionCookieName;
@@ -282,6 +284,35 @@ public class SessionServiceImpl implements SessionService {
         session.setIsActive(false);
         sessionRepository.save(session);
         log.info("Session {} marked as deleted", sessionId);
+    }
+
+    @Override
+    @Transactional
+    public Session createSessionWithToken(User user, HttpServletRequest request, HttpServletResponse response) {
+        // Session yaratish
+        Session session = createNewSession(request);
+        
+        String token;
+        String cookieName;
+        
+        if (user != null && session.getUser() == null) {
+            // User authenticated - migrate session and generate user token
+            migrateSessionToUser(session.getSessionId(), user);
+            session = getSessionById(session.getSessionId());
+            token = jwtCookieService.generateToken(user, session, request);
+            setAccessToken(session.getSessionId(), token);
+            cookieName = jwtCookieService.getCookieNameUser();
+        } else {
+            // Anonymous user - generate anonymous token
+            token = jwtCookieService.generateAccessTokenForAnonymous(session, request);
+            setAccessToken(session.getSessionId(), token);
+            cookieName = jwtCookieService.getCookieNameUser();
+        }
+        
+        // Set token to cookie
+        jwtCookieService.setJwtCookie(token, cookieName, response, request);
+        
+        return session;
     }
 }
 

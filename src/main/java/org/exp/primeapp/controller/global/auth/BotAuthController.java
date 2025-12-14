@@ -67,17 +67,13 @@ public class BotAuthController {
 
     // ========== Session CRUD Endpoints ==========
 
-    @Operation(security = @SecurityRequirement(name = "Authorization"))
     @PostMapping("/session")
     public ResponseEntity<SessionRes> createSession(
             @AuthenticationPrincipal User user,
             @RequestBody(required = false) CreateSessionReq request,
-            HttpServletRequest httpRequest) {
-        Session session = sessionService.createSession(httpRequest);
-        if (user != null && session.getUser() == null) {
-            sessionService.migrateSessionToUser(session.getSessionId(), user);
-            session = sessionService.getSessionById(session.getSessionId());
-        }
+            HttpServletRequest httpRequest,
+            HttpServletResponse httpResponse) {
+        Session session = sessionService.createSessionWithToken(user, httpRequest, httpResponse);
         return ResponseEntity.status(HttpStatus.CREATED).body(convertToSessionRes(session));
     }
 
