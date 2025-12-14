@@ -67,10 +67,21 @@ public class FilterChainConfig {
         http.cors(cors -> cors.configurationSource(corsConfigurationSource()));
         http.authorizeHttpRequests(auth ->
                 auth
-                        // Public auth endpoint
+                        // Public auth endpoints
                         .requestMatchers(
                                 HttpMethod.POST,
                                 API + V2 + AUTH + "/code/*"
+                        ).permitAll()
+                        
+                        // Public session endpoints
+                        .requestMatchers(
+                                HttpMethod.GET,
+                                API + V2 + AUTH + "/session"
+                        ).permitAll()
+                        
+                        .requestMatchers(
+                                HttpMethod.POST,
+                                API + V2 + AUTH + "/session"
                         ).permitAll()
 
                         // Public product endpoints
