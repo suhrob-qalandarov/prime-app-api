@@ -9,8 +9,10 @@ public record SessionRes(
         String sessionId,
         String ip,
         String browserInfo,
-        LocalDateTime expiresAt,
         Boolean isActive,
+        Boolean isDeleted,
+        Boolean isAuthenticated,
+        Boolean isMainSession,
         LocalDateTime lastAccessedAt,
         LocalDateTime migratedAt
 ) {

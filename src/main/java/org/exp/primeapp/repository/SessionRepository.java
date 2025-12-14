@@ -14,13 +14,15 @@ public interface SessionRepository extends JpaRepository<Session, Long> {
     
     Optional<Session> findBySessionId(String sessionId);
     
-    @Query("SELECT s FROM Session s WHERE s.ip = :ip AND s.browserInfo = :browserInfo AND s.isActive = true AND s.expiresAt > :now ORDER BY s.lastAccessedAt DESC")
+    @Query("SELECT s FROM Session s WHERE s.ip = :ip AND s.browserInfo = :browserInfo AND s.isActive = true AND (s.isDeleted IS NULL OR s.isDeleted = false) ORDER BY s.lastAccessedAt DESC")
     Optional<Session> findByIpAndBrowserInfo(@Param("ip") String ip, @Param("browserInfo") String browserInfo, @Param("now") LocalDateTime now);
     
-    @Query("SELECT s FROM Session s WHERE s.user.id = :userId AND s.ip = :ip AND s.browserInfo = :browserInfo AND s.isActive = true AND s.expiresAt > :now ORDER BY s.lastAccessedAt DESC")
+    @Query("SELECT s FROM Session s WHERE s.user.id = :userId AND s.ip = :ip AND s.browserInfo = :browserInfo AND s.isActive = true AND (s.isDeleted IS NULL OR s.isDeleted = false) ORDER BY s.lastAccessedAt DESC")
     Optional<Session> findByUserIdAndIpAndBrowserInfo(@Param("userId") Long userId, @Param("ip") String ip, @Param("browserInfo") String browserInfo, @Param("now") LocalDateTime now);
     
-    @Query("SELECT s FROM Session s WHERE s.expiresAt < :now AND s.isActive = true")
-    java.util.List<Session> findExpiredSessions(@Param("now") LocalDateTime now);
+    // Note: @Param("now") is kept for backward compatibility but not used in query
+    
+    @Query("SELECT s.isDeleted FROM Session s WHERE s.sessionId = :sessionId")
+    Optional<Boolean> findIsDeletedBySessionId(@Param("sessionId") String sessionId);
 }
 

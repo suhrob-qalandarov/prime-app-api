@@ -66,6 +66,8 @@ public class AuthServiceImpl implements AuthService {
         // Session ni user ga biriktirish (migration)
         if (session.getUser() == null) {
             sessionService.migrateSessionToUser(session.getSessionId(), user);
+            // Session ni qayta olish (migration dan keyin yangilanadi)
+            session = sessionService.getSessionById(session.getSessionId());
         }
         
         // Access token yaratish yoki olish
@@ -80,12 +82,12 @@ public class AuthServiceImpl implements AuthService {
                 token = existingAccessToken;
             } else {
                 // 3 kundan kam - yangi token yaratiladi
-                token = jwtService.generateToken(user);
+                token = jwtService.generateToken(user, session, request);
                 sessionService.setAccessToken(session.getSessionId(), token);
             }
         } else {
             // Token yo'q - yangi yaratish
-            token = jwtService.generateToken(user);
+            token = jwtService.generateToken(user, session, request);
             sessionService.setAccessToken(session.getSessionId(), token);
         }
         
@@ -110,8 +112,10 @@ public class AuthServiceImpl implements AuthService {
                         .sessionId(s.getSessionId())
                         .ip(s.getIp())
                         .browserInfo(s.getBrowserInfo())
-                        .expiresAt(s.getExpiresAt())
                         .isActive(s.getIsActive())
+                        .isDeleted(s.getIsDeleted())
+                        .isAuthenticated(s.getIsAuthenticated())
+                        .isMainSession(s.getIsMainSession())
                         .lastAccessedAt(s.getLastAccessedAt())
                         .migratedAt(s.getMigratedAt())
                         .build())

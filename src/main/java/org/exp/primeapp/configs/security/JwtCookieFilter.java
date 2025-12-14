@@ -8,12 +8,14 @@ import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.exp.primeapp.models.entities.User;
+import org.exp.primeapp.repository.SessionRepository;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
+import java.util.Optional;
 import static org.exp.primeapp.utils.Const.*;
 
 @Slf4j
@@ -22,6 +24,7 @@ import static org.exp.primeapp.utils.Const.*;
 public class JwtCookieFilter extends OncePerRequestFilter {
 
     private final JwtCookieService jwtService;
+    private final SessionRepository sessionRepository;
 
     @Override
     protected void doFilterInternal(
@@ -92,24 +95,74 @@ public class JwtCookieFilter extends OncePerRequestFilter {
 
         if (token != null) {
             try {
-                if (jwtService.validateToken(token)) {
-                    User user = jwtService.getUserObject(token);
-                    log.info("Validated user: {}", user);
-
-                    if (user == null || user.getId() == null) {
-                        log.error("User or ID is null from token: {}", user);
-                        response.setStatus(HttpServletResponse.SC_EXPECTATION_FAILED);
-                        response.getWriter().write("Invalid user data from token");
-                        throw new IllegalArgumentException("Invalid user data from token");
-                    }
-
-                    var auth = new UsernamePasswordAuthenticationToken(user, null, user.getAuthorities());
-                    SecurityContextHolder.getContext().setAuthentication(auth);
+                // Step 1: Token validation (IP solishtirish, isAuthenticated tekshirish)
+                if (!jwtService.validateToken(token, request)) {
+                    log.warn("Token validation failed");
+                    clearCookieAndSend403(response, request);
+                    return;
                 }
+
+                // Step 2: Get sessionId from token
+                String sessionId = jwtService.getSessionIdFromToken(token);
+                if (sessionId == null) {
+                    log.warn("Token does not contain sessionId");
+                    clearCookieAndSend403(response, request);
+                    return;
+                }
+
+                // Step 3: Database dan faqat isDeleted tekshirish
+                Optional<Boolean> isDeletedOpt = sessionRepository.findIsDeletedBySessionId(sessionId);
+                if (isDeletedOpt.isPresent() && Boolean.TRUE.equals(isDeletedOpt.get())) {
+                    log.warn("Session is deleted: {}", sessionId);
+                    clearCookieAndSend403(response, request);
+                    return;
+                }
+
+                // Step 4: Get user from token (token ichidan)
+                User user = jwtService.getUserObject(token);
+                if (user == null || user.getId() == null) {
+                    log.error("User or ID is null from token: {}", user);
+                    clearCookieAndSend403(response, request);
+                    return;
+                }
+
+                // Step 5: Set authentication
+                var auth = new UsernamePasswordAuthenticationToken(user, null, user.getAuthorities());
+                SecurityContextHolder.getContext().setAuthentication(auth);
+                log.debug("User authenticated: {}", user.getId());
+
             } catch (Exception e) {
-                log.error("Invalid token: {}", e.getMessage());
+                log.error("Token validation error: {}", e.getMessage(), e);
+                clearCookieAndSend403(response, request);
+                return;
             }
         }
         filterChain.doFilter(request, response);
+    }
+
+    private void clearCookieAndSend403(HttpServletResponse response, HttpServletRequest request) {
+        try {
+            // Clear JWT cookie
+            jakarta.servlet.http.Cookie cookie = new jakarta.servlet.http.Cookie("prime-user-token", null);
+            cookie.setMaxAge(0);
+            cookie.setPath("/");
+            cookie.setHttpOnly(true);
+            cookie.setSecure(true);
+            response.addCookie(cookie);
+
+            jakarta.servlet.http.Cookie cookieAdmin = new jakarta.servlet.http.Cookie("prime-admin-token", null);
+            cookieAdmin.setMaxAge(0);
+            cookieAdmin.setPath("/");
+            cookieAdmin.setHttpOnly(true);
+            cookieAdmin.setSecure(true);
+            response.addCookie(cookieAdmin);
+
+            // Send 403 response
+            response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+            response.setContentType("application/json");
+            response.getWriter().write("{\"error\":\"Session revoked\",\"message\":\"Your session has been revoked. Please login again.\"}");
+        } catch (IOException e) {
+            log.error("Error clearing cookie and sending 403: {}", e.getMessage());
+        }
     }
 }

@@ -11,14 +11,16 @@ import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.exp.primeapp.models.entities.Role;
+import org.exp.primeapp.models.entities.Session;
 import org.exp.primeapp.models.entities.User;
 import org.exp.primeapp.repository.UserRepository;
+import org.exp.primeapp.utils.IpAddressUtil;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import javax.crypto.SecretKey;
-import java.util.Date;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -27,6 +29,7 @@ import java.util.stream.Collectors;
 public class JwtCookieService {
 
     private final UserRepository userRepository;
+    private final IpAddressUtil ipAddressUtil;
 
     @Value("${jwt.secret.key}")
     private String secretKey;
@@ -63,31 +66,49 @@ public class JwtCookieService {
     }
 
     @Transactional
-    public String generateToken(User user) {
+    public String generateToken(User user, Session session, HttpServletRequest request) {
         if (user == null || user.getId() == null) {
             throw new IllegalArgumentException("User is required to generate token");
         }
+        if (session == null || session.getSessionId() == null) {
+            throw new IllegalArgumentException("Session is required to generate token");
+        }
+
+        // Get current IP
+        String currentIp = ipAddressUtil.getClientIpAddress(request);
+
+        // Build roles list
+        List<String> rolesList = user.getRoles().stream()
+                .map(Role::getName)
+                .collect(Collectors.toList());
+
+        // Build user claims
+        Map<String, Object> userClaims = new HashMap<>();
+        userClaims.put("id", user.getId());
+        userClaims.put("telegramId", user.getTelegramId());
+        userClaims.put("roles", rolesList);
 
         String token = Jwts.builder()
                 .setSubject(user.getPhone())
-                .claim("id", user.getId())
-                .claim("firstName", user.getFirstName())
-                .claim("phoneNumber", user.getPhone())
-                //.claim("active", user.getActive())
-                .claim("roles", user.getRoles().stream().map(Role::getName).collect(Collectors.joining(", ")))
+                .claim("sessionId", session.getSessionId())
+                .claim("ip", currentIp)
+                .claim("type", "SESSION_TOKEN")
+                .claim("browserInfo", session.getBrowserInfo())
+                .claim("isAuthenticated", session.getIsAuthenticated() != null ? session.getIsAuthenticated() : true)
+                .claim("user", userClaims)
                 .issuedAt(new Date())
-                .expiration(new Date(new Date().getTime() + 1000 * 60 * 60 * 24 * 7))
+                .expiration(new Date(new Date().getTime() + 1000 * 60 * 60 * 24 * 7)) // 7 days
                 .signWith(getSecretKey(), SignatureAlgorithm.HS256)
                 .compact();
 
-        // Save token to user entity
-        user.setAccessToken(token);
-        userRepository.save(user);
+        // Save token to session entity
+        session.setAccessToken(token);
+        // Note: Session will be saved by the caller
 
         return token;
     }
 
-    public Boolean validateToken(String token) {
+    public Boolean validateToken(String token, HttpServletRequest request) {
         if (token == null || token.isBlank()) {
             return false;
         }
@@ -99,22 +120,40 @@ public class JwtCookieService {
                     .parseSignedClaims(token)
                     .getPayload();
 
-            Long userId = claims.get("id", Long.class);
-            if (userId == null) {
-                log.warn("Token does not contain user ID");
+            // Check token type
+            String type = claims.get("type", String.class);
+            if (!"SESSION_TOKEN".equals(type)) {
+                log.warn("Invalid token type: {}", type);
                 return false;
             }
 
-            // Get user from database and check if token matches
-            User user = userRepository.findById(userId).orElse(null);
-            if (user == null) {
-                log.warn("User not found for token validation");
+            // Get sessionId from token
+            String sessionId = claims.get("sessionId", String.class);
+            if (sessionId == null) {
+                log.warn("Token does not contain sessionId");
                 return false;
             }
 
-            // Check if token matches the one stored in user entity
-            if (!token.equals(user.getAccessToken())) {
-                log.warn("Token does not match user's stored token");
+            // Get IP from token
+            String tokenIp = claims.get("ip", String.class);
+            if (tokenIp == null) {
+                log.warn("Token does not contain IP");
+                return false;
+            }
+
+            // Get request IP
+            String requestIp = ipAddressUtil.getClientIpAddress(request);
+
+            // Compare IPs
+            if (!tokenIp.equals(requestIp)) {
+                log.warn("IP mismatch: token IP = {}, request IP = {}", tokenIp, requestIp);
+                return false;
+            }
+
+            // Check isAuthenticated (top level dan)
+            Boolean isAuthenticated = claims.get("isAuthenticated", Boolean.class);
+            if (isAuthenticated == null || !isAuthenticated) {
+                log.warn("Session is not authenticated");
                 return false;
             }
 
@@ -132,23 +171,53 @@ public class JwtCookieService {
                 .parseSignedClaims(token)
                 .getPayload();
 
-        Long id = claims.get("id", Long.class);
-        if (id == null) {
-            throw new IllegalArgumentException("Token does not contain user ID");
+        // Get user claims from token
+        @SuppressWarnings("unchecked")
+        Map<String, Object> userClaims = (Map<String, Object>) claims.get("user");
+        if (userClaims == null) {
+            throw new IllegalArgumentException("Token does not contain user claims");
         }
 
+        Object idObj = userClaims.get("id");
+        if (idObj == null) {
+            throw new IllegalArgumentException("Token does not contain user ID");
+        }
+        Long userId = ((Number) idObj).longValue();
+
         // Get user from database to ensure we have the latest data
-        User user = userRepository.findById(id).orElse(null);
+        User user = userRepository.findById(userId).orElse(null);
         if (user == null) {
             throw new IllegalArgumentException("User not found for token");
         }
 
-        // Verify token matches the one stored in user entity
-        if (!token.equals(user.getAccessToken())) {
-            throw new IllegalArgumentException("Token does not match user's stored token");
+        // Create a temporary user object with roles from token
+        // We need to set roles from token claims
+        @SuppressWarnings("unchecked")
+        List<String> rolesList = (List<String>) userClaims.get("roles");
+        if (rolesList != null) {
+            // Set roles from token (we'll use the roles from database, but validate they match)
+            List<String> dbRoles = user.getRoles().stream()
+                    .map(Role::getName)
+                    .collect(Collectors.toList());
+            
+            // Validate roles match (optional security check)
+            if (!new HashSet<>(rolesList).equals(new HashSet<>(dbRoles))) {
+                log.warn("Token roles do not match database roles. Token: {}, DB: {}", rolesList, dbRoles);
+                // Continue anyway, but log warning
+            }
         }
 
         return user;
+    }
+
+    public String getSessionIdFromToken(String token) {
+        Claims claims = Jwts.parser()
+                .verifyWith(getSecretKey())
+                .build()
+                .parseSignedClaims(token)
+                .getPayload();
+
+        return claims.get("sessionId", String.class);
     }
 
     public String extractTokenFromCookie(HttpServletRequest request) {

@@ -31,12 +31,6 @@ public class User extends BaseEntity implements UserDetails {
 
     private LocalDateTime verifyCodeExpiration;
 
-    @Column(length = 500)
-    private String attachmentToken;
-
-    @Column(length = 1000)
-    private String accessToken;
-
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.EAGER)
     private List<Session> sessions; // User ning barcha session lari
 

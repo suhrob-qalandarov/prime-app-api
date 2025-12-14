@@ -24,9 +24,6 @@ public class SessionServiceImpl implements SessionService {
     private final SessionRepository sessionRepository;
     private final IpAddressUtil ipAddressUtil;
 
-    @Value("${session.expiry.minutes:60}")
-    private Integer sessionExpiryMinutes;
-
     @Value("${session.cookie.name:ANONYMOUS_SESSION}")
     private String sessionCookieName;
 
@@ -38,25 +35,39 @@ public class SessionServiceImpl implements SessionService {
     public Session getOrCreateSession(HttpServletRequest request, HttpServletResponse response) {
         // Cookie dan session ID ni olish
         String sessionId = getSessionIdFromCookie(request);
+        String currentIp = ipAddressUtil.getClientIpAddress(request);
+        String currentBrowserInfo = ipAddressUtil.getBrowserInfo(request);
 
         if (sessionId != null) {
             Session existingSession = sessionRepository.findBySessionId(sessionId)
                     .orElse(null);
 
-            if (existingSession != null && existingSession.getIsActive()) {
+            if (existingSession != null && existingSession.getIsActive() && !Boolean.TRUE.equals(existingSession.getIsDeleted())) {
                 LocalDateTime now = LocalDateTime.now();
                 
-                // Session expired tekshirish
-                if (existingSession.getExpiresAt().isAfter(now)) {
-                    // Session ni yangilash
-                    existingSession.setLastAccessedAt(now);
-                    sessionRepository.save(existingSession);
-                    return existingSession;
-                } else {
-                    // Session expired, yangi yaratish
+                // IP o'zgarishini tekshirish
+                if (!currentIp.equals(existingSession.getIp())) {
+                    // IP o'zgardi - yangi session yaratish (eski session ma'lumotlari bilan)
+                    log.info("IP changed for session {}: {} -> {}. Creating new session.", 
+                            sessionId, existingSession.getIp(), currentIp);
+                    
+                    // Eski session ni o'chirish
                     existingSession.setIsActive(false);
                     sessionRepository.save(existingSession);
+                    
+                    // Yangi session yaratish (eski session ma'lumotlari bilan)
+                    Session newSession = createNewSessionWithExistingData(existingSession, currentIp, currentBrowserInfo);
+                    String newSessionId = newSession.getSessionId();
+                    if (response != null) {
+                        setSessionCookie(newSessionId, response);
+                    }
+                    return newSession;
                 }
+                
+                // IP o'zgarmagan - session ni yangilash
+                existingSession.setLastAccessedAt(now);
+                sessionRepository.save(existingSession);
+                return existingSession;
             }
         }
 
@@ -77,7 +88,7 @@ public class SessionServiceImpl implements SessionService {
         }
 
         return sessionRepository.findBySessionId(sessionId)
-                .filter(session -> session.getIsActive() && session.getExpiresAt().isAfter(LocalDateTime.now()))
+                .filter(session -> session.getIsActive() && !Boolean.TRUE.equals(session.getIsDeleted()))
                 .orElse(null);
     }
 
@@ -115,12 +126,17 @@ public class SessionServiceImpl implements SessionService {
     public void migrateSessionToUser(String sessionId, User user) {
         Session session = getSessionById(sessionId);
         if (session != null && user != null) {
+            // Check if this is user's first session
+            boolean isMainSession = user.getSessions() == null || user.getSessions().isEmpty();
+            
             session.setUser(user);
+            session.setIsAuthenticated(true);
+            session.setIsMainSession(isMainSession);
             session.setMigratedAt(LocalDateTime.now());
             session.setLastAccessedAt(LocalDateTime.now());
             sessionRepository.save(session);
             
-            log.info("Session {} migrated to user {}", sessionId, user.getId());
+            log.info("Session {} migrated to user {} (isMainSession: {})", sessionId, user.getId(), isMainSession);
         }
     }
 
@@ -173,20 +189,44 @@ public class SessionServiceImpl implements SessionService {
         String ip = ipAddressUtil.getClientIpAddress(request);
         String browserInfo = ipAddressUtil.getBrowserInfo(request);
         LocalDateTime now = LocalDateTime.now();
-        LocalDateTime expiresAt = now.plusMinutes(sessionExpiryMinutes);
 
         // sessionId ni database yaratadi (@GeneratedValue)
         Session session = Session.builder()
                 .ip(ip)
                 .browserInfo(browserInfo)
-                .expiresAt(expiresAt)
                 .lastAccessedAt(now)
                 .isActive(true)
+                .isDeleted(false)
+                .isAuthenticated(false)
+                .isMainSession(false)
                 .build();
 
         // Save qilgandan keyin database sessionId ni yaratadi
         session = sessionRepository.save(session);
         return session;
+    }
+
+    private Session createNewSessionWithExistingData(Session existingSession, String newIp, String newBrowserInfo) {
+        LocalDateTime now = LocalDateTime.now();
+
+        // Yangi session yaratish (eski session ma'lumotlari bilan)
+        Session newSession = Session.builder()
+                .ip(newIp)
+                .browserInfo(newBrowserInfo != null ? newBrowserInfo : existingSession.getBrowserInfo())
+                .user(existingSession.getUser())
+                .accessToken(existingSession.getAccessToken())
+                .attachmentToken(existingSession.getAttachmentToken())
+                .lastAccessedAt(now)
+                .isActive(true)
+                .isDeleted(false)
+                .isAuthenticated(existingSession.getIsAuthenticated() != null ? existingSession.getIsAuthenticated() : false)
+                .isMainSession(existingSession.getIsMainSession() != null ? existingSession.getIsMainSession() : false)
+                .migratedAt(existingSession.getMigratedAt())
+                .build();
+
+        // Save qilgandan keyin database sessionId ni yaratadi
+        newSession = sessionRepository.save(newSession);
+        return newSession;
     }
 }
 
