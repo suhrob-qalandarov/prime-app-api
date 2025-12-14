@@ -88,12 +88,22 @@ public class JwtCookieService {
         userClaims.put("telegramId", user.getTelegramId());
         userClaims.put("roles", rolesList);
 
+        // BrowserInfo ni olish (oxirgi qo'shilgan - eng yangi)
+        String browserInfo = null;
+        if (session.getBrowserInfos() != null && !session.getBrowserInfos().isEmpty()) {
+            // LinkedHashSet da oxirgi element (eng yangi)
+            browserInfo = session.getBrowserInfos().stream()
+                    .skip(session.getBrowserInfos().size() - 1)
+                    .findFirst()
+                    .orElse(null);
+        }
+
         String token = Jwts.builder()
                 .setSubject(user.getPhone())
                 .claim("sessionId", session.getSessionId())
                 .claim("ip", currentIp)
                 .claim("type", "SESSION_TOKEN")
-                .claim("browserInfo", session.getBrowserInfo())
+                .claim("browserInfo", browserInfo)
                 .claim("isAuthenticated", session.getIsAuthenticated() != null ? session.getIsAuthenticated() : true)
                 .claim("user", userClaims)
                 .issuedAt(new Date())
