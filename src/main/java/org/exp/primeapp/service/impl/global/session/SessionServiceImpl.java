@@ -101,13 +101,6 @@ public class SessionServiceImpl implements SessionService {
     }
 
     @Override
-    public Session findSessionByIpAndBrowser(String ip, String browserInfo) {
-        LocalDateTime now = LocalDateTime.now();
-        return sessionRepository.findByIpAndBrowserInfo(ip, browserInfo, now)
-                .orElse(null);
-    }
-
-    @Override
     @Transactional
     public void setAccessToken(String sessionId, String accessToken) {
         Session session = getSessionById(sessionId);

@@ -18,11 +18,6 @@ public interface SessionService {
     Session getSessionById(String sessionId);
     
     /**
-     * IP va Browser orqali session topish
-     */
-    Session findSessionByIpAndBrowser(String ip, String browserInfo);
-    
-    /**
      * Session ga access token biriktirish
      */
     void setAccessToken(String sessionId, String accessToken);
