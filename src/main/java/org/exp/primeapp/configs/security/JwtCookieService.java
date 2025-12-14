@@ -61,6 +61,9 @@ public class JwtCookieService {
     @Value("${cookie.name.admin}")
     private String cookieNameAdmin;
 
+    @Value("${jwt.access.token.expiry.days:7}")
+    private Integer accessTokenExpiryDays;
+
     public SecretKey getSecretKey() {
         return Keys.hmacShaKeyFor(secretKey.getBytes());
     }
@@ -99,15 +102,51 @@ public class JwtCookieService {
         }
 
         String token = Jwts.builder()
-                .setSubject(user.getPhone())
+                .setSubject("SESSION_TOKEN")  // sub da type
                 .claim("sessionId", session.getSessionId())
                 .claim("ip", currentIp)
-                .claim("type", "SESSION_TOKEN")
                 .claim("browserInfo", browserInfo)
                 .claim("isAuthenticated", session.getIsAuthenticated() != null ? session.getIsAuthenticated() : true)
                 .claim("user", userClaims)
                 .issuedAt(new Date())
-                .expiration(new Date(new Date().getTime() + 1000 * 60 * 60 * 24 * 7)) // 7 days
+                .expiration(new Date(new Date().getTime() + accessTokenExpiryDays * 24L * 60 * 60 * 1000)) // days from properties
+                .signWith(getSecretKey(), SignatureAlgorithm.HS256)
+                .compact();
+
+        // Save token to session entity
+        session.setAccessToken(token);
+        // Note: Session will be saved by the caller
+
+        return token;
+    }
+
+    @Transactional
+    public String generateAccessTokenForAnonymous(Session session, HttpServletRequest request) {
+        if (session == null || session.getSessionId() == null) {
+            throw new IllegalArgumentException("Session is required to generate token");
+        }
+
+        // Get current IP
+        String currentIp = ipAddressUtil.getClientIpAddress(request);
+
+        // BrowserInfo ni olish (oxirgi qo'shilgan - eng yangi)
+        String browserInfo = null;
+        if (session.getBrowserInfos() != null && !session.getBrowserInfos().isEmpty()) {
+            browserInfo = session.getBrowserInfos().stream()
+                    .skip(session.getBrowserInfos().size() - 1)
+                    .findFirst()
+                    .orElse(null);
+        }
+
+        String token = Jwts.builder()
+                .setSubject("SESSION_TOKEN")  // sub da type
+                .claim("sessionId", session.getSessionId())
+                .claim("ip", currentIp)
+                .claim("browserInfo", browserInfo)
+                .claim("isAuthenticated", false)
+                .claim("user", null)
+                .issuedAt(new Date())
+                .expiration(new Date(new Date().getTime() + accessTokenExpiryDays * 24L * 60 * 60 * 1000)) // days from properties
                 .signWith(getSecretKey(), SignatureAlgorithm.HS256)
                 .compact();
 
@@ -130,8 +169,8 @@ public class JwtCookieService {
                     .parseSignedClaims(token)
                     .getPayload();
 
-            // Check token type
-            String type = claims.get("type", String.class);
+            // Check token type from sub claim
+            String type = claims.getSubject();
             if (!"SESSION_TOKEN".equals(type)) {
                 log.warn("Invalid token type: {}", type);
                 return false;
@@ -184,20 +223,23 @@ public class JwtCookieService {
         // Get user claims from token
         @SuppressWarnings("unchecked")
         Map<String, Object> userClaims = (Map<String, Object>) claims.get("user");
+        
+        // Anonymous user uchun user null bo'lishi mumkin
         if (userClaims == null) {
-            throw new IllegalArgumentException("Token does not contain user claims");
+            return null;
         }
 
         Object idObj = userClaims.get("id");
         if (idObj == null) {
-            throw new IllegalArgumentException("Token does not contain user ID");
+            return null;
         }
         Long userId = ((Number) idObj).longValue();
 
         // Get user from database to ensure we have the latest data
         User user = userRepository.findById(userId).orElse(null);
         if (user == null) {
-            throw new IllegalArgumentException("User not found for token");
+            log.warn("User not found for token, userId: {}", userId);
+            return null;
         }
 
         // Create a temporary user object with roles from token
@@ -231,12 +273,15 @@ public class JwtCookieService {
     }
 
     public String extractTokenFromCookie(HttpServletRequest request) {
+        return extractTokenFromCookie(request, cookieNameUser);
+    }
+
+    public String extractTokenFromCookie(HttpServletRequest request, String cookieName) {
         if (request.getCookies() != null) {
             log.debug("Received {} cookies", request.getCookies().length);
             for (Cookie cookie : request.getCookies()) {
                 log.debug("Cookie name: {}, value: {}", cookie.getName(), cookie.getValue() != null ? "***" : null);
-                if (cookieNameUser.equals(cookie.getName())
-                        || cookieNameAdmin.equals(cookie.getName())) {
+                if (cookieName.equals(cookie.getName())) {
                     log.info("Found JWT cookie: {}", cookie.getName());
                     return cookie.getValue();
                 }

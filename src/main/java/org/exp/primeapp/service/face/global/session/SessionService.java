@@ -23,11 +23,6 @@ public interface SessionService {
     void setAccessToken(String sessionId, String accessToken);
     
     /**
-     * Session ga attachment token biriktirish
-     */
-    void setAttachmentToken(String sessionId, String attachmentToken);
-    
-    /**
      * Session ni user ga biriktirish (migration)
      */
     void migrateSessionToUser(String sessionId, User user);
@@ -36,11 +31,6 @@ public interface SessionService {
      * Session ni yangilash (lastAccessedAt)
      */
     void updateLastAccessed(String sessionId);
-    
-    /**
-     * Session dan attachment token olish
-     */
-    String getAttachmentToken(String sessionId);
     
     /**
      * Session dan access token olish

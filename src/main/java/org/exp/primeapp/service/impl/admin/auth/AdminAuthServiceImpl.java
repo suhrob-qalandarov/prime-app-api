@@ -14,7 +14,6 @@ import org.exp.primeapp.models.entities.User;
 import org.exp.primeapp.models.entities.Session;
 import org.exp.primeapp.repository.UserRepository;
 import org.exp.primeapp.service.face.admin.auth.AdminAuthService;
-import org.exp.primeapp.service.face.global.attachment.AttachmentTokenService;
 import org.exp.primeapp.service.face.global.session.SessionService;
 import org.exp.primeapp.utils.UserUtil;
 import org.springframework.beans.factory.annotation.Value;
@@ -33,7 +32,6 @@ public class AdminAuthServiceImpl implements AdminAuthService {
     private final UserRepository userRepository;
     private final JwtCookieService jwtService;
     private final SessionService sessionService;
-    private final AttachmentTokenService attachmentTokenService;
     private final UserUtil userUtil;
 
     @Value("${cookie.max.age}")
@@ -79,11 +77,7 @@ public class AdminAuthServiceImpl implements AdminAuthService {
             sessionService.setAccessToken(session.getSessionId(), token);
         }
         
-        // Attachment token yaratish yoki olish
-        String attachmentToken = sessionService.getAttachmentToken(session.getSessionId());
-        if (attachmentToken == null || !attachmentTokenService.validateToken(attachmentToken)) {
-            attachmentToken = attachmentTokenService.generateTokenForSession(session);
-        }
+        // Global token endi cookie da bo'ladi, alohida yaratish kerak emas
         
         userRepository.save(u);
 

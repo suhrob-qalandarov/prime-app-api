@@ -113,17 +113,6 @@ public class SessionServiceImpl implements SessionService {
 
     @Override
     @Transactional
-    public void setAttachmentToken(String sessionId, String attachmentToken) {
-        Session session = getSessionById(sessionId);
-        if (session != null) {
-            session.setAttachmentToken(attachmentToken);
-            session.setLastAccessedAt(LocalDateTime.now());
-            sessionRepository.save(session);
-        }
-    }
-
-    @Override
-    @Transactional
     public void migrateSessionToUser(String sessionId, User user) {
         Session session = getSessionById(sessionId);
         if (session != null && user != null) {
@@ -149,12 +138,6 @@ public class SessionServiceImpl implements SessionService {
             session.setLastAccessedAt(LocalDateTime.now());
             sessionRepository.save(session);
         }
-    }
-
-    @Override
-    public String getAttachmentToken(String sessionId) {
-        Session session = getSessionById(sessionId);
-        return session != null ? session.getAttachmentToken() : null;
     }
 
     @Override
@@ -229,7 +212,6 @@ public class SessionServiceImpl implements SessionService {
                 .browserInfos(browserInfos)
                 .user(existingSession.getUser())
                 .accessToken(existingSession.getAccessToken())
-                .attachmentToken(existingSession.getAttachmentToken())
                 .lastAccessedAt(now)
                 .isActive(true)
                 .isDeleted(false)

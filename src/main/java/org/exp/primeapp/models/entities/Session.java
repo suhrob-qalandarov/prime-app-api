@@ -41,9 +41,6 @@ public class Session extends Auditable {
     @Column(length = 1000)
     private String accessToken; // JWT authentication token
 
-    @Column(length = 500)
-    private String attachmentToken; // Attachment access token
-
     @Column(nullable = false)
     @Builder.Default
     private Boolean isActive = true; // Session active yoki yo'q

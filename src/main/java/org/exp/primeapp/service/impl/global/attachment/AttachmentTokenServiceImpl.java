@@ -55,8 +55,7 @@ public class AttachmentTokenServiceImpl implements AttachmentTokenService {
 
         String token = generateToken(userId, phone);
         
-        // Session ga token ni biriktirish
-        sessionService.setAttachmentToken(session.getSessionId(), token);
+        // Endi globalToken cookie da bo'ladi, session ga biriktirish kerak emas
         
         return token;
     }

@@ -119,17 +119,16 @@ public class JwtCookieFilter extends OncePerRequestFilter {
                 }
 
                 // Step 4: Get user from token (token ichidan)
+                // Anonymous user uchun user null bo'lishi mumkin
                 User user = jwtService.getUserObject(token);
-                if (user == null || user.getId() == null) {
-                    log.error("User or ID is null from token: {}", user);
-                    clearCookieAndSend403(response, request);
-                    return;
+                if (user != null && user.getId() != null) {
+                    // Step 5: Set authentication (faqat authenticated user uchun)
+                    var auth = new UsernamePasswordAuthenticationToken(user, null, user.getAuthorities());
+                    SecurityContextHolder.getContext().setAuthentication(auth);
+                    log.debug("User authenticated: {}", user.getId());
+                } else {
+                    log.debug("Anonymous user - no authentication set");
                 }
-
-                // Step 5: Set authentication
-                var auth = new UsernamePasswordAuthenticationToken(user, null, user.getAuthorities());
-                SecurityContextHolder.getContext().setAuthentication(auth);
-                log.debug("User authenticated: {}", user.getId());
 
             } catch (Exception e) {
                 log.error("Token validation error: {}", e.getMessage(), e);
