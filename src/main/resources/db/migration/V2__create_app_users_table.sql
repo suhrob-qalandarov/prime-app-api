@@ -199,13 +199,16 @@ BEGIN
     END IF;
     
     -- Create app_users_roles join table (always create if not exists)
-    CREATE TABLE IF NOT EXISTS app_users_roles (
-        user_id BIGINT NOT NULL,
-        roles_id BIGINT NOT NULL,
-        PRIMARY KEY (user_id, roles_id),
-        CONSTRAINT fk_app_users_roles_user FOREIGN KEY (user_id) REFERENCES app_users(id) ON DELETE CASCADE,
-        CONSTRAINT fk_app_users_roles_role FOREIGN KEY (roles_id) REFERENCES roles(id) ON DELETE CASCADE
-    );
+    -- Only create if roles table exists
+    IF EXISTS (SELECT FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'roles') THEN
+        CREATE TABLE IF NOT EXISTS app_users_roles (
+            user_id BIGINT NOT NULL,
+            roles_id BIGINT NOT NULL,
+            PRIMARY KEY (user_id, roles_id),
+            CONSTRAINT fk_app_users_roles_user FOREIGN KEY (user_id) REFERENCES app_users(id) ON DELETE CASCADE,
+            CONSTRAINT fk_app_users_roles_role FOREIGN KEY (roles_id) REFERENCES roles(id) ON DELETE CASCADE
+        );
+    END IF;
     
     -- Handle existing join tables: rename or copy data
     -- Check if users_roles exists (Hibernate default naming)
