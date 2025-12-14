@@ -15,6 +15,7 @@ import org.exp.primeapp.models.entities.Session;
 import org.exp.primeapp.models.entities.User;
 import org.exp.primeapp.repository.UserRepository;
 import org.exp.primeapp.utils.IpAddressUtil;
+import org.exp.primeapp.utils.UserUtil;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -30,6 +31,7 @@ public class JwtCookieService {
 
     private final UserRepository userRepository;
     private final IpAddressUtil ipAddressUtil;
+    private final UserUtil userUtil;
 
     @Value("${jwt.secret.key}")
     private String secretKey;
@@ -64,6 +66,21 @@ public class JwtCookieService {
     @Value("${jwt.access.token.expiry.days:7}")
     private Integer accessTokenExpiryDays;
 
+    @Value("${jwt.data.expiry.minutes:8}")
+    private Integer dataExpiryMinutes;
+
+    @Value("${jwt.counts.max.category:10}")
+    private Integer maxCountCategory;
+
+    @Value("${jwt.counts.max.product:10}")
+    private Integer maxCountProduct;
+
+    @Value("${jwt.counts.max.attachment:10}")
+    private Integer maxCountAttachment;
+
+    @Value("${jwt.counts.max.cart:10}")
+    private Integer maxCountCart;
+
     public SecretKey getSecretKey() {
         return Keys.hmacShaKeyFor(secretKey.getBytes());
     }
@@ -82,12 +99,13 @@ public class JwtCookieService {
 
         // Build roles list
         List<String> rolesList = user.getRoles().stream()
-                .map(Role::getName)
+                .map(Role::getAuthority)
                 .collect(Collectors.toList());
 
         // Build user claims
         Map<String, Object> userClaims = new HashMap<>();
         userClaims.put("id", user.getId());
+        userClaims.put("fullName", userUtil.truncateName(user.getFirstName() + " " + (user.getLastName() != null ? user.getLastName() : "")));
         userClaims.put("telegramId", user.getTelegramId());
         userClaims.put("roles", rolesList);
 
@@ -101,15 +119,31 @@ public class JwtCookieService {
                     .orElse(null);
         }
 
+        // Build data object (counts, iat, exp)
+        Date now = new Date();
+        Date dataExpiry = new Date(now.getTime() + dataExpiryMinutes * 60 * 1000L);
+        
+        Map<String, Integer> counts = new HashMap<>();
+        counts.put("category", 0);
+        counts.put("product", 0);
+        counts.put("attachment", 0);
+        counts.put("cart", 0);
+        
+        Map<String, Object> dataClaims = new HashMap<>();
+        dataClaims.put("iat", now.getTime() / 1000);  // Unix timestamp (seconds)
+        dataClaims.put("exp", dataExpiry.getTime() / 1000);  // Unix timestamp (seconds)
+        dataClaims.put("counts", counts);
+
         String token = Jwts.builder()
-                .setSubject("SESSION_TOKEN")  // sub da type
+                .setSubject("SESSION")  // sub da type
                 .claim("sessionId", session.getSessionId())
                 .claim("ip", currentIp)
                 .claim("browserInfo", browserInfo)
                 .claim("isAuthenticated", session.getIsAuthenticated() != null ? session.getIsAuthenticated() : true)
                 .claim("user", userClaims)
-                .issuedAt(new Date())
-                .expiration(new Date(new Date().getTime() + accessTokenExpiryDays * 24L * 60 * 60 * 1000)) // days from properties
+                .claim("data", dataClaims)
+                .issuedAt(now)
+                .expiration(new Date(now.getTime() + accessTokenExpiryDays * 24L * 60 * 60 * 1000)) // days from properties
                 .signWith(getSecretKey(), SignatureAlgorithm.HS256)
                 .compact();
 
@@ -138,15 +172,31 @@ public class JwtCookieService {
                     .orElse(null);
         }
 
+        // Build data object (counts, iat, exp)
+        Date now = new Date();
+        Date dataExpiry = new Date(now.getTime() + dataExpiryMinutes * 60 * 1000L);
+        
+        Map<String, Integer> counts = new HashMap<>();
+        counts.put("category", 0);
+        counts.put("product", 0);
+        counts.put("attachment", 0);
+        counts.put("cart", 0);
+        
+        Map<String, Object> dataClaims = new HashMap<>();
+        dataClaims.put("iat", now.getTime() / 1000);  // Unix timestamp (seconds)
+        dataClaims.put("exp", dataExpiry.getTime() / 1000);  // Unix timestamp (seconds)
+        dataClaims.put("counts", counts);
+
         String token = Jwts.builder()
-                .setSubject("SESSION_TOKEN")  // sub da type
+                .setSubject("SESSION")  // sub da type
                 .claim("sessionId", session.getSessionId())
                 .claim("ip", currentIp)
                 .claim("browserInfo", browserInfo)
                 .claim("isAuthenticated", false)
                 .claim("user", null)
-                .issuedAt(new Date())
-                .expiration(new Date(new Date().getTime() + accessTokenExpiryDays * 24L * 60 * 60 * 1000)) // days from properties
+                .claim("data", dataClaims)
+                .issuedAt(now)
+                .expiration(new Date(now.getTime() + accessTokenExpiryDays * 24L * 60 * 60 * 1000)) // days from properties
                 .signWith(getSecretKey(), SignatureAlgorithm.HS256)
                 .compact();
 
@@ -171,7 +221,7 @@ public class JwtCookieService {
 
             // Check token type from sub claim
             String type = claims.getSubject();
-            if (!"SESSION_TOKEN".equals(type)) {
+            if (!"SESSION".equals(type)) {
                 log.warn("Invalid token type: {}", type);
                 return false;
             }
@@ -249,7 +299,7 @@ public class JwtCookieService {
         if (rolesList != null) {
             // Set roles from token (we'll use the roles from database, but validate they match)
             List<String> dbRoles = user.getRoles().stream()
-                    .map(Role::getName)
+                    .map(Role::getAuthority)
                     .collect(Collectors.toList());
             
             // Validate roles match (optional security check)
