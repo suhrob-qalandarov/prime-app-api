@@ -289,6 +289,12 @@ public class SessionServiceImpl implements SessionService {
     @Override
     @Transactional
     public Session createSessionWithToken(User user, HttpServletRequest request, HttpServletResponse response) {
+        // Cookie'da user token borligini tekshirish
+        String existingUserToken = jwtCookieService.extractTokenFromCookie(request, jwtCookieService.getCookieNameUser());
+        if (existingUserToken != null && !existingUserToken.isBlank()) {
+            throw new IllegalStateException("User session already exists. Cannot create a new session.");
+        }
+        
         // Session yaratish
         Session session = createNewSession(request);
         
