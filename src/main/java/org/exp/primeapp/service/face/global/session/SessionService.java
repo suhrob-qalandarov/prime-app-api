@@ -46,5 +46,26 @@ public interface SessionService {
      * Cookie ga session ID yozish
      */
     void setSessionCookie(String sessionId, HttpServletResponse response);
+    
+    /**
+     * Session yaratish
+     */
+    Session createSession(HttpServletRequest request);
+    
+    /**
+     * Barcha sessionlarni olish (user uchun)
+     */
+    java.util.List<Session> getAllSessionsByUser(User user);
+    
+    /**
+     * Session ni yangilash
+     */
+    Session updateSession(String sessionId, Session session);
+    
+    /**
+     * Session ni o'chirish (isDeleted = true)
+     * Agar isMain = true bo'lsa, o'chirish mumkin emas
+     */
+    void deleteSession(String sessionId);
 }
 

@@ -16,6 +16,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.util.LinkedHashSet;
+import java.util.List;
 
 @Slf4j
 @Service
@@ -223,6 +224,64 @@ public class SessionServiceImpl implements SessionService {
         // Save qilgandan keyin database sessionId ni yaratadi
         newSession = sessionRepository.save(newSession);
         return newSession;
+    }
+
+    @Override
+    @Transactional
+    public Session createSession(HttpServletRequest request) {
+        return createNewSession(request);
+    }
+
+    @Override
+    public List<Session> getAllSessionsByUser(User user) {
+        if (user == null || user.getId() == null) {
+            return List.of();
+        }
+        return sessionRepository.findAllByUserIdAndIsDeletedFalse(user.getId());
+    }
+
+    @Override
+    @Transactional
+    public Session updateSession(String sessionId, Session updatedSession) {
+        Session session = sessionRepository.findBySessionId(sessionId)
+                .orElseThrow(() -> new RuntimeException("Session not found: " + sessionId));
+        
+        // Faqat yangilanishi mumkin bo'lgan fieldlarni yangilash
+        if (updatedSession.getIp() != null) {
+            session.setIp(updatedSession.getIp());
+        }
+        if (updatedSession.getBrowserInfos() != null) {
+            session.setBrowserInfos(updatedSession.getBrowserInfos());
+        }
+        if (updatedSession.getIsActive() != null) {
+            session.setIsActive(updatedSession.getIsActive());
+        }
+        if (updatedSession.getIsAuthenticated() != null) {
+            session.setIsAuthenticated(updatedSession.getIsAuthenticated());
+        }
+        if (updatedSession.getLastAccessedAt() != null) {
+            session.setLastAccessedAt(updatedSession.getLastAccessedAt());
+        }
+        
+        session.setLastAccessedAt(LocalDateTime.now());
+        return sessionRepository.save(session);
+    }
+
+    @Override
+    @Transactional
+    public void deleteSession(String sessionId) {
+        Session session = sessionRepository.findBySessionId(sessionId)
+                .orElseThrow(() -> new RuntimeException("Session not found: " + sessionId));
+        
+        // Agar isMain = true bo'lsa, o'chirish mumkin emas
+        if (Boolean.TRUE.equals(session.getIsMainSession())) {
+            throw new IllegalStateException("Main session cannot be deleted");
+        }
+        
+        session.setIsDeleted(true);
+        session.setIsActive(false);
+        sessionRepository.save(session);
+        log.info("Session {} marked as deleted", sessionId);
     }
 }
 
