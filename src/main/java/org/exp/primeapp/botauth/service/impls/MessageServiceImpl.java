@@ -3,9 +3,11 @@ package org.exp.primeapp.botauth.service.impls;
 import com.pengrad.telegrambot.TelegramBot;
 import com.pengrad.telegrambot.model.request.ParseMode;
 import com.pengrad.telegrambot.model.request.ReplyKeyboardRemove;
+import com.pengrad.telegrambot.request.DeleteMessage;
 import com.pengrad.telegrambot.request.EditMessageText;
 import com.pengrad.telegrambot.request.SendMessage;
 import com.pengrad.telegrambot.response.SendResponse;
+import lombok.extern.slf4j.Slf4j;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.exp.primeapp.botauth.service.interfaces.ButtonService;
@@ -16,6 +18,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class MessageServiceImpl implements MessageService {
@@ -102,5 +105,25 @@ public class MessageServiceImpl implements MessageService {
         );
         userRepository.updateVerifyCodeAndExpiration(user.getTelegramId(), oneTimeCode, expirationTime);
         userRepository.updateMessageId(user.getTelegramId(), response.message().messageId());
+    }
+
+    @Override
+    public void deleteOtpMessage(Long chatId, Integer messageId) {
+        if (telegramBot == null || chatId == null || messageId == null) {
+            return;
+        }
+
+        try {
+            var deleteRequest = new DeleteMessage(chatId, messageId);
+            var response = telegramBot.execute(deleteRequest);
+            if (response.isOk()) {
+                log.info("✅ OTP message deleted successfully for chatId: {}, messageId: {}", chatId, messageId);
+            } else {
+                log.warn("⚠️ Failed to delete OTP message for chatId: {}, messageId: {}. Error: {}",
+                        chatId, messageId, response.description());
+            }
+        } catch (Exception e) {
+            log.error("❌ Error deleting OTP message for chatId: {}, messageId: {}", chatId, messageId, e);
+        }
     }
 }

@@ -17,4 +17,6 @@ public interface MessageService {
     void sendCode(User user);
 
     void renewCode(User user);
+
+    void deleteOtpMessage(Long chatId, Integer messageId);
 }
