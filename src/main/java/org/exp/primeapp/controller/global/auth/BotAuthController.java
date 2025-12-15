@@ -67,12 +67,12 @@ public class BotAuthController {
     // ========== Session CRUD Endpoints ==========
 
     @PostMapping("/session")
-    public ResponseEntity<SessionRes> createSession(
+    public ResponseEntity<String> createSession(
             @AuthenticationPrincipal User user,
             HttpServletRequest httpRequest,
             HttpServletResponse httpResponse) {
-        Session session = sessionService.createSessionWithToken(user, httpRequest, httpResponse);
-        return ResponseEntity.status(HttpStatus.CREATED).body(convertToSessionRes(session));
+        String token = sessionService.createSessionWithToken(user, httpRequest, httpResponse);
+        return ResponseEntity.status(HttpStatus.CREATED).body(token);
     }
 
     @Operation(security = @SecurityRequirement(name = "Authorization"))
@@ -107,7 +107,7 @@ public class BotAuthController {
 
         Session updatedSession = Session.builder()
                 .ip(request.ip() != null ? request.ip() : existingSession.getIp())
-                .browserInfos(request.browserInfos() != null ? request.browserInfos() : existingSession.getBrowserInfos())
+                .browserInfo(request.browserInfo() != null ? request.browserInfo() : existingSession.getBrowserInfo())
                 .isActive(request.isActive() != null ? request.isActive() : existingSession.getIsActive())
                 .isAuthenticated(request.isAuthenticated() != null ? request.isAuthenticated() : existingSession.getIsAuthenticated())
                 .build();
@@ -133,9 +133,7 @@ public class BotAuthController {
         return SessionRes.builder()
                 .sessionId(session.getSessionId())
                 .ip(session.getIp())
-                .browserInfos(session.getBrowserInfos() != null ? 
-                        new ArrayList<>(session.getBrowserInfos()) : 
-                        new ArrayList<>())
+                .browserInfo(session.getBrowserInfo())
                 .isActive(session.getIsActive())
                 .isDeleted(session.getIsDeleted())
                 .isAuthenticated(session.getIsAuthenticated())

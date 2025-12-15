@@ -8,7 +8,7 @@ import java.time.LocalDateTime;
 public record SessionRes(
         String sessionId,
         String ip,
-        java.util.List<String> browserInfos,
+        String browserInfo,
         Boolean isActive,
         Boolean isDeleted,
         Boolean isAuthenticated,
