@@ -72,7 +72,8 @@ public interface SessionService {
      * Session yaratish, token generate qilish va cookie ga saqlash
      * User bo'lsa, session ni user ga biriktirish va user token generate qilish
      * User bo'lmasa, anonymous token generate qilish
+     * @return token string
      */
-    Session createSessionWithToken(User user, HttpServletRequest request, HttpServletResponse response);
+    String createSessionWithToken(User user, HttpServletRequest request, HttpServletResponse response);
 }
 

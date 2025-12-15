@@ -288,59 +288,39 @@ public class SessionServiceImpl implements SessionService {
 
     @Override
     @Transactional
-    public Session createSessionWithToken(User user, HttpServletRequest request, HttpServletResponse response) {
-        // Cookie'da user token borligini tekshirish
+    public String createSessionWithToken(User user, HttpServletRequest request, HttpServletResponse response) {
         String existingUserToken = jwtCookieService.extractTokenFromCookie(request, jwtCookieService.getCookieNameUser());
+        log.debug("Checking for existing token in cookie. Token found: {}", existingUserToken != null && !existingUserToken.isBlank());
         if (existingUserToken != null && !existingUserToken.isBlank()) {
-            // Token'dan IP ni olish
-            String tokenIp = jwtCookieService.getIpFromToken(existingUserToken);
-            String requestIp = ipAddressUtil.getClientIpAddress(request);
-            
-            // IP lar teng bo'lsa, mavjud session ni qaytarish
-            if (tokenIp != null && tokenIp.equals(requestIp)) {
-                try {
-                    String sessionId = jwtCookieService.getSessionIdFromToken(existingUserToken);
-                    if (sessionId != null) {
-                        Session existingSession = getSessionById(sessionId);
-                        if (existingSession != null && existingSession.getIsActive() && !Boolean.TRUE.equals(existingSession.getIsDeleted())) {
-                            // Token ni qayta set qilish (cookie'da qoldirish)
-                            jwtCookieService.setJwtCookie(existingUserToken, jwtCookieService.getCookieNameUser(), response, request);
-                            // lastAccessedAt ni yangilash
-                            updateLastAccessed(sessionId);
-                            return getSessionById(sessionId);
-                        }
+            try {
+                String sessionId = jwtCookieService.getSessionIdFromToken(existingUserToken);
+                if (sessionId != null) {
+                    String tokenIp = jwtCookieService.getIpFromToken(existingUserToken);
+                    String requestIp = ipAddressUtil.getClientIpAddress(request);
+                    
+                    log.debug("Checking IP match: tokenIp={}, requestIp={}", tokenIp, requestIp);
+                    
+                    if (tokenIp != null && tokenIp.equals(requestIp)) {
+                        log.info("IPs match. Returning existing token: {}", sessionId);
+                    } else {
+                        log.info("IP mismatch (tokenIp={}, requestIp={}), but returning existing token: {}. IP may have changed due to VPN/proxy.", tokenIp, requestIp, sessionId);
                     }
-                } catch (Exception e) {
-                    log.warn("Failed to get session from existing token: {}. Creating new session.", e.getMessage());
+                    
+                    jwtCookieService.setJwtCookie(existingUserToken, jwtCookieService.getCookieNameUser(), response, request);
+                    updateLastAccessed(sessionId);
+                    return existingUserToken;
                 }
+            } catch (Exception e) {
+                log.warn("Failed to get sessionId from existing token: {}. Creating new session.", e.getMessage());
             }
-            // IP lar teng emas yoki session topilmadi - yangi session yaratish
         }
         
-        // Session yaratish (IP request'dan olinadi)
         Session session = createNewSession(request);
+        String token = jwtCookieService.generateAccessTokenForAnonymous(session, request);
+        setAccessToken(session.getSessionId(), token);
+        jwtCookieService.setJwtCookie(token, jwtCookieService.getCookieNameUser(), response, request);
         
-        String token;
-        String cookieName;
-        
-        if (user != null && session.getUser() == null) {
-            // User authenticated - migrate session and generate user token
-            migrateSessionToUser(session.getSessionId(), user);
-            session = getSessionById(session.getSessionId());
-            token = jwtCookieService.generateToken(user, session, request);
-            setAccessToken(session.getSessionId(), token);
-            cookieName = jwtCookieService.getCookieNameUser();
-        } else {
-            // Anonymous user - generate anonymous token
-            token = jwtCookieService.generateAccessTokenForAnonymous(session, request);
-            setAccessToken(session.getSessionId(), token);
-            cookieName = jwtCookieService.getCookieNameUser();
-        }
-        
-        // Set token to cookie
-        jwtCookieService.setJwtCookie(token, cookieName, response, request);
-        
-        return session;
+        return token;
     }
 }
 
