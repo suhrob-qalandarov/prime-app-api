@@ -10,9 +10,11 @@ import org.exp.primeapp.configs.security.JwtCookieService;
 import org.exp.primeapp.models.entities.Session;
 import org.exp.primeapp.models.entities.User;
 import org.exp.primeapp.repository.SessionRepository;
+import org.exp.primeapp.repository.UserRepository;
 import org.exp.primeapp.service.face.global.session.SessionService;
 import org.exp.primeapp.utils.IpAddressUtil;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -24,6 +26,7 @@ import java.util.List;
 public class SessionServiceImpl implements SessionService {
 
     private final SessionRepository sessionRepository;
+    private final UserRepository userRepository;
     private final IpAddressUtil ipAddressUtil;
     private final JwtCookieService jwtCookieService;
 
@@ -74,8 +77,12 @@ public class SessionServiceImpl implements SessionService {
             }
         }
 
-        // Yangi session yaratish (database sessionId ni yaratadi)
-        Session newSession = createNewSession(request);
+        User authenticatedUser = null;
+        var authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication != null && authentication.isAuthenticated() && authentication.getPrincipal() instanceof User) {
+            authenticatedUser = (User) authentication.getPrincipal();
+        }
+        Session newSession = createNewSession(request, authenticatedUser);
         // Save qilgandan keyin sessionId ni olish va cookie ga yozish
         String newSessionId = newSession.getSessionId();
         if (response != null) {
@@ -164,22 +171,32 @@ public class SessionServiceImpl implements SessionService {
         response.addCookie(cookie);
     }
 
-    private Session createNewSession(HttpServletRequest request) {
+    private Session createNewSession(HttpServletRequest request, User user) {
         String ip = ipAddressUtil.getClientIpAddress(request);
         String browserInfo = ipAddressUtil.getBrowserInfo(request);
         LocalDateTime now = LocalDateTime.now();
 
+        User dbUser = null;
+        boolean isMainSession = false;
+        if (user != null && user.getId() != null) {
+            dbUser = userRepository.findById(user.getId()).orElse(null);
+            if (dbUser != null) {
+                List<Session> existingSessions = sessionRepository.findAllByUserIdAndIsDeletedFalse(dbUser.getId());
+                isMainSession = existingSessions.isEmpty();
+            }
+        }
+
         Session session = Session.builder()
                 .ip(ip)
                 .browserInfo(browserInfo)
+                .user(dbUser)
                 .lastAccessedAt(now)
                 .isActive(true)
                 .isDeleted(false)
-                .isAuthenticated(false)
-                .isMainSession(false)
+                .isAuthenticated(dbUser != null)
+                .isMainSession(isMainSession)
                 .build();
 
-        // Save qilgandan keyin database sessionId ni yaratadi
         session = sessionRepository.save(session);
         return session;
     }
@@ -208,7 +225,7 @@ public class SessionServiceImpl implements SessionService {
     @Override
     @Transactional
     public Session createSession(HttpServletRequest request) {
-        return createNewSession(request);
+        return createNewSession(request, null);
     }
 
     @Override
@@ -298,11 +315,9 @@ public class SessionServiceImpl implements SessionService {
             }
         }
         
-        Session session = createNewSession(request);
+        Session session = createNewSession(request, user);
         
         if (user != null) {
-            migrateSessionToUser(session.getSessionId(), user);
-            session = getSessionById(session.getSessionId());
             String token = jwtCookieService.generateToken(user, session, request);
             setAccessToken(session.getSessionId(), token);
             jwtCookieService.setJwtCookie(token, jwtCookieService.getCookieNameUser(), response, request);
