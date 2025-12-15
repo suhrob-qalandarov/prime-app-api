@@ -274,18 +274,24 @@ public class SessionServiceImpl implements SessionService {
                 if (sessionId != null) {
                     String tokenIp = jwtCookieService.getIpFromToken(existingUserToken);
                     String requestIp = ipAddressUtil.getClientIpAddress(request);
+                    String tokenBrowserInfo = jwtCookieService.getBrowserInfoFromToken(existingUserToken);
+                    String requestBrowserInfo = ipAddressUtil.getBrowserInfo(request);
                     
-                    log.debug("Checking IP match: tokenIp={}, requestIp={}", tokenIp, requestIp);
+                    log.debug("Checking IP and browserInfo match: tokenIp={}, requestIp={}, tokenBrowserInfo={}, requestBrowserInfo={}", 
+                            tokenIp, requestIp, tokenBrowserInfo, requestBrowserInfo);
                     
-                    if (tokenIp != null && tokenIp.equals(requestIp)) {
-                        log.info("IPs match. Returning existing token: {}", sessionId);
+                    boolean ipMatch = tokenIp != null && tokenIp.equals(requestIp);
+                    boolean browserInfoMatch = tokenBrowserInfo != null && tokenBrowserInfo.equals(requestBrowserInfo);
+                    
+                    if (ipMatch && browserInfoMatch) {
+                        log.info("IP and browserInfo match. Returning existing token: {}", sessionId);
+                        jwtCookieService.setJwtCookie(existingUserToken, jwtCookieService.getCookieNameUser(), response, request);
+                        updateLastAccessed(sessionId);
+                        return existingUserToken;
                     } else {
-                        log.info("IP mismatch (tokenIp={}, requestIp={}), but returning existing token: {}. IP may have changed due to VPN/proxy.", tokenIp, requestIp, sessionId);
+                        log.info("IP or browserInfo mismatch (tokenIp={}, requestIp={}, tokenBrowserInfo={}, requestBrowserInfo={}). Creating new session.", 
+                                tokenIp, requestIp, tokenBrowserInfo, requestBrowserInfo);
                     }
-                    
-                    jwtCookieService.setJwtCookie(existingUserToken, jwtCookieService.getCookieNameUser(), response, request);
-                    updateLastAccessed(sessionId);
-                    return existingUserToken;
                 }
             } catch (Exception e) {
                 log.warn("Failed to get sessionId from existing token: {}. Creating new session.", e.getMessage());

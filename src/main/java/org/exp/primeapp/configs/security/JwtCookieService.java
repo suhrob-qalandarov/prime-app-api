@@ -322,6 +322,21 @@ public class JwtCookieService {
         }
     }
 
+    public String getBrowserInfoFromToken(String token) {
+        try {
+            Claims claims = Jwts.parser()
+                    .verifyWith(getSecretKey())
+                    .build()
+                    .parseSignedClaims(token)
+                    .getPayload();
+
+            return claims.get("browserInfo", String.class);
+        } catch (JwtException | IllegalArgumentException e) {
+            log.warn("Failed to extract browserInfo from token: {}", e.getMessage());
+            return null;
+        }
+    }
+
     public String extractTokenFromCookie(HttpServletRequest request) {
         return extractTokenFromCookie(request, cookieNameUser);
     }
