@@ -322,6 +322,21 @@ public class JwtCookieService {
         return claims.get("sessionId", String.class);
     }
 
+    public String getIpFromToken(String token) {
+        try {
+            Claims claims = Jwts.parser()
+                    .verifyWith(getSecretKey())
+                    .build()
+                    .parseSignedClaims(token)
+                    .getPayload();
+
+            return claims.get("ip", String.class);
+        } catch (JwtException | IllegalArgumentException e) {
+            log.warn("Failed to extract IP from token: {}", e.getMessage());
+            return null;
+        }
+    }
+
     public String extractTokenFromCookie(HttpServletRequest request) {
         return extractTokenFromCookie(request, cookieNameUser);
     }

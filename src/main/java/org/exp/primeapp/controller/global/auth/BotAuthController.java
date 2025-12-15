@@ -5,7 +5,6 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
-import org.exp.primeapp.models.dto.request.CreateSessionReq;
 import org.exp.primeapp.models.dto.request.UpdateSessionReq;
 import org.exp.primeapp.models.dto.responce.global.LoginRes;
 import org.exp.primeapp.models.dto.responce.user.SessionRes;
@@ -70,7 +69,6 @@ public class BotAuthController {
     @PostMapping("/session")
     public ResponseEntity<SessionRes> createSession(
             @AuthenticationPrincipal User user,
-            @RequestBody(required = false) CreateSessionReq request,
             HttpServletRequest httpRequest,
             HttpServletResponse httpResponse) {
         Session session = sessionService.createSessionWithToken(user, httpRequest, httpResponse);

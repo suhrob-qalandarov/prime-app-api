@@ -292,10 +292,32 @@ public class SessionServiceImpl implements SessionService {
         // Cookie'da user token borligini tekshirish
         String existingUserToken = jwtCookieService.extractTokenFromCookie(request, jwtCookieService.getCookieNameUser());
         if (existingUserToken != null && !existingUserToken.isBlank()) {
-            throw new IllegalStateException("User session already exists. Cannot create a new session.");
+            // Token'dan IP ni olish
+            String tokenIp = jwtCookieService.getIpFromToken(existingUserToken);
+            String requestIp = ipAddressUtil.getClientIpAddress(request);
+            
+            // IP lar teng bo'lsa, mavjud session ni qaytarish
+            if (tokenIp != null && tokenIp.equals(requestIp)) {
+                try {
+                    String sessionId = jwtCookieService.getSessionIdFromToken(existingUserToken);
+                    if (sessionId != null) {
+                        Session existingSession = getSessionById(sessionId);
+                        if (existingSession != null && existingSession.getIsActive() && !Boolean.TRUE.equals(existingSession.getIsDeleted())) {
+                            // Token ni qayta set qilish (cookie'da qoldirish)
+                            jwtCookieService.setJwtCookie(existingUserToken, jwtCookieService.getCookieNameUser(), response, request);
+                            // lastAccessedAt ni yangilash
+                            updateLastAccessed(sessionId);
+                            return getSessionById(sessionId);
+                        }
+                    }
+                } catch (Exception e) {
+                    log.warn("Failed to get session from existing token: {}. Creating new session.", e.getMessage());
+                }
+            }
+            // IP lar teng emas yoki session topilmadi - yangi session yaratish
         }
         
-        // Session yaratish
+        // Session yaratish (IP request'dan olinadi)
         Session session = createNewSession(request);
         
         String token;
