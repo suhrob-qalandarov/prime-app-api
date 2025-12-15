@@ -6,6 +6,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.exp.primeapp.configs.security.JwtCookieService;
 import org.exp.primeapp.models.entities.Session;
 import org.exp.primeapp.models.entities.User;
 import org.exp.primeapp.repository.SessionRepository;
@@ -15,6 +16,8 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.util.LinkedHashSet;
+import java.util.List;
 
 @Slf4j
 @Service
@@ -23,9 +26,7 @@ public class SessionServiceImpl implements SessionService {
 
     private final SessionRepository sessionRepository;
     private final IpAddressUtil ipAddressUtil;
-
-    @Value("${session.expiry.minutes:60}")
-    private Integer sessionExpiryMinutes;
+    private final JwtCookieService jwtCookieService;
 
     @Value("${session.cookie.name:ANONYMOUS_SESSION}")
     private String sessionCookieName;
@@ -38,25 +39,46 @@ public class SessionServiceImpl implements SessionService {
     public Session getOrCreateSession(HttpServletRequest request, HttpServletResponse response) {
         // Cookie dan session ID ni olish
         String sessionId = getSessionIdFromCookie(request);
+        String currentIp = ipAddressUtil.getClientIpAddress(request);
+        String currentBrowserInfo = ipAddressUtil.getBrowserInfo(request);
 
         if (sessionId != null) {
             Session existingSession = sessionRepository.findBySessionId(sessionId)
                     .orElse(null);
 
-            if (existingSession != null && existingSession.getIsActive()) {
+            if (existingSession != null && existingSession.getIsActive() && !Boolean.TRUE.equals(existingSession.getIsDeleted())) {
                 LocalDateTime now = LocalDateTime.now();
                 
-                // Session expired tekshirish
-                if (existingSession.getExpiresAt().isAfter(now)) {
-                    // Session ni yangilash
-                    existingSession.setLastAccessedAt(now);
-                    sessionRepository.save(existingSession);
-                    return existingSession;
-                } else {
-                    // Session expired, yangi yaratish
+                // IP o'zgarishini tekshirish
+                if (!currentIp.equals(existingSession.getIp())) {
+                    // IP o'zgardi - yangi session yaratish (eski session ma'lumotlari bilan)
+                    log.info("IP changed for session {}: {} -> {}. Creating new session.", 
+                            sessionId, existingSession.getIp(), currentIp);
+                    
+                    // Eski session ni o'chirish
                     existingSession.setIsActive(false);
                     sessionRepository.save(existingSession);
+                    
+                    // Yangi session yaratish (eski session ma'lumotlari bilan)
+                    Session newSession = createNewSessionWithExistingData(existingSession, currentIp, currentBrowserInfo);
+                    String newSessionId = newSession.getSessionId();
+                    if (response != null) {
+                        setSessionCookie(newSessionId, response);
+                    }
+                    return newSession;
                 }
+                
+                // IP o'zgarmagan - browserInfo ni qo'shish va session ni yangilash
+                LinkedHashSet<String> browserInfos = existingSession.getBrowserInfos();
+                if (browserInfos == null) {
+                    browserInfos = new LinkedHashSet<>();
+                }
+                // LinkedHashSet avtomatik unique (duplicate qo'shmasdi)
+                browserInfos.add(currentBrowserInfo);
+                existingSession.setBrowserInfos(browserInfos);
+                existingSession.setLastAccessedAt(now);
+                sessionRepository.save(existingSession);
+                return existingSession;
             }
         }
 
@@ -77,14 +99,7 @@ public class SessionServiceImpl implements SessionService {
         }
 
         return sessionRepository.findBySessionId(sessionId)
-                .filter(session -> session.getIsActive() && session.getExpiresAt().isAfter(LocalDateTime.now()))
-                .orElse(null);
-    }
-
-    @Override
-    public Session findSessionByIpAndBrowser(String ip, String browserInfo) {
-        LocalDateTime now = LocalDateTime.now();
-        return sessionRepository.findByIpAndBrowserInfo(ip, browserInfo, now)
+                .filter(session -> session.getIsActive() && !Boolean.TRUE.equals(session.getIsDeleted()))
                 .orElse(null);
     }
 
@@ -101,26 +116,20 @@ public class SessionServiceImpl implements SessionService {
 
     @Override
     @Transactional
-    public void setAttachmentToken(String sessionId, String attachmentToken) {
-        Session session = getSessionById(sessionId);
-        if (session != null) {
-            session.setAttachmentToken(attachmentToken);
-            session.setLastAccessedAt(LocalDateTime.now());
-            sessionRepository.save(session);
-        }
-    }
-
-    @Override
-    @Transactional
     public void migrateSessionToUser(String sessionId, User user) {
         Session session = getSessionById(sessionId);
         if (session != null && user != null) {
+            // Check if this is user's first session
+            boolean isMainSession = user.getSessions() == null || user.getSessions().isEmpty();
+            
             session.setUser(user);
+            session.setIsAuthenticated(true);
+            session.setIsMainSession(isMainSession);
             session.setMigratedAt(LocalDateTime.now());
             session.setLastAccessedAt(LocalDateTime.now());
             sessionRepository.save(session);
             
-            log.info("Session {} migrated to user {}", sessionId, user.getId());
+            log.info("Session {} migrated to user {} (isMainSession: {})", sessionId, user.getId(), isMainSession);
         }
     }
 
@@ -132,12 +141,6 @@ public class SessionServiceImpl implements SessionService {
             session.setLastAccessedAt(LocalDateTime.now());
             sessionRepository.save(session);
         }
-    }
-
-    @Override
-    public String getAttachmentToken(String sessionId) {
-        Session session = getSessionById(sessionId);
-        return session != null ? session.getAttachmentToken() : null;
     }
 
     @Override
@@ -173,19 +176,170 @@ public class SessionServiceImpl implements SessionService {
         String ip = ipAddressUtil.getClientIpAddress(request);
         String browserInfo = ipAddressUtil.getBrowserInfo(request);
         LocalDateTime now = LocalDateTime.now();
-        LocalDateTime expiresAt = now.plusMinutes(sessionExpiryMinutes);
+
+        // BrowserInfos LinkedHashSet yaratish
+        LinkedHashSet<String> browserInfos = new LinkedHashSet<>();
+        browserInfos.add(browserInfo);
 
         // sessionId ni database yaratadi (@GeneratedValue)
         Session session = Session.builder()
                 .ip(ip)
-                .browserInfo(browserInfo)
-                .expiresAt(expiresAt)
+                .browserInfos(browserInfos)
                 .lastAccessedAt(now)
                 .isActive(true)
+                .isDeleted(false)
+                .isAuthenticated(false)
+                .isMainSession(false)
                 .build();
 
         // Save qilgandan keyin database sessionId ni yaratadi
         session = sessionRepository.save(session);
+        return session;
+    }
+
+    private Session createNewSessionWithExistingData(Session existingSession, String newIp, String newBrowserInfo) {
+        LocalDateTime now = LocalDateTime.now();
+
+        // BrowserInfos LinkedHashSet yaratish (eski browserInfos + yangi)
+        LinkedHashSet<String> browserInfos = new LinkedHashSet<>();
+        if (existingSession.getBrowserInfos() != null) {
+            browserInfos.addAll(existingSession.getBrowserInfos());
+        }
+        if (newBrowserInfo != null) {
+            browserInfos.add(newBrowserInfo);
+        }
+
+        // Yangi session yaratish (eski session ma'lumotlari bilan)
+        Session newSession = Session.builder()
+                .ip(newIp)
+                .browserInfos(browserInfos)
+                .user(existingSession.getUser())
+                .accessToken(existingSession.getAccessToken())
+                .lastAccessedAt(now)
+                .isActive(true)
+                .isDeleted(false)
+                .isAuthenticated(existingSession.getIsAuthenticated() != null ? existingSession.getIsAuthenticated() : false)
+                .isMainSession(existingSession.getIsMainSession() != null ? existingSession.getIsMainSession() : false)
+                .migratedAt(existingSession.getMigratedAt())
+                .build();
+
+        // Save qilgandan keyin database sessionId ni yaratadi
+        newSession = sessionRepository.save(newSession);
+        return newSession;
+    }
+
+    @Override
+    @Transactional
+    public Session createSession(HttpServletRequest request) {
+        return createNewSession(request);
+    }
+
+    @Override
+    public List<Session> getAllSessionsByUser(User user) {
+        if (user == null || user.getId() == null) {
+            return List.of();
+        }
+        return sessionRepository.findAllByUserIdAndIsDeletedFalse(user.getId());
+    }
+
+    @Override
+    @Transactional
+    public Session updateSession(String sessionId, Session updatedSession) {
+        Session session = sessionRepository.findBySessionId(sessionId)
+                .orElseThrow(() -> new RuntimeException("Session not found: " + sessionId));
+        
+        // Faqat yangilanishi mumkin bo'lgan fieldlarni yangilash
+        if (updatedSession.getIp() != null) {
+            session.setIp(updatedSession.getIp());
+        }
+        if (updatedSession.getBrowserInfos() != null) {
+            session.setBrowserInfos(updatedSession.getBrowserInfos());
+        }
+        if (updatedSession.getIsActive() != null) {
+            session.setIsActive(updatedSession.getIsActive());
+        }
+        if (updatedSession.getIsAuthenticated() != null) {
+            session.setIsAuthenticated(updatedSession.getIsAuthenticated());
+        }
+        if (updatedSession.getLastAccessedAt() != null) {
+            session.setLastAccessedAt(updatedSession.getLastAccessedAt());
+        }
+        
+        session.setLastAccessedAt(LocalDateTime.now());
+        return sessionRepository.save(session);
+    }
+
+    @Override
+    @Transactional
+    public void deleteSession(String sessionId) {
+        Session session = sessionRepository.findBySessionId(sessionId)
+                .orElseThrow(() -> new RuntimeException("Session not found: " + sessionId));
+        
+        // Agar isMain = true bo'lsa, o'chirish mumkin emas
+        if (Boolean.TRUE.equals(session.getIsMainSession())) {
+            throw new IllegalStateException("Main session cannot be deleted");
+        }
+        
+        session.setIsDeleted(true);
+        session.setIsActive(false);
+        sessionRepository.save(session);
+        log.info("Session {} marked as deleted", sessionId);
+    }
+
+    @Override
+    @Transactional
+    public Session createSessionWithToken(User user, HttpServletRequest request, HttpServletResponse response) {
+        // Cookie'da user token borligini tekshirish
+        String existingUserToken = jwtCookieService.extractTokenFromCookie(request, jwtCookieService.getCookieNameUser());
+        if (existingUserToken != null && !existingUserToken.isBlank()) {
+            // Token'dan IP ni olish
+            String tokenIp = jwtCookieService.getIpFromToken(existingUserToken);
+            String requestIp = ipAddressUtil.getClientIpAddress(request);
+            
+            // IP lar teng bo'lsa, mavjud session ni qaytarish
+            if (tokenIp != null && tokenIp.equals(requestIp)) {
+                try {
+                    String sessionId = jwtCookieService.getSessionIdFromToken(existingUserToken);
+                    if (sessionId != null) {
+                        Session existingSession = getSessionById(sessionId);
+                        if (existingSession != null && existingSession.getIsActive() && !Boolean.TRUE.equals(existingSession.getIsDeleted())) {
+                            // Token ni qayta set qilish (cookie'da qoldirish)
+                            jwtCookieService.setJwtCookie(existingUserToken, jwtCookieService.getCookieNameUser(), response, request);
+                            // lastAccessedAt ni yangilash
+                            updateLastAccessed(sessionId);
+                            return getSessionById(sessionId);
+                        }
+                    }
+                } catch (Exception e) {
+                    log.warn("Failed to get session from existing token: {}. Creating new session.", e.getMessage());
+                }
+            }
+            // IP lar teng emas yoki session topilmadi - yangi session yaratish
+        }
+        
+        // Session yaratish (IP request'dan olinadi)
+        Session session = createNewSession(request);
+        
+        String token;
+        String cookieName;
+        
+        if (user != null && session.getUser() == null) {
+            // User authenticated - migrate session and generate user token
+            migrateSessionToUser(session.getSessionId(), user);
+            session = getSessionById(session.getSessionId());
+            token = jwtCookieService.generateToken(user, session, request);
+            setAccessToken(session.getSessionId(), token);
+            cookieName = jwtCookieService.getCookieNameUser();
+        } else {
+            // Anonymous user - generate anonymous token
+            token = jwtCookieService.generateAccessTokenForAnonymous(session, request);
+            setAccessToken(session.getSessionId(), token);
+            cookieName = jwtCookieService.getCookieNameUser();
+        }
+        
+        // Set token to cookie
+        jwtCookieService.setJwtCookie(token, cookieName, response, request);
+        
         return session;
     }
 }

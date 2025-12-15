@@ -1,4 +1,3 @@
-/*
 package org.exp.primeapp.botauth.config;
 
 import com.pengrad.telegrambot.TelegramBot;
@@ -7,10 +6,10 @@ import com.pengrad.telegrambot.model.Update;
 import com.pengrad.telegrambot.request.DeleteWebhook;
 import com.pengrad.telegrambot.response.BaseResponse;
 import jakarta.annotation.PostConstruct;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.exp.primeapp.botauth.handle.CallbackHandler;
 import org.exp.primeapp.botauth.handle.MessageHandler;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.stereotype.Component;
 
@@ -18,13 +17,21 @@ import java.util.concurrent.ExecutorService;
 
 @Slf4j
 @Component
-@RequiredArgsConstructor
 public class BotRunner implements CommandLineRunner {
 
     private final TelegramBot bot;
     private final ExecutorService executorService;
     private final MessageHandler messageHandler;
     private final CallbackHandler callbackHandler;
+
+    @Autowired(required = false)
+    public BotRunner(TelegramBot bot, ExecutorService executorService, 
+                     MessageHandler messageHandler, CallbackHandler callbackHandler) {
+        this.bot = bot;
+        this.executorService = executorService;
+        this.messageHandler = messageHandler;
+        this.callbackHandler = callbackHandler;
+    }
 
     @PostConstruct
     public void deleteWebhookIfExists() {
@@ -59,4 +66,3 @@ public class BotRunner implements CommandLineRunner {
         log.info("🤖 Telegram bot listener started successfully!");
     }
 }
-*/

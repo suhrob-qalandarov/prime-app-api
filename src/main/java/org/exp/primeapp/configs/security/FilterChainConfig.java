@@ -67,10 +67,21 @@ public class FilterChainConfig {
         http.cors(cors -> cors.configurationSource(corsConfigurationSource()));
         http.authorizeHttpRequests(auth ->
                 auth
-                        // Public auth endpoint
+                        // Public auth endpoints
                         .requestMatchers(
                                 HttpMethod.POST,
                                 API + V2 + AUTH + "/code/*"
+                        ).permitAll()
+                        
+                        // Public session endpoints
+                        .requestMatchers(
+                                HttpMethod.GET,
+                                API + V2 + AUTH + "/session"
+                        ).permitAll()
+                        
+                        .requestMatchers(
+                                HttpMethod.POST,
+                                API + V2 + AUTH + "/session"
                         ).permitAll()
 
                         // Public product endpoints
@@ -237,13 +248,19 @@ public class FilterChainConfig {
         List<String> allowedOrigins = new ArrayList<>();
         allowedOrigins.add(mainUrl);
         allowedOrigins.add(apiUrl);
+        
+        // Always add localhost URLs for local development
+        allowedOrigins.add("http://localhost:8080");
+        allowedOrigins.add("http://localhost");
+        allowedOrigins.add("http://127.0.0.1:8080");
+        allowedOrigins.add("http://127.0.0.1");
 
         // Add local URLs from properties (comma-separated)
         if (localUrls != null && !localUrls.isEmpty()) {
             String[] localUrlArray = localUrls.split(",");
             for (String url : localUrlArray) {
                 String trimmedUrl = url.trim();
-                if (!trimmedUrl.isEmpty()) {
+                if (!trimmedUrl.isEmpty() && !allowedOrigins.contains(trimmedUrl)) {
                     allowedOrigins.add(trimmedUrl);
                 }
             }

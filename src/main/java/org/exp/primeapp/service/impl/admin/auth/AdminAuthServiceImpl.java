@@ -14,7 +14,6 @@ import org.exp.primeapp.models.entities.User;
 import org.exp.primeapp.models.entities.Session;
 import org.exp.primeapp.repository.UserRepository;
 import org.exp.primeapp.service.face.admin.auth.AdminAuthService;
-import org.exp.primeapp.service.face.global.attachment.AttachmentTokenService;
 import org.exp.primeapp.service.face.global.session.SessionService;
 import org.exp.primeapp.utils.UserUtil;
 import org.springframework.beans.factory.annotation.Value;
@@ -33,7 +32,6 @@ public class AdminAuthServiceImpl implements AdminAuthService {
     private final UserRepository userRepository;
     private final JwtCookieService jwtService;
     private final SessionService sessionService;
-    private final AttachmentTokenService attachmentTokenService;
     private final UserUtil userUtil;
 
     @Value("${cookie.max.age}")
@@ -54,6 +52,8 @@ public class AdminAuthServiceImpl implements AdminAuthService {
         // Session ni user ga biriktirish (migration)
         if (session.getUser() == null) {
             sessionService.migrateSessionToUser(session.getSessionId(), u);
+            // Session ni qayta olish (migration dan keyin yangilanadi)
+            session = sessionService.getSessionById(session.getSessionId());
         }
         
         // Access token yaratish yoki olish
@@ -68,20 +68,16 @@ public class AdminAuthServiceImpl implements AdminAuthService {
                 token = existingAccessToken;
             } else {
                 // 3 kundan kam - yangi token yaratiladi
-                token = jwtService.generateToken(u);
+                token = jwtService.generateToken(u, session, request);
                 sessionService.setAccessToken(session.getSessionId(), token);
             }
         } else {
             // Token yo'q - yangi yaratish
-            token = jwtService.generateToken(u);
+            token = jwtService.generateToken(u, session, request);
             sessionService.setAccessToken(session.getSessionId(), token);
         }
         
-        // Attachment token yaratish yoki olish
-        String attachmentToken = sessionService.getAttachmentToken(session.getSessionId());
-        if (attachmentToken == null || !attachmentTokenService.validateToken(attachmentToken)) {
-            attachmentToken = attachmentTokenService.generateTokenForSession(session);
-        }
+        // Global token endi cookie da bo'ladi, alohida yaratish kerak emas
         
         userRepository.save(u);
 
@@ -95,9 +91,11 @@ public class AdminAuthServiceImpl implements AdminAuthService {
                 .map(s -> SessionRes.builder()
                         .sessionId(s.getSessionId())
                         .ip(s.getIp())
-                        .browserInfo(s.getBrowserInfo())
-                        .expiresAt(s.getExpiresAt())
+                        .browserInfos(s.getBrowserInfos() != null ? new java.util.ArrayList<>(s.getBrowserInfos()) : List.of())
                         .isActive(s.getIsActive())
+                        .isDeleted(s.getIsDeleted())
+                        .isAuthenticated(s.getIsAuthenticated())
+                        .isMainSession(s.getIsMainSession())
                         .lastAccessedAt(s.getLastAccessedAt())
                         .migratedAt(s.getMigratedAt())
                         .build())

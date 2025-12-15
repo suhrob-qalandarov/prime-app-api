@@ -6,7 +6,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
-import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 
 @Repository
@@ -14,13 +14,16 @@ public interface SessionRepository extends JpaRepository<Session, Long> {
     
     Optional<Session> findBySessionId(String sessionId);
     
-    @Query("SELECT s FROM Session s WHERE s.ip = :ip AND s.browserInfo = :browserInfo AND s.isActive = true AND s.expiresAt > :now ORDER BY s.lastAccessedAt DESC")
-    Optional<Session> findByIpAndBrowserInfo(@Param("ip") String ip, @Param("browserInfo") String browserInfo, @Param("now") LocalDateTime now);
+    // Note: browserInfo queries removed - browserInfos is now LinkedHashSet (JSON array)
+    // Use findBySessionId or filter by IP only if needed
     
-    @Query("SELECT s FROM Session s WHERE s.user.id = :userId AND s.ip = :ip AND s.browserInfo = :browserInfo AND s.isActive = true AND s.expiresAt > :now ORDER BY s.lastAccessedAt DESC")
-    Optional<Session> findByUserIdAndIpAndBrowserInfo(@Param("userId") Long userId, @Param("ip") String ip, @Param("browserInfo") String browserInfo, @Param("now") LocalDateTime now);
+    @Query("SELECT s.isDeleted FROM Session s WHERE s.sessionId = :sessionId")
+    Optional<Boolean> findIsDeletedBySessionId(@Param("sessionId") String sessionId);
     
-    @Query("SELECT s FROM Session s WHERE s.expiresAt < :now AND s.isActive = true")
-    java.util.List<Session> findExpiredSessions(@Param("now") LocalDateTime now);
+    /**
+     * User ning barcha o'chirilmagan sessionlarini olish
+     */
+    @Query("SELECT s FROM Session s WHERE s.user.id = :userId AND (s.isDeleted = false OR s.isDeleted IS NULL)")
+    List<Session> findAllByUserIdAndIsDeletedFalse(@Param("userId") Long userId);
 }
 

@@ -68,4 +68,8 @@ public interface UserRepository extends JpaRepository<User, Long>, JpaSpecificat
             @Param("firstName") String firstName,
             Pageable pageable
     );
+
+    @Query("SELECT u FROM User u WHERE u.verifyCodeExpiration IS NOT NULL " +
+           "AND u.verifyCodeExpiration < :now AND u.messageId IS NOT NULL")
+    List<User> findUsersWithExpiredOtpCodes(@Param("now") LocalDateTime now);
 }

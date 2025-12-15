@@ -15,7 +15,6 @@ import org.exp.primeapp.models.entities.User;
 import org.exp.primeapp.repository.UserRepository;
 import org.exp.primeapp.models.entities.Session;
 import org.exp.primeapp.service.face.global.auth.AuthService;
-import org.exp.primeapp.service.face.global.attachment.AttachmentTokenService;
 import org.exp.primeapp.service.face.global.session.SessionService;
 import org.exp.primeapp.service.face.user.OrderService;
 import org.exp.primeapp.utils.UserUtil;
@@ -35,7 +34,6 @@ public class AuthServiceImpl implements AuthService {
     private final UserRepository userRepository;
     private final OrderService orderService;
     private final SessionService sessionService;
-    private final AttachmentTokenService attachmentTokenService;
     private final UserUtil userUtil;
 
     @Value("${cookie.max.age}")
@@ -66,6 +64,8 @@ public class AuthServiceImpl implements AuthService {
         // Session ni user ga biriktirish (migration)
         if (session.getUser() == null) {
             sessionService.migrateSessionToUser(session.getSessionId(), user);
+            // Session ni qayta olish (migration dan keyin yangilanadi)
+            session = sessionService.getSessionById(session.getSessionId());
         }
         
         // Access token yaratish yoki olish
@@ -80,20 +80,16 @@ public class AuthServiceImpl implements AuthService {
                 token = existingAccessToken;
             } else {
                 // 3 kundan kam - yangi token yaratiladi
-                token = jwtService.generateToken(user);
+                token = jwtService.generateToken(user, session, request);
                 sessionService.setAccessToken(session.getSessionId(), token);
             }
         } else {
             // Token yo'q - yangi yaratish
-            token = jwtService.generateToken(user);
+            token = jwtService.generateToken(user, session, request);
             sessionService.setAccessToken(session.getSessionId(), token);
         }
         
-        // Attachment token yaratish yoki olish
-        String attachmentToken = sessionService.getAttachmentToken(session.getSessionId());
-        if (attachmentToken == null || !attachmentTokenService.validateToken(attachmentToken)) {
-            attachmentToken = attachmentTokenService.generateTokenForSession(session);
-        }
+        // Global token endi cookie da bo'ladi, alohida yaratish kerak emas
         
         userRepository.save(user);
 
@@ -109,9 +105,11 @@ public class AuthServiceImpl implements AuthService {
                 .map(s -> SessionRes.builder()
                         .sessionId(s.getSessionId())
                         .ip(s.getIp())
-                        .browserInfo(s.getBrowserInfo())
-                        .expiresAt(s.getExpiresAt())
+                        .browserInfos(s.getBrowserInfos() != null ? new java.util.ArrayList<>(s.getBrowserInfos()) : List.of())
                         .isActive(s.getIsActive())
+                        .isDeleted(s.getIsDeleted())
+                        .isAuthenticated(s.getIsAuthenticated())
+                        .isMainSession(s.getIsMainSession())
                         .lastAccessedAt(s.getLastAccessedAt())
                         .migratedAt(s.getMigratedAt())
                         .build())

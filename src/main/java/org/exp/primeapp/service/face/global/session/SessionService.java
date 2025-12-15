@@ -18,19 +18,9 @@ public interface SessionService {
     Session getSessionById(String sessionId);
     
     /**
-     * IP va Browser orqali session topish
-     */
-    Session findSessionByIpAndBrowser(String ip, String browserInfo);
-    
-    /**
      * Session ga access token biriktirish
      */
     void setAccessToken(String sessionId, String accessToken);
-    
-    /**
-     * Session ga attachment token biriktirish
-     */
-    void setAttachmentToken(String sessionId, String attachmentToken);
     
     /**
      * Session ni user ga biriktirish (migration)
@@ -41,11 +31,6 @@ public interface SessionService {
      * Session ni yangilash (lastAccessedAt)
      */
     void updateLastAccessed(String sessionId);
-    
-    /**
-     * Session dan attachment token olish
-     */
-    String getAttachmentToken(String sessionId);
     
     /**
      * Session dan access token olish
@@ -61,5 +46,33 @@ public interface SessionService {
      * Cookie ga session ID yozish
      */
     void setSessionCookie(String sessionId, HttpServletResponse response);
+    
+    /**
+     * Session yaratish
+     */
+    Session createSession(HttpServletRequest request);
+    
+    /**
+     * Barcha sessionlarni olish (user uchun)
+     */
+    java.util.List<Session> getAllSessionsByUser(User user);
+    
+    /**
+     * Session ni yangilash
+     */
+    Session updateSession(String sessionId, Session session);
+    
+    /**
+     * Session ni o'chirish (isDeleted = true)
+     * Agar isMain = true bo'lsa, o'chirish mumkin emas
+     */
+    void deleteSession(String sessionId);
+    
+    /**
+     * Session yaratish, token generate qilish va cookie ga saqlash
+     * User bo'lsa, session ni user ga biriktirish va user token generate qilish
+     * User bo'lmasa, anonymous token generate qilish
+     */
+    Session createSessionWithToken(User user, HttpServletRequest request, HttpServletResponse response);
 }
 
