@@ -364,42 +364,11 @@ public class JwtCookieService {
     public void setJwtCookie(String token, String key, HttpServletResponse response, HttpServletRequest request) {
         Cookie cookie = new Cookie(key, token);
         cookie.setHttpOnly(cookieIsHttpOnly);
-        
-        // Detect if request is to localhost
-        boolean isLocalhost = false;
-        if (request != null) {
-            String host = request.getServerName();
-            String scheme = request.getScheme();
-            isLocalhost = host != null && (host.equals("localhost") || host.equals("127.0.0.1") || scheme.equals("http"));
-            log.debug("Request host: {}, scheme: {}, isLocalhost: {}", host, scheme, isLocalhost);
-        }
-        
-        // For localhost HTTP requests, set Secure=false
-        // For production HTTPS, use configured Secure value
-        boolean shouldBeSecure = isLocalhost ? false : cookieIsSecure;
-        cookie.setSecure(shouldBeSecure);
-        
-        // For localhost, don't set domain (allows localhost to work)
-        // For production, use configured domain
-        if (!isLocalhost && cookieDomain != null && !cookieDomain.isEmpty()) {
-            cookie.setDomain(cookieDomain);
-        }
-        
+        cookie.setSecure(cookieIsSecure);
+        cookie.setDomain(cookieDomain);
         cookie.setPath(cookiePath);
         cookie.setMaxAge(cookieMaxAge);
-        
-        // For localhost, use SameSite=Lax instead of None
-        // SameSite=None requires Secure=true, which doesn't work with HTTP
-        if (isLocalhost) {
-            cookie.setAttribute("SameSite", "Lax");
-        } else {
-            cookie.setAttribute(cookieAttributeName, cookieAttributeValue);
-        }
-        
-        log.debug("Setting cookie: name={}, secure={}, domain={}, sameSite={}", 
-                key, shouldBeSecure, isLocalhost ? "not set" : cookieDomain, 
-                isLocalhost ? "Lax" : cookieAttributeValue);
-        
+        cookie.setAttribute(cookieAttributeName, cookieAttributeValue);
         response.addCookie(cookie);
     }
     
