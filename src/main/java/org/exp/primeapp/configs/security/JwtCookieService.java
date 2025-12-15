@@ -109,15 +109,7 @@ public class JwtCookieService {
         userClaims.put("telegramId", user.getTelegramId());
         userClaims.put("roles", rolesList);
 
-        // BrowserInfo ni olish (oxirgi qo'shilgan - eng yangi)
-        String browserInfo = null;
-        if (session.getBrowserInfos() != null && !session.getBrowserInfos().isEmpty()) {
-            // LinkedHashSet da oxirgi element (eng yangi)
-            browserInfo = session.getBrowserInfos().stream()
-                    .skip(session.getBrowserInfos().size() - 1)
-                    .findFirst()
-                    .orElse(null);
-        }
+        String browserInfo = session.getBrowserInfo();
 
         // Build data object (counts, iat, exp)
         Date now = new Date();
@@ -163,14 +155,7 @@ public class JwtCookieService {
         // Get current IP
         String currentIp = ipAddressUtil.getClientIpAddress(request);
 
-        // BrowserInfo ni olish (oxirgi qo'shilgan - eng yangi)
-        String browserInfo = null;
-        if (session.getBrowserInfos() != null && !session.getBrowserInfos().isEmpty()) {
-            browserInfo = session.getBrowserInfos().stream()
-                    .skip(session.getBrowserInfos().size() - 1)
-                    .findFirst()
-                    .orElse(null);
-        }
+        String browserInfo = session.getBrowserInfo();
 
         // Build data object (counts, iat, exp)
         Date now = new Date();

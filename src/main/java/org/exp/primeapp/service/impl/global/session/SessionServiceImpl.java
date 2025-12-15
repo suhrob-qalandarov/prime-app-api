@@ -16,7 +16,6 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
-import java.util.LinkedHashSet;
 import java.util.List;
 
 @Slf4j
@@ -68,14 +67,7 @@ public class SessionServiceImpl implements SessionService {
                     return newSession;
                 }
                 
-                // IP o'zgarmagan - browserInfo ni qo'shish va session ni yangilash
-                LinkedHashSet<String> browserInfos = existingSession.getBrowserInfos();
-                if (browserInfos == null) {
-                    browserInfos = new LinkedHashSet<>();
-                }
-                // LinkedHashSet avtomatik unique (duplicate qo'shmasdi)
-                browserInfos.add(currentBrowserInfo);
-                existingSession.setBrowserInfos(browserInfos);
+                existingSession.setBrowserInfo(currentBrowserInfo);
                 existingSession.setLastAccessedAt(now);
                 sessionRepository.save(existingSession);
                 return existingSession;
@@ -177,14 +169,9 @@ public class SessionServiceImpl implements SessionService {
         String browserInfo = ipAddressUtil.getBrowserInfo(request);
         LocalDateTime now = LocalDateTime.now();
 
-        // BrowserInfos LinkedHashSet yaratish
-        LinkedHashSet<String> browserInfos = new LinkedHashSet<>();
-        browserInfos.add(browserInfo);
-
-        // sessionId ni database yaratadi (@GeneratedValue)
         Session session = Session.builder()
                 .ip(ip)
-                .browserInfos(browserInfos)
+                .browserInfo(browserInfo)
                 .lastAccessedAt(now)
                 .isActive(true)
                 .isDeleted(false)
@@ -200,19 +187,9 @@ public class SessionServiceImpl implements SessionService {
     private Session createNewSessionWithExistingData(Session existingSession, String newIp, String newBrowserInfo) {
         LocalDateTime now = LocalDateTime.now();
 
-        // BrowserInfos LinkedHashSet yaratish (eski browserInfos + yangi)
-        LinkedHashSet<String> browserInfos = new LinkedHashSet<>();
-        if (existingSession.getBrowserInfos() != null) {
-            browserInfos.addAll(existingSession.getBrowserInfos());
-        }
-        if (newBrowserInfo != null) {
-            browserInfos.add(newBrowserInfo);
-        }
-
-        // Yangi session yaratish (eski session ma'lumotlari bilan)
         Session newSession = Session.builder()
                 .ip(newIp)
-                .browserInfos(browserInfos)
+                .browserInfo(newBrowserInfo)
                 .user(existingSession.getUser())
                 .accessToken(existingSession.getAccessToken())
                 .lastAccessedAt(now)
@@ -252,8 +229,8 @@ public class SessionServiceImpl implements SessionService {
         if (updatedSession.getIp() != null) {
             session.setIp(updatedSession.getIp());
         }
-        if (updatedSession.getBrowserInfos() != null) {
-            session.setBrowserInfos(updatedSession.getBrowserInfos());
+        if (updatedSession.getBrowserInfo() != null) {
+            session.setBrowserInfo(updatedSession.getBrowserInfo());
         }
         if (updatedSession.getIsActive() != null) {
             session.setIsActive(updatedSession.getIsActive());

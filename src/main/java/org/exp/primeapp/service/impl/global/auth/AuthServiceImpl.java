@@ -105,7 +105,7 @@ public class AuthServiceImpl implements AuthService {
                 .map(s -> SessionRes.builder()
                         .sessionId(s.getSessionId())
                         .ip(s.getIp())
-                        .browserInfos(s.getBrowserInfos() != null ? new java.util.ArrayList<>(s.getBrowserInfos()) : List.of())
+                        .browserInfo(s.getBrowserInfo())
                         .isActive(s.getIsActive())
                         .isDeleted(s.getIsDeleted())
                         .isAuthenticated(s.getIsAuthenticated())

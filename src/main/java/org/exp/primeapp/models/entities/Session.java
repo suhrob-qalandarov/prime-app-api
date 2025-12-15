@@ -4,10 +4,8 @@ import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
 import org.exp.primeapp.models.base.Auditable;
-import org.exp.primeapp.utils.converter.LinkedHashSetStringConverter;
 
 import java.time.LocalDateTime;
-import java.util.LinkedHashSet;
 
 @Getter
 @Setter
@@ -35,8 +33,7 @@ public class Session extends Auditable {
     private String ip; // Client IP address
 
     @Column(columnDefinition = "TEXT")
-    @Convert(converter = LinkedHashSetStringConverter.class)
-    private LinkedHashSet<String> browserInfos; // User-Agent list (unique, ordered)
+    private String browserInfo; // User-Agent string
 
     @Column(length = 1000)
     private String accessToken; // JWT authentication token

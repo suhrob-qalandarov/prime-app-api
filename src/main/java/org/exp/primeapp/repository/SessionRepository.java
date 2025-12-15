@@ -14,7 +14,6 @@ public interface SessionRepository extends JpaRepository<Session, Long> {
     
     Optional<Session> findBySessionId(String sessionId);
     
-    // Note: browserInfo queries removed - browserInfos is now LinkedHashSet (JSON array)
     // Use findBySessionId or filter by IP only if needed
     
     @Query("SELECT s.isDeleted FROM Session s WHERE s.sessionId = :sessionId")

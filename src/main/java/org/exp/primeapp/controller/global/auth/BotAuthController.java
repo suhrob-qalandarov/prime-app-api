@@ -107,7 +107,7 @@ public class BotAuthController {
 
         Session updatedSession = Session.builder()
                 .ip(request.ip() != null ? request.ip() : existingSession.getIp())
-                .browserInfos(request.browserInfos() != null ? request.browserInfos() : existingSession.getBrowserInfos())
+                .browserInfo(request.browserInfo() != null ? request.browserInfo() : existingSession.getBrowserInfo())
                 .isActive(request.isActive() != null ? request.isActive() : existingSession.getIsActive())
                 .isAuthenticated(request.isAuthenticated() != null ? request.isAuthenticated() : existingSession.getIsAuthenticated())
                 .build();
@@ -133,9 +133,7 @@ public class BotAuthController {
         return SessionRes.builder()
                 .sessionId(session.getSessionId())
                 .ip(session.getIp())
-                .browserInfos(session.getBrowserInfos() != null ? 
-                        new ArrayList<>(session.getBrowserInfos()) : 
-                        new ArrayList<>())
+                .browserInfo(session.getBrowserInfo())
                 .isActive(session.getIsActive())
                 .isDeleted(session.getIsDeleted())
                 .isAuthenticated(session.getIsAuthenticated())
