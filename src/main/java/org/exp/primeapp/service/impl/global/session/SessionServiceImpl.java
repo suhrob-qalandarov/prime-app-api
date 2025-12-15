@@ -299,6 +299,16 @@ public class SessionServiceImpl implements SessionService {
         }
         
         Session session = createNewSession(request);
+        
+        if (user != null) {
+            migrateSessionToUser(session.getSessionId(), user);
+            session = getSessionById(session.getSessionId());
+            String token = jwtCookieService.generateToken(user, session, request);
+            setAccessToken(session.getSessionId(), token);
+            jwtCookieService.setJwtCookie(token, jwtCookieService.getCookieNameUser(), response, request);
+            return token;
+        }
+        
         String token = jwtCookieService.generateAccessTokenForAnonymous(session, request);
         setAccessToken(session.getSessionId(), token);
         jwtCookieService.setJwtCookie(token, jwtCookieService.getCookieNameUser(), response, request);
