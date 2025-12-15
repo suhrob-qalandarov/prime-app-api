@@ -281,6 +281,7 @@ public class FilterChainConfig {
                 "X-Real-IP"
         ));
         configuration.setAllowCredentials(true);
+        configuration.setMaxAge(3600L); // Cache preflight requests for 1 hour
         configuration.setExposedHeaders(Arrays.asList(
                 "Authorization",
                 "Content-Type",
