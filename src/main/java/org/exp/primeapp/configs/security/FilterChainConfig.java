@@ -25,6 +25,7 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
+import jakarta.servlet.http.HttpServletResponse;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -217,7 +218,14 @@ public class FilterChainConfig {
                         }).permitAll()
                         .anyRequest().authenticated())
                 .httpBasic(httpBasic -> httpBasic.realmName("Swagger UI"))
-                .authenticationManager(swaggerAuthManager);
+                .authenticationManager(swaggerAuthManager)
+                .exceptionHandling(ex -> ex.authenticationEntryPoint((request, response, authException) -> {
+                    // Return 401 instead of 403 for unauthenticated requests
+                    response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                    response.setHeader("WWW-Authenticate", "Basic realm=\"Swagger UI\"");
+                    response.setContentType("application/json");
+                    response.getWriter().write("{\"error\":\"Authentication required. Please provide Basic Auth credentials.\"}");
+                }));
         return http.build();
     }
     
