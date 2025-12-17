@@ -56,7 +56,7 @@ public class FilterChainConfig {
     private String localUrls;
 
     @Bean
-    public SecurityFilterChain configure(HttpSecurity http, JwtCookieFilter mySecurityFilter, IpWhitelistFilter ipWhitelistFilter) throws Exception {
+    public SecurityFilterChain configure(HttpSecurity http, JwtCookieFilter mySecurityFilter) throws Exception {
         // Exclude Swagger endpoints from main filter chain (handled by swaggerSecurityFilterChain)
         http.securityMatcher(request -> {
             String path = request.getRequestURI();
@@ -194,8 +194,7 @@ public class FilterChainConfig {
                         .anyRequest().authenticated()
         );
 
-        // Add IP whitelist filter before JWT filter
-        http.addFilterBefore(ipWhitelistFilter, UsernamePasswordAuthenticationFilter.class);
+        // Add JWT filter
         http.addFilterBefore(mySecurityFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
