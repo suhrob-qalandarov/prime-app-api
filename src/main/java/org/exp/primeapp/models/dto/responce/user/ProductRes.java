@@ -16,7 +16,7 @@ public record ProductRes(
         String category,
         String description,
         BigDecimal price,
-        BigDecimal originalPrice,
+        BigDecimal discountPrice,
         Integer discount,
         List<String> images,
         List<ProductSizeRes> sizes

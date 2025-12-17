@@ -15,6 +15,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 import static java.util.stream.Collectors.toList;
@@ -121,6 +122,18 @@ public class ProductServiceImpl implements ProductService {
                 .map(size -> new ProductSizeRes(size.getSize(), size.getAmount()))
                 .collect(toList());
 
+        // Discount'ni hisoblab discountPrice'ni set qilish
+        BigDecimal price = product.getPrice();
+        Integer discount = product.getDiscount() != null ? product.getDiscount() : 0;
+        BigDecimal discountPrice = price;
+        
+        if (discount > 0 && discount <= 100) {
+            // discountPrice = price - (price * discount / 100)
+            BigDecimal discountAmount = price.multiply(BigDecimal.valueOf(discount))
+                    .divide(BigDecimal.valueOf(100), 2, java.math.RoundingMode.HALF_UP);
+            discountPrice = price.subtract(discountAmount);
+        }
+
         return new ProductRes(
                 product.getId(),
                 product.getName(),
@@ -130,9 +143,9 @@ public class ProductServiceImpl implements ProductService {
                 product.getTag().name(),
                 product.getCategory().getName(),
                 product.getDescription(),
-                product.getPrice(),
-                product.getPrice(),
-                product.getDiscount(),
+                price,
+                discountPrice,
+                discount,
                 attachmentUrls,
                 productSizes
         );
