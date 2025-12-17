@@ -26,9 +26,7 @@ import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import jakarta.servlet.http.HttpServletResponse;
-import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.List;
 
 import static org.exp.primeapp.utils.Const.*;
 
@@ -253,60 +251,22 @@ public class FilterChainConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
 
-        List<String> allowedOriginPatterns = new ArrayList<>();
+        // Allow all origins - CORS o'chirildi, barcha so'rovlar qabul qilinadi
+        configuration.setAllowedOriginPatterns(Arrays.asList("*"));
         
-        // Add main URL and API URL (with and without trailing slash)
-        if (mainUrl != null && !mainUrl.isEmpty()) {
-            allowedOriginPatterns.add(mainUrl);
-            allowedOriginPatterns.add(mainUrl + "/");
-        }
-        if (apiUrl != null && !apiUrl.isEmpty()) {
-            allowedOriginPatterns.add(apiUrl);
-            allowedOriginPatterns.add(apiUrl + "/");
-        }
-
-        // Add local URLs from properties (comma-separated)
-        if (localUrls != null && !localUrls.isEmpty()) {
-            String[] localUrlArray = localUrls.split(",");
-            for (String url : localUrlArray) {
-                String trimmedUrl = url.trim();
-                if (!trimmedUrl.isEmpty() && !allowedOriginPatterns.contains(trimmedUrl)) {
-                    allowedOriginPatterns.add(trimmedUrl);
-                    // Also add with trailing slash
-                    if (!trimmedUrl.endsWith("/")) {
-                        allowedOriginPatterns.add(trimmedUrl + "/");
-                    }
-                }
-            }
-        }
-
-        // Use setAllowedOriginPatterns instead of setAllowedOrigins when allowCredentials is true
-        // This allows for more flexible origin matching
-        configuration.setAllowedOriginPatterns(allowedOriginPatterns);
-
-        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "HEAD"));
-        configuration.setAllowedHeaders(Arrays.asList(
-                "Authorization", 
-                "Content-Type", 
-                "X-Requested-With",
-                "Accept",
-                "Origin",
-                "Access-Control-Request-Method",
-                "Access-Control-Request-Headers",
-                "X-Forwarded-For",
-                "X-Real-IP",
-                "Accept-Language",
-                "Cache-Control",
-                "Pragma"
-        ));
-        configuration.setAllowCredentials(true);
+        // Allow all methods
+        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "HEAD", "*"));
+        
+        // Allow all headers
+        configuration.setAllowedHeaders(Arrays.asList("*"));
+        
+        // Allow credentials must be false when using wildcard origin
+        configuration.setAllowCredentials(false);
+        
         configuration.setMaxAge(3600L); // Cache preflight requests for 1 hour
-        configuration.setExposedHeaders(Arrays.asList(
-                "Authorization",
-                "Content-Type",
-                "Access-Control-Allow-Origin",
-                "Access-Control-Allow-Credentials"
-        ));
+        
+        // Expose all headers
+        configuration.setExposedHeaders(Arrays.asList("*"));
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);
