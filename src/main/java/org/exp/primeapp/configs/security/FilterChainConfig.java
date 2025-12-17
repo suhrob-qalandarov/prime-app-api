@@ -26,9 +26,7 @@ import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import jakarta.servlet.http.HttpServletResponse;
-import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.List;
 
 import static org.exp.primeapp.utils.Const.*;
 
@@ -256,73 +254,18 @@ public class FilterChainConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
 
-        List<String> allowedOriginPatterns = new ArrayList<>();
+        // CORS o'chirildi - barcha originlarga ruxsat berildi
+        configuration.setAllowedOriginPatterns(Arrays.asList("*"));
+        configuration.setAllowedMethods(Arrays.asList("*"));
+        configuration.setAllowedHeaders(Arrays.asList("*"));
         
-        // Add main URL and API URL (frontend va backend) - exact match
-        if (mainUrl != null && !mainUrl.isEmpty()) {
-            String cleanMainUrl = mainUrl.endsWith("/") ? mainUrl.substring(0, mainUrl.length() - 1) : mainUrl;
-            allowedOriginPatterns.add(cleanMainUrl);
-        }
-        if (apiUrl != null && !apiUrl.isEmpty()) {
-            String cleanApiUrl = apiUrl.endsWith("/") ? apiUrl.substring(0, apiUrl.length() - 1) : apiUrl;
-            allowedOriginPatterns.add(cleanApiUrl);
-        }
-
-        // Add local URLs from properties (comma-separated)
-        if (localUrls != null && !localUrls.isEmpty()) {
-            String[] localUrlArray = localUrls.split(",");
-            for (String url : localUrlArray) {
-                String trimmedUrl = url.trim();
-                if (!trimmedUrl.isEmpty() && !allowedOriginPatterns.contains(trimmedUrl)) {
-                    allowedOriginPatterns.add(trimmedUrl);
-                }
-            }
-        }
-        
-        // Debug: log allowed origins
-        System.out.println("CORS Allowed Origins: " + allowedOriginPatterns);
-
-        // Allow all methods
-        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "HEAD"));
-        
-        // Allow all headers - aniq headerlar ro'yxati
-        configuration.setAllowedHeaders(Arrays.asList(
-                "Authorization",
-                "Content-Type",
-                "X-Requested-With",
-                "Accept",
-                "Origin",
-                "Access-Control-Request-Method",
-                "Access-Control-Request-Headers",
-                "X-Forwarded-For",
-                "X-Real-IP",
-                "Accept-Language",
-                "Cache-Control",
-                "Pragma",
-                "Cookie",
-                "Set-Cookie"
-        ));
-        
-        // Allow credentials - frontend credentials: 'include' bilan ishlashi uchun
-        configuration.setAllowCredentials(true);
-        
-        // Use setAllowedOriginPatterns - supports exact matches and patterns
-        // IMPORTANT: This must be set AFTER allowCredentials
-        configuration.setAllowedOriginPatterns(allowedOriginPatterns);
+        // Wildcard origin bilan allowCredentials false bo'lishi kerak
+        configuration.setAllowCredentials(false);
         
         configuration.setMaxAge(3600L); // Cache preflight requests for 1 hour
-        
-        // Expose headers
-        configuration.setExposedHeaders(Arrays.asList(
-                "Authorization",
-                "Content-Type",
-                "Access-Control-Allow-Origin",
-                "Access-Control-Allow-Credentials",
-                "Set-Cookie"
-        ));
+        configuration.setExposedHeaders(Arrays.asList("*"));
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-        // Register CORS for all paths
         source.registerCorsConfiguration("/**", configuration);
 
         return source;
