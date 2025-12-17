@@ -45,6 +45,9 @@ public class JwtCookieFilter extends OncePerRequestFilter {
             filterChain.doFilter(request, response);
             return;
         }
+        
+        // Public endpoints - token bo'lmasa ham o'tkazib yuborish
+        boolean isPublicEndpoint = isPublicEndpoint(requestPath, request.getMethod());
 
         // Get token from header
         String authHeader = request.getHeader(AUTHORIZATION);
@@ -88,19 +91,30 @@ public class JwtCookieFilter extends OncePerRequestFilter {
             // Skip logging for actuator health endpoint to reduce log noise
             if (!requestPath.startsWith("/actuator/health")) {
                 log.info("Token extracted from cookie: {}", token != null ? "***" : null);
-                if (token == null) {
+                if (token == null && !isPublicEndpoint) {
                     log.warn("No JWT token found in cookies or header for request: {} from origin: {}", 
                             request.getRequestURI(), request.getHeader("Origin"));
                 }
             }
         }
 
+        // Public endpoint'lar uchun token bo'lmasa ham o'tkazib yuborish
+        if (token == null && isPublicEndpoint) {
+            log.debug("Public endpoint without token - allowing request: {}", requestPath);
+            filterChain.doFilter(request, response);
+            return;
+        }
+
         if (token != null) {
             try {
-                // Step 1: Token validation (IP solishtirish, isAuthenticated tekshirish)
+                // Step 1: Token validation (IP solishtirish)
                 if (!jwtService.validateToken(token, request)) {
                     log.warn("Token validation failed");
-                    clearCookieAndSend403(response, request);
+                    if (isPublicEndpoint) {
+                        send401(response, "Invalid session token");
+                    } else {
+                        clearCookieAndSend403(response, request, isPublicEndpoint);
+                    }
                     return;
                 }
 
@@ -108,7 +122,11 @@ public class JwtCookieFilter extends OncePerRequestFilter {
                 String sessionId = jwtService.getSessionIdFromToken(token);
                 if (sessionId == null) {
                     log.warn("Token does not contain sessionId");
-                    clearCookieAndSend403(response, request);
+                    if (isPublicEndpoint) {
+                        send401(response, "Invalid session token");
+                    } else {
+                        clearCookieAndSend403(response, request, isPublicEndpoint);
+                    }
                     return;
                 }
 
@@ -116,7 +134,11 @@ public class JwtCookieFilter extends OncePerRequestFilter {
                 Optional<Boolean> isDeletedOpt = sessionRepository.findIsDeletedBySessionId(sessionId);
                 if (isDeletedOpt.isPresent() && Boolean.TRUE.equals(isDeletedOpt.get())) {
                     log.warn("Session is deleted: {}", sessionId);
-                    clearCookieAndSend403(response, request);
+                    if (isPublicEndpoint) {
+                        send401(response, "Session expired");
+                    } else {
+                        clearCookieAndSend403(response, request, isPublicEndpoint);
+                    }
                     return;
                 }
 
@@ -134,36 +156,93 @@ public class JwtCookieFilter extends OncePerRequestFilter {
 
             } catch (Exception e) {
                 log.error("Token validation error: {}", e.getMessage(), e);
-                clearCookieAndSend403(response, request);
+                if (isPublicEndpoint) {
+                    send401(response, "Invalid session token");
+                } else {
+                    clearCookieAndSend403(response, request, isPublicEndpoint);
+                }
                 return;
             }
         }
         filterChain.doFilter(request, response);
     }
 
-    private void clearCookieAndSend403(HttpServletResponse response, HttpServletRequest request) {
+    private void clearCookieAndSend403(HttpServletResponse response, HttpServletRequest request, boolean isPublicEndpoint) {
         try {
-            // Clear JWT cookie
-            jakarta.servlet.http.Cookie cookie = new jakarta.servlet.http.Cookie("prime-user-token", null);
-            cookie.setMaxAge(0);
-            cookie.setPath("/");
-            cookie.setHttpOnly(true);
-            cookie.setSecure(true);
-            response.addCookie(cookie);
+            // Public endpoint'lar uchun cookie clear qilmaslik
+            if (!isPublicEndpoint) {
+                // Clear JWT cookie
+                jakarta.servlet.http.Cookie cookie = new jakarta.servlet.http.Cookie("prime-user-token", null);
+                cookie.setMaxAge(0);
+                cookie.setPath("/");
+                cookie.setHttpOnly(true);
+                cookie.setSecure(true);
+                response.addCookie(cookie);
 
-            jakarta.servlet.http.Cookie cookieAdmin = new jakarta.servlet.http.Cookie("prime-admin-token", null);
-            cookieAdmin.setMaxAge(0);
-            cookieAdmin.setPath("/");
-            cookieAdmin.setHttpOnly(true);
-            cookieAdmin.setSecure(true);
-            response.addCookie(cookieAdmin);
+                jakarta.servlet.http.Cookie cookieAdmin = new jakarta.servlet.http.Cookie("prime-admin-token", null);
+                cookieAdmin.setMaxAge(0);
+                cookieAdmin.setPath("/");
+                cookieAdmin.setHttpOnly(true);
+                cookieAdmin.setSecure(true);
+                response.addCookie(cookieAdmin);
+            }
 
-            // Send 403 response
-            response.setStatus(HttpServletResponse.SC_FORBIDDEN);
-            response.setContentType("application/json");
-            response.getWriter().write("{\"error\":\"Session revoked\",\"message\":\"Your session has been revoked. Please login again.\"}");
+            // Send response
+            if (isPublicEndpoint) {
+                response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                response.setContentType("application/json");
+                response.getWriter().write("{\"error\":\"Unauthorized\",\"message\":\"Invalid session token\"}");
+            } else {
+                response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+                response.setContentType("application/json");
+                response.getWriter().write("{\"error\":\"Session revoked\",\"message\":\"Your session has been revoked. Please login again.\"}");
+            }
         } catch (IOException e) {
-            log.error("Error clearing cookie and sending 403: {}", e.getMessage());
+            log.error("Error sending response: {}", e.getMessage());
         }
+    }
+
+    private void send401(HttpServletResponse response, String message) {
+        try {
+            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+            response.setContentType("application/json");
+            response.getWriter().write("{\"error\":\"Unauthorized\",\"message\":\"" + message + "\"}");
+        } catch (IOException e) {
+            log.error("Error sending 401: {}", e.getMessage());
+        }
+    }
+
+    /**
+     * Public endpoint'ni tekshirish
+     */
+    private boolean isPublicEndpoint(String requestPath, String method) {
+        // Public GET endpoints
+        if ("GET".equals(method)) {
+            // Public product endpoints
+            if (requestPath.startsWith("/api/v1/product") ||
+                requestPath.equals("/api/v1/products") ||
+                requestPath.startsWith("/api/v1/products/by-category/")) {
+                return true;
+            }
+            
+            // Public category endpoints
+            if (requestPath.equals("/api/v1/category") ||
+                requestPath.equals("/api/v1/category/**") ||
+                requestPath.equals("/api/v1/categories") ||
+                requestPath.equals("/api/v1/categories/**") ||
+                requestPath.startsWith("/api/v1/category/")) {
+                return true;
+            }
+        }
+        
+        // Public POST endpoints
+        if ("POST".equals(method)) {
+            if (requestPath.equals("/api/v2/auth/session") ||
+                requestPath.startsWith("/api/v2/auth/code/")) {
+                return true;
+            }
+        }
+        
+        return false;
     }
 }

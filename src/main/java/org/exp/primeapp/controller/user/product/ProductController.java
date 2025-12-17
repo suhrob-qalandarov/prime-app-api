@@ -1,8 +1,13 @@
 package org.exp.primeapp.controller.user.product;
 
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
+import org.exp.primeapp.configs.security.JwtCookieService;
 import org.exp.primeapp.models.dto.responce.user.ProductRes;
 import org.exp.primeapp.models.dto.responce.user.page.PageRes;
+import org.exp.primeapp.models.entities.Session;
+import org.exp.primeapp.service.face.global.session.SessionService;
 import org.exp.primeapp.service.face.user.ProductService;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
@@ -17,22 +22,111 @@ import static org.exp.primeapp.utils.Const.*;
 public class ProductController {
 
     private final ProductService productService;
+    private final JwtCookieService jwtCookieService;
+    private final SessionService sessionService;
 
     @GetMapping("/{productId}")
-    public ResponseEntity<ProductRes> getProduct(@PathVariable Long productId) {
-        ProductRes product = productService.getProductById(productId);
-        return new ResponseEntity<>(product, HttpStatus.OK);
+    public ResponseEntity<?> getProduct(
+            @PathVariable Long productId,
+            HttpServletRequest request,
+            HttpServletResponse response) {
+        return handleSessionTokenRequest("product", request, response, () -> {
+            ProductRes product = productService.getProductById(productId);
+            return ResponseEntity.ok(product);
+        });
     }
 
     @GetMapping
-    public ResponseEntity<PageRes<ProductRes>> getProducts(Pageable pageable) {
-        PageRes<ProductRes> pageableProducts = productService.getActiveProducts(pageable);
-        return new ResponseEntity<>(pageableProducts, HttpStatus.OK);
+    public ResponseEntity<?> getProducts(
+            Pageable pageable,
+            HttpServletRequest request,
+            HttpServletResponse response) {
+        return handleSessionTokenRequest("product", request, response, () -> {
+            PageRes<ProductRes> pageableProducts = productService.getActiveProducts(pageable);
+            return ResponseEntity.ok(pageableProducts);
+        });
     }
 
     @GetMapping("/by-category/{categoryId}")
-    public ResponseEntity<PageRes<ProductRes>> getProductsByCategory(@PathVariable Long categoryId, Pageable pageable) {
-        PageRes<ProductRes> pageableProducts = productService.getProductsByCategoryId(categoryId, pageable);
-        return new ResponseEntity<>(pageableProducts, HttpStatus.OK);
+    public ResponseEntity<?> getProductsByCategory(
+            @PathVariable Long categoryId,
+            Pageable pageable,
+            HttpServletRequest request,
+            HttpServletResponse response) {
+        return handleSessionTokenRequest("product", request, response, () -> {
+            PageRes<ProductRes> pageableProducts = productService.getProductsByCategoryId(categoryId, pageable);
+            return ResponseEntity.ok(pageableProducts);
+        });
+    }
+
+    /**
+     * Session token bilan ishlash - count tekshirish va yangilash
+     */
+    private ResponseEntity<?> handleSessionTokenRequest(
+            String countType,
+            HttpServletRequest request,
+            HttpServletResponse response,
+            java.util.function.Supplier<ResponseEntity<?>> successHandler) {
+        
+        // Session token olish
+        String token = jwtCookieService.extractTokenFromCookie(request);
+        
+        // Agar token yo'q bo'lsa, yangi session yaratish
+        if (token == null) {
+            Session session = sessionService.getOrCreateSession(request, response);
+            token = jwtCookieService.generateAccessTokenForAnonymous(session, request);
+            sessionService.setAccessToken(session.getSessionId(), token);
+            jwtCookieService.setJwtCookie(token, jwtCookieService.getCookieNameUser(), response, request);
+        }
+        
+        // Count olish
+        Integer count = countType.equals("product") 
+                ? jwtCookieService.getProductCount(token)
+                : jwtCookieService.getCategoryCount(token);
+        
+        if (count > 0) {
+            // Count > 0: count--, token yangilash, deliver
+            try {
+                String sessionId = jwtCookieService.getSessionIdFromToken(token);
+                Session session = sessionService.getSessionById(sessionId);
+                if (session == null) {
+                    // Session topilmasa, yangi yaratish
+                    session = sessionService.getOrCreateSession(request, response);
+                }
+                
+                String newToken = jwtCookieService.updateTokenWithDecrementedCount(token, countType, request, session);
+                jwtCookieService.setJwtCookie(newToken, jwtCookieService.getCookieNameUser(), response, request);
+                sessionService.setAccessToken(session.getSessionId(), newToken);
+                
+                return successHandler.get();
+            } catch (Exception e) {
+                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+            }
+        } else {
+            // Count = 0
+            boolean expired = jwtCookieService.isDataExpired(token);
+            
+            if (expired) {
+                // Expired: yangi token (count = -1), deliver
+                try {
+                    String sessionId = jwtCookieService.getSessionIdFromToken(token);
+                    Session session = sessionService.getSessionById(sessionId);
+                    if (session == null) {
+                        session = sessionService.getOrCreateSession(request, response);
+                    }
+                    
+                    String newToken = jwtCookieService.generateNewTokenWithCount(countType, -1, session, request);
+                    jwtCookieService.setJwtCookie(newToken, jwtCookieService.getCookieNameUser(), response, request);
+                    sessionService.setAccessToken(session.getSessionId(), newToken);
+                    
+                    return successHandler.get();
+                } catch (Exception e) {
+                    return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+                }
+            } else {
+                // Valid: 418 I'm a teapot response
+                return ResponseEntity.status(HttpStatus.I_AM_A_TEAPOT).build();
+            }
+        }
     }
 }

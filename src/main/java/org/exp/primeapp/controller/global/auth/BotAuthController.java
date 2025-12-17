@@ -11,20 +11,22 @@ import org.exp.primeapp.models.dto.responce.user.SessionRes;
 import org.exp.primeapp.models.dto.responce.user.UserRes;
 import org.exp.primeapp.models.entities.Session;
 import org.exp.primeapp.models.entities.User;
+import org.exp.primeapp.configs.security.JwtCookieService;
 import org.exp.primeapp.service.face.global.auth.AuthService;
 import org.exp.primeapp.service.face.global.session.SessionService;
 import org.exp.primeapp.service.face.user.UserService;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
 import static org.exp.primeapp.utils.Const.*;
 
+@Slf4j
 @RestController
 @RequiredArgsConstructor
 @RequestMapping(API + V2 + AUTH)
@@ -33,6 +35,7 @@ public class BotAuthController {
     private final AuthService authService;
     private final UserService userService;
     private final SessionService sessionService;
+    private final JwtCookieService jwtCookieService;
 
     @Operation(security = @SecurityRequirement(name = "Authorization"))
     @GetMapping("/me")
@@ -67,12 +70,77 @@ public class BotAuthController {
     // ========== Session CRUD Endpoints ==========
 
     @PostMapping("/session")
-    public ResponseEntity<String> createSession(
-            @AuthenticationPrincipal User user,
+    public ResponseEntity<?> createSession(
             HttpServletRequest httpRequest,
             HttpServletResponse httpResponse) {
-        String token = sessionService.createSessionWithToken(user, httpRequest, httpResponse);
-        return ResponseEntity.status(HttpStatus.CREATED).body(token);
+        
+        // Avval token ni cookie'dan olish
+        String token = jwtCookieService.extractTokenFromCookie(httpRequest);
+        
+        // SessionId ni olish (token'dan yoki ANONYMOUS_SESSION cookie'dan)
+        String sessionId = null;
+        
+        if (token != null) {
+            try {
+                sessionId = jwtCookieService.getSessionIdFromToken(token);
+            } catch (Exception e) {
+                log.debug("Failed to get sessionId from token: {}", e.getMessage());
+            }
+        }
+        
+        // Agar token'dan olinmasa, ANONYMOUS_SESSION cookie'dan olish
+        if (sessionId == null) {
+            sessionId = sessionService.getSessionIdFromCookie(httpRequest);
+        }
+        
+        // Agar sessionId bo'lsa, DB dan tekshirish
+        if (sessionId != null) {
+            Session existingSession = sessionService.getSessionById(sessionId);
+            
+            if (existingSession != null && 
+                existingSession.getIsActive() && 
+                !Boolean.TRUE.equals(existingSession.getIsDeleted())) {
+                
+                // Session faol va o'chirilmagan
+                if (token == null) {
+                    // Token cookie'da yo'q, lekin sessionId bor
+                    // Session'dan token ni olish yoki yangi yaratish
+                    String existingToken = sessionService.getAccessToken(sessionId);
+                    
+                    if (existingToken != null) {
+                        // Session'da token bor - cookie ga set qilish
+                        jwtCookieService.setJwtCookie(existingToken, jwtCookieService.getCookieNameUser(), httpResponse, httpRequest);
+                        return ResponseEntity.status(HttpStatus.CREATED).body(existingToken);
+                    } else {
+                        // Session'da token yo'q - yangi token yaratish
+                        String newToken = jwtCookieService.generateAccessTokenForAnonymous(existingSession, httpRequest);
+                        sessionService.setAccessToken(sessionId, newToken);
+                        jwtCookieService.setJwtCookie(newToken, jwtCookieService.getCookieNameUser(), httpResponse, httpRequest);
+                        return ResponseEntity.status(HttpStatus.CREATED).body(newToken);
+                    }
+                } else {
+                    // Token ham bor, sessionId ham bor - 201 qaytarish, hech narsa qilmaslik
+                    return ResponseEntity.status(HttpStatus.CREATED).build();
+                }
+            }
+        }
+        
+        // SessionId yo'q yoki session faol emas - yangi session yaratish
+        Session newSession = sessionService.createSession(httpRequest);
+        String newSessionId = newSession.getSessionId();
+        
+        // ANONYMOUS_SESSION cookie ga sessionId set qilish
+        sessionService.setSessionCookie(newSessionId, httpResponse);
+        
+        // Token yaratish
+        String newToken = jwtCookieService.generateAccessTokenForAnonymous(newSession, httpRequest);
+        sessionService.setAccessToken(newSessionId, newToken);
+        
+        // Token ni cookie ga set qilish
+        jwtCookieService.setJwtCookie(newToken, jwtCookieService.getCookieNameUser(), httpResponse, httpRequest);
+        
+        // 200 status va token qaytarish
+        return ResponseEntity.status(HttpStatus.OK).body(newToken);
     }
 
     @Operation(security = @SecurityRequirement(name = "Authorization"))
