@@ -253,28 +253,38 @@ public class FilterChainConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
 
-        List<String> allowedOrigins = new ArrayList<>();
-        allowedOrigins.add(mainUrl);
-        allowedOrigins.add(apiUrl);
+        List<String> allowedOriginPatterns = new ArrayList<>();
         
-        // Always add localhost URLs for local development
-        allowedOrigins.add("http://localhost:8080");
-        allowedOrigins.add("http://localhost");
+        // Add main URL and API URL (with and without trailing slash)
+        if (mainUrl != null && !mainUrl.isEmpty()) {
+            allowedOriginPatterns.add(mainUrl);
+            allowedOriginPatterns.add(mainUrl + "/");
+        }
+        if (apiUrl != null && !apiUrl.isEmpty()) {
+            allowedOriginPatterns.add(apiUrl);
+            allowedOriginPatterns.add(apiUrl + "/");
+        }
 
         // Add local URLs from properties (comma-separated)
         if (localUrls != null && !localUrls.isEmpty()) {
             String[] localUrlArray = localUrls.split(",");
             for (String url : localUrlArray) {
                 String trimmedUrl = url.trim();
-                if (!trimmedUrl.isEmpty() && !allowedOrigins.contains(trimmedUrl)) {
-                    allowedOrigins.add(trimmedUrl);
+                if (!trimmedUrl.isEmpty() && !allowedOriginPatterns.contains(trimmedUrl)) {
+                    allowedOriginPatterns.add(trimmedUrl);
+                    // Also add with trailing slash
+                    if (!trimmedUrl.endsWith("/")) {
+                        allowedOriginPatterns.add(trimmedUrl + "/");
+                    }
                 }
             }
         }
 
-        configuration.setAllowedOrigins(allowedOrigins);
+        // Use setAllowedOriginPatterns instead of setAllowedOrigins when allowCredentials is true
+        // This allows for more flexible origin matching
+        configuration.setAllowedOriginPatterns(allowedOriginPatterns);
 
-        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
+        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "HEAD"));
         configuration.setAllowedHeaders(Arrays.asList(
                 "Authorization", 
                 "Content-Type", 
@@ -284,7 +294,10 @@ public class FilterChainConfig {
                 "Access-Control-Request-Method",
                 "Access-Control-Request-Headers",
                 "X-Forwarded-For",
-                "X-Real-IP"
+                "X-Real-IP",
+                "Accept-Language",
+                "Cache-Control",
+                "Pragma"
         ));
         configuration.setAllowCredentials(true);
         configuration.setMaxAge(3600L); // Cache preflight requests for 1 hour
