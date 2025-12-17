@@ -379,4 +379,247 @@ public class JwtCookieService {
     public String getCookieNameAdmin() {
         return cookieNameAdmin;
     }
+
+    /**
+     * Token'dan product count olish
+     */
+    public Integer getProductCount(String token) {
+        try {
+            Claims claims = Jwts.parser()
+                    .verifyWith(getSecretKey())
+                    .build()
+                    .parseSignedClaims(token)
+                    .getPayload();
+            
+            @SuppressWarnings("unchecked")
+            Map<String, Object> dataClaims = (Map<String, Object>) claims.get("data");
+            if (dataClaims == null) {
+                return 0;
+            }
+            
+            @SuppressWarnings("unchecked")
+            Map<String, Integer> counts = (Map<String, Integer>) dataClaims.get("counts");
+            if (counts == null) {
+                return 0;
+            }
+            
+            return counts.getOrDefault("product", 0);
+        } catch (Exception e) {
+            log.warn("Failed to get product count from token: {}", e.getMessage());
+            return 0;
+        }
+    }
+
+    /**
+     * Token'dan category count olish
+     */
+    public Integer getCategoryCount(String token) {
+        try {
+            Claims claims = Jwts.parser()
+                    .verifyWith(getSecretKey())
+                    .build()
+                    .parseSignedClaims(token)
+                    .getPayload();
+            
+            @SuppressWarnings("unchecked")
+            Map<String, Object> dataClaims = (Map<String, Object>) claims.get("data");
+            if (dataClaims == null) {
+                return 0;
+            }
+            
+            @SuppressWarnings("unchecked")
+            Map<String, Integer> counts = (Map<String, Integer>) dataClaims.get("counts");
+            if (counts == null) {
+                return 0;
+            }
+            
+            return counts.getOrDefault("category", 0);
+        } catch (Exception e) {
+            log.warn("Failed to get category count from token: {}", e.getMessage());
+            return 0;
+        }
+    }
+
+    /**
+     * Data expiry tekshirish (data.exp tekshiriladi)
+     */
+    public boolean isDataExpired(String token) {
+        try {
+            Claims claims = Jwts.parser()
+                    .verifyWith(getSecretKey())
+                    .build()
+                    .parseSignedClaims(token)
+                    .getPayload();
+            
+            @SuppressWarnings("unchecked")
+            Map<String, Object> dataClaims = (Map<String, Object>) claims.get("data");
+            if (dataClaims == null) {
+                return true;
+            }
+            
+            Object expObj = dataClaims.get("exp");
+            if (expObj == null) {
+                return true;
+            }
+            
+            Long exp = ((Number) expObj).longValue();
+            long currentTime = System.currentTimeMillis() / 1000;
+            
+            return exp < currentTime;
+        } catch (Exception e) {
+            log.warn("Failed to check data expiry: {}", e.getMessage());
+            return true;
+        }
+    }
+
+    /**
+     * Count'ni kamaytirib token yangilash - faqat count o'zgaradi, boshqa ma'lumotlar o'zgarishmaydi
+     */
+    @Transactional
+    public String updateTokenWithDecrementedCount(String token, String countType, HttpServletRequest request, Session session) {
+        try {
+            Claims claims = Jwts.parser()
+                    .verifyWith(getSecretKey())
+                    .build()
+                    .parseSignedClaims(token)
+                    .getPayload();
+            
+            // Eski ma'lumotlarni olish (barcha ma'lumotlar o'zgarishmasligi kerak)
+            String sessionId = claims.get("sessionId", String.class);
+            String ip = claims.get("ip", String.class);
+            String browserInfo = claims.get("browserInfo", String.class);
+            Boolean isAuthenticated = claims.get("isAuthenticated", Boolean.class);
+            @SuppressWarnings("unchecked")
+            Map<String, Object> userClaims = (Map<String, Object>) claims.get("user");
+            
+            // Eski issuedAt va expiration ni olish
+            Date issuedAt = claims.getIssuedAt();
+            Date expiration = claims.getExpiration();
+            
+            // Data claims ni olish va faqat count ni yangilash
+            @SuppressWarnings("unchecked")
+            Map<String, Object> dataClaims = (Map<String, Object>) claims.get("data");
+            if (dataClaims == null) {
+                dataClaims = new HashMap<>();
+                // Agar data yo'q bo'lsa, default qiymatlar qo'shish
+                Date now = new Date();
+                dataClaims.put("iat", now.getTime() / 1000);
+                dataClaims.put("exp", new Date(now.getTime() + dataExpiryMinutes * 60 * 1000L).getTime() / 1000);
+            }
+            
+            // Eski iat va exp ni saqlash
+            Object iat = dataClaims.get("iat");
+            Object exp = dataClaims.get("exp");
+            
+            @SuppressWarnings("unchecked")
+            Map<String, Integer> counts = (Map<String, Integer>) dataClaims.get("counts");
+            if (counts == null) {
+                counts = new HashMap<>();
+            }
+            
+            // Faqat count'ni kamaytirish
+            int currentCount = counts.getOrDefault(countType, 0);
+            counts.put(countType, Math.max(0, currentCount - 1));
+            
+            // Data claims ni yangilash - faqat counts o'zgaradi, iat va exp o'zgarishmaydi
+            Map<String, Object> newDataClaims = new HashMap<>();
+            newDataClaims.put("iat", iat);
+            newDataClaims.put("exp", exp);
+            newDataClaims.put("counts", counts);
+            
+            // Yangi token yaratish - barcha eski ma'lumotlar bilan
+            String newToken = Jwts.builder()
+                    .setSubject("SESSION")
+                    .claim("sessionId", sessionId)
+                    .claim("ip", ip)
+                    .claim("browserInfo", browserInfo)
+                    .claim("isAuthenticated", isAuthenticated)
+                    .claim("user", userClaims)
+                    .claim("data", newDataClaims)
+                    .issuedAt(issuedAt != null ? issuedAt : new Date())
+                    .expiration(expiration != null ? expiration : new Date(System.currentTimeMillis() + accessTokenExpiryDays * 24L * 60 * 60 * 1000))
+                    .signWith(getSecretKey(), SignatureAlgorithm.HS256)
+                    .compact();
+            
+            // Session'ga saqlash
+            if (session != null) {
+                session.setAccessToken(newToken);
+            }
+            
+            return newToken;
+        } catch (Exception e) {
+            log.error("Failed to update token with decremented count: {}", e.getMessage(), e);
+            throw new RuntimeException("Failed to update token", e);
+        }
+    }
+
+    /**
+     * Yangi token yaratish - expiry bugan bo'lsa, har bir count type uchun max count qiymatlarini application.properties'dan oladi
+     */
+    @Transactional
+    public String generateNewTokenWithCount(String countType, int count, Session session, HttpServletRequest request) {
+        User user = session.getUser();
+        
+        // Get current IP
+        String currentIp = ipAddressUtil.getClientIpAddress(request);
+        String browserInfo = session.getBrowserInfo();
+        
+        // Build user claims
+        Map<String, Object> userClaims = null;
+        List<String> rolesList = null;
+        if (user != null && user.getId() != null) {
+            rolesList = user.getRoles().stream()
+                    .map(Role::getAuthority)
+                    .collect(Collectors.toList());
+            
+            userClaims = new HashMap<>();
+            userClaims.put("id", user.getId());
+            userClaims.put("fullName", userUtil.truncateName(user.getFirstName() + " " + (user.getLastName() != null ? user.getLastName() : "")));
+            userClaims.put("telegramId", user.getTelegramId());
+            userClaims.put("roles", rolesList);
+        }
+        
+        // Build data object (counts, iat, exp)
+        Date now = new Date();
+        Date dataExpiry = new Date(now.getTime() + dataExpiryMinutes * 60 * 1000L);
+        
+        // Har bir count type uchun max count qiymatlarini application.properties'dan olish
+        Map<String, Integer> counts = new HashMap<>();
+        if (count == -1) {
+            // Expiry bugan bo'lsa, har bir count type uchun max count qiymatlarini olish
+            counts.put("category", maxCountCategory);
+            counts.put("product", maxCountProduct);
+            counts.put("attachment", maxCountAttachment);
+            counts.put("cart", maxCountCart);
+        } else {
+            // Agar count berilgan bo'lsa, faqat o'sha count type uchun count ni qo'yish
+            counts.put("category", countType.equals("category") ? count : 0);
+            counts.put("product", countType.equals("product") ? count : 0);
+            counts.put("attachment", countType.equals("attachment") ? count : 0);
+            counts.put("cart", countType.equals("cart") ? count : 0);
+        }
+        
+        Map<String, Object> dataClaims = new HashMap<>();
+        dataClaims.put("iat", now.getTime() / 1000);
+        dataClaims.put("exp", dataExpiry.getTime() / 1000);
+        dataClaims.put("counts", counts);
+        
+        String newToken = Jwts.builder()
+                .setSubject("SESSION")
+                .claim("sessionId", session.getSessionId())
+                .claim("ip", currentIp)
+                .claim("browserInfo", browserInfo)
+                .claim("isAuthenticated", session.getIsAuthenticated() != null ? session.getIsAuthenticated() : false)
+                .claim("user", userClaims)
+                .claim("data", dataClaims)
+                .issuedAt(now)
+                .expiration(new Date(now.getTime() + accessTokenExpiryDays * 24L * 60 * 60 * 1000))
+                .signWith(getSecretKey(), SignatureAlgorithm.HS256)
+                .compact();
+        
+        // Session'ga saqlash
+        session.setAccessToken(newToken);
+        
+        return newToken;
+    }
 }
