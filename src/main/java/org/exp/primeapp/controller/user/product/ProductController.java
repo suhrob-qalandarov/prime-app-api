@@ -100,10 +100,15 @@ public class ProductController {
                 jwtCookieService.setJwtCookie(newToken, jwtCookieService.getCookieNameUser(), response, request);
                 sessionService.setAccessToken(session.getSessionId(), newToken);
                 
+                // successHandler.get() exception tashlasa, GlobalExceptionHandler handle qiladi
                 return successHandler.get();
+            } catch (jakarta.persistence.EntityNotFoundException | org.springframework.web.server.ResponseStatusException e) {
+                // EntityNotFoundException va ResponseStatusException GlobalExceptionHandler ga o'tkazish
+                throw e;
             } catch (Exception e) {
+                // Faqat session token bilan bog'liq exception'larni catch qilish
                 log.error("Error in handleSessionTokenRequest (count > 0): {}", e.getMessage(), e);
-                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+                throw new RuntimeException("Session token processing failed: " + e.getMessage(), e);
             }
         } else {
             // Count = 0
@@ -122,10 +127,15 @@ public class ProductController {
                     jwtCookieService.setJwtCookie(newToken, jwtCookieService.getCookieNameUser(), response, request);
                     sessionService.setAccessToken(session.getSessionId(), newToken);
                     
+                    // successHandler.get() exception tashlasa, GlobalExceptionHandler handle qiladi
                     return successHandler.get();
+                } catch (jakarta.persistence.EntityNotFoundException | org.springframework.web.server.ResponseStatusException e) {
+                    // EntityNotFoundException va ResponseStatusException GlobalExceptionHandler ga o'tkazish
+                    throw e;
                 } catch (Exception e) {
+                    // Faqat session token bilan bog'liq exception'larni catch qilish
                     log.error("Error in handleSessionTokenRequest (expired): {}", e.getMessage(), e);
-                    return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+                    throw new RuntimeException("Session token processing failed: " + e.getMessage(), e);
                 }
             } else {
                 // Valid: 418 I'm a teapot response
