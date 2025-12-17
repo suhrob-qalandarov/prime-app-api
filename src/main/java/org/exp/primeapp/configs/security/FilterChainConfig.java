@@ -258,12 +258,14 @@ public class FilterChainConfig {
 
         List<String> allowedOriginPatterns = new ArrayList<>();
         
-        // Add main URL and API URL (frontend va backend)
+        // Add main URL and API URL (frontend va backend) - exact match
         if (mainUrl != null && !mainUrl.isEmpty()) {
-            allowedOriginPatterns.add(mainUrl);
+            String cleanMainUrl = mainUrl.endsWith("/") ? mainUrl.substring(0, mainUrl.length() - 1) : mainUrl;
+            allowedOriginPatterns.add(cleanMainUrl);
         }
         if (apiUrl != null && !apiUrl.isEmpty()) {
-            allowedOriginPatterns.add(apiUrl);
+            String cleanApiUrl = apiUrl.endsWith("/") ? apiUrl.substring(0, apiUrl.length() - 1) : apiUrl;
+            allowedOriginPatterns.add(cleanApiUrl);
         }
 
         // Add local URLs from properties (comma-separated)
@@ -276,6 +278,9 @@ public class FilterChainConfig {
                 }
             }
         }
+        
+        // Debug: log allowed origins
+        System.out.println("CORS Allowed Origins: " + allowedOriginPatterns);
 
         // Allow all methods
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "HEAD"));
@@ -302,6 +307,7 @@ public class FilterChainConfig {
         configuration.setAllowCredentials(true);
         
         // Use setAllowedOriginPatterns - supports exact matches and patterns
+        // IMPORTANT: This must be set AFTER allowCredentials
         configuration.setAllowedOriginPatterns(allowedOriginPatterns);
         
         configuration.setMaxAge(3600L); // Cache preflight requests for 1 hour
@@ -316,6 +322,7 @@ public class FilterChainConfig {
         ));
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        // Register CORS for all paths
         source.registerCorsConfiguration("/**", configuration);
 
         return source;
