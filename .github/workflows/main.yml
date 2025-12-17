@@ -133,8 +133,8 @@ jobs:
             echo "SWAGGER_UI_PASSWORD=${SWAGGER_UI_PASSWORD}" >> .env
             echo "IP_WHITELIST_ENABLED=${IP_WHITELIST_ENABLED:-false}" >> .env
             echo "IP_WHITELIST=${IP_WHITELIST:-}" >> .env
-            echo "MAIN_URL=${MAIN_URL:-https://prime.howdy.uz}" >> .env
-            echo "API_URL=${API_URL:-https://api.howdy.uz}" >> .env
+            echo "MAIN_URL=${MAIN_URL:-https://gourmet.uz}" >> .env
+            echo "API_URL=${API_URL:-https://api.gourmet.uz}" >> .env
 
       - name: Start database (if not running)
         uses: appleboy/ssh-action@v1.0.3
