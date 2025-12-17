@@ -3,6 +3,7 @@ package org.exp.primeapp.controller.user.product;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.exp.primeapp.configs.security.JwtCookieService;
 import org.exp.primeapp.models.dto.responce.user.ProductRes;
 import org.exp.primeapp.models.dto.responce.user.page.PageRes;
@@ -16,6 +17,7 @@ import org.springframework.web.bind.annotation.*;
 
 import static org.exp.primeapp.utils.Const.*;
 
+@Slf4j
 @RestController
 @RequestMapping(API + V1 + PRODUCT)
 @RequiredArgsConstructor
@@ -100,6 +102,7 @@ public class ProductController {
                 
                 return successHandler.get();
             } catch (Exception e) {
+                log.error("Error in handleSessionTokenRequest (count > 0): {}", e.getMessage(), e);
                 return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
             }
         } else {
@@ -121,6 +124,7 @@ public class ProductController {
                     
                     return successHandler.get();
                 } catch (Exception e) {
+                    log.error("Error in handleSessionTokenRequest (expired): {}", e.getMessage(), e);
                     return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
                 }
             } else {
