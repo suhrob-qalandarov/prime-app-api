@@ -40,7 +40,8 @@ public class JwtCookieFilter extends OncePerRequestFilter {
             requestPath.equals("/swagger-ui.html") ||
             requestPath.startsWith("/swagger-ui.html/") ||
             requestPath.startsWith("/actuator/health") ||
-            requestPath.equals("/api/v2/auth/session")) {
+            requestPath.equals("/api/v2/auth/session") ||
+            requestPath.startsWith("/api/v2/auth/code/")) {
             filterChain.doFilter(request, response);
             return;
         }
