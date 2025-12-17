@@ -161,11 +161,12 @@ public class JwtCookieService {
         Date now = new Date();
         Date dataExpiry = new Date(now.getTime() + dataExpiryMinutes * 60 * 1000L);
         
+        // Yangi session yaratilganda max count qiymatlarini o'rnatish
         Map<String, Integer> counts = new HashMap<>();
-        counts.put("category", 0);
-        counts.put("product", 0);
-        counts.put("attachment", 0);
-        counts.put("cart", 0);
+        counts.put("category", maxCountCategory);
+        counts.put("product", maxCountProduct);
+        counts.put("attachment", maxCountAttachment);
+        counts.put("cart", maxCountCart);
         
         Map<String, Object> dataClaims = new HashMap<>();
         dataClaims.put("iat", now.getTime() / 1000);  // Unix timestamp (seconds)
@@ -234,12 +235,8 @@ public class JwtCookieService {
                 return false;
             }
 
-            // Check isAuthenticated (top level dan)
-            Boolean isAuthenticated = claims.get("isAuthenticated", Boolean.class);
-            if (isAuthenticated == null || !isAuthenticated) {
-                log.warn("Session is not authenticated");
-                return false;
-            }
+            // isAuthenticated tekshirish olib tashlandi - anonymous session'lar uchun false bo'lishi mumkin
+            // Faqat token validligini tekshiramiz (IP, sessionId, type)
 
             return true;
         } catch (JwtException | IllegalArgumentException e) {
