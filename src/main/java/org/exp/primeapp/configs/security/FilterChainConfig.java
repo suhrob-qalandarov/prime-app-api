@@ -26,7 +26,9 @@ import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import jakarta.servlet.http.HttpServletResponse;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 
 import static org.exp.primeapp.utils.Const.*;
 
@@ -44,10 +46,10 @@ public class FilterChainConfig {
     @Value("${swagger.ui.password:admin123}")
     private String swaggerPassword;
 
-    @Value("${app.main.url:https://prime.howdy.uz}")
+    @Value("${app.main.url:https://gourmet.uz}")
     private String mainUrl;
 
-    @Value("${app.api.url:https://api.howdy.uz}")
+    @Value("${app.api.url:https://api.gourmet.uz}")
     private String apiUrl;
 
     @Value("${app.local.urls}")
@@ -254,19 +256,77 @@ public class FilterChainConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
 
-        // CORS o'chirildi - barcha originlarga ruxsat berildi
-        configuration.setAllowedOriginPatterns(Arrays.asList("*"));
-        configuration.setAllowedMethods(Arrays.asList("*"));
-        configuration.setAllowedHeaders(Arrays.asList("*"));
+        List<String> allowedOriginPatterns = new ArrayList<>();
         
-        // Wildcard origin bilan allowCredentials false bo'lishi kerak
-        configuration.setAllowCredentials(false);
+        // Add main URL and API URL (frontend va backend) - trailing slash bilan va without
+        if (mainUrl != null && !mainUrl.isEmpty()) {
+            String cleanMainUrl = mainUrl.endsWith("/") ? mainUrl.substring(0, mainUrl.length() - 1) : mainUrl;
+            allowedOriginPatterns.add(cleanMainUrl);
+        }
+        if (apiUrl != null && !apiUrl.isEmpty()) {
+            String cleanApiUrl = apiUrl.endsWith("/") ? apiUrl.substring(0, apiUrl.length() - 1) : apiUrl;
+            allowedOriginPatterns.add(cleanApiUrl);
+        }
+
+        // Add local URLs from properties (comma-separated)
+        if (localUrls != null && !localUrls.isEmpty()) {
+            String[] localUrlArray = localUrls.split(",");
+            for (String url : localUrlArray) {
+                String trimmedUrl = url.trim();
+                if (!trimmedUrl.isEmpty() && !allowedOriginPatterns.contains(trimmedUrl)) {
+                    allowedOriginPatterns.add(trimmedUrl);
+                }
+            }
+        }
+        
+        // Debug log
+        System.out.println("=== CORS Configuration ===");
+        System.out.println("Allowed Origins: " + allowedOriginPatterns);
+        
+        // Allow all methods
+        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "HEAD"));
+        
+        // Allow all headers - aniq headerlar ro'yxati (wildcard * ishlamaydi)
+        configuration.setAllowedHeaders(Arrays.asList(
+                "Authorization",
+                "Content-Type",
+                "X-Requested-With",
+                "Accept",
+                "Origin",
+                "Access-Control-Request-Method",
+                "Access-Control-Request-Headers",
+                "X-Forwarded-For",
+                "X-Real-IP",
+                "Accept-Language",
+                "Cache-Control",
+                "Pragma",
+                "Cookie",
+                "Set-Cookie"
+        ));
+        
+        // Allow credentials - frontend credentials: 'include' bilan ishlashi uchun
+        // IMPORTANT: Wildcard * bilan allowCredentials true ishlamaydi
+        configuration.setAllowCredentials(true);
+        
+        // Set allowed origin patterns
+        configuration.setAllowedOriginPatterns(allowedOriginPatterns);
         
         configuration.setMaxAge(3600L); // Cache preflight requests for 1 hour
-        configuration.setExposedHeaders(Arrays.asList("*"));
+        
+        // Expose headers
+        configuration.setExposedHeaders(Arrays.asList(
+                "Authorization",
+                "Content-Type",
+                "Access-Control-Allow-Origin",
+                "Access-Control-Allow-Credentials",
+                "Set-Cookie"
+        ));
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);
+        
+        System.out.println("CORS configured for all paths");
+        System.out.println("============================");
 
         return source;
     }
