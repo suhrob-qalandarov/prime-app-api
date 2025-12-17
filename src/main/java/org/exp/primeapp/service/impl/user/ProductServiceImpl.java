@@ -8,6 +8,7 @@ import org.exp.primeapp.models.dto.responce.user.ProductSizeRes;
 import org.exp.primeapp.models.dto.responce.user.page.PageRes;
 import org.exp.primeapp.models.entities.Attachment;
 import org.exp.primeapp.models.entities.Product;
+import org.exp.primeapp.models.enums.ProductTag;
 import org.exp.primeapp.repository.AttachmentRepository;
 import org.exp.primeapp.repository.ProductRepository;
 import org.exp.primeapp.service.face.user.ProductService;
@@ -123,11 +124,12 @@ public class ProductServiceImpl implements ProductService {
                 .collect(toList());
 
         // Discount'ni hisoblab discountPrice'ni set qilish
+        // Faqat discount > 0 va tag = SALE bo'lsagina discount hisoblanadi
         BigDecimal price = product.getPrice();
         Integer discount = product.getDiscount() != null ? product.getDiscount() : 0;
         BigDecimal discountPrice = price;
         
-        if (discount > 0 && discount <= 100) {
+        if (discount > 0 && discount <= 100 && product.getTag() == ProductTag.SALE) {
             // discountPrice = price - (price * discount / 100)
             BigDecimal discountAmount = price.multiply(BigDecimal.valueOf(discount))
                     .divide(BigDecimal.valueOf(100), 2, java.math.RoundingMode.HALF_UP);
