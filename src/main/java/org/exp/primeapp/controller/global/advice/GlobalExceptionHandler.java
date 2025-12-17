@@ -82,6 +82,14 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(RuntimeException.class)
     public ResponseEntity<ErrorResponse> handleRuntimeException(RuntimeException e) {
+        // "not found" yoki "topilmadi" so'zlari bo'lsa, 404 qaytarish
+        String message = e.getMessage() != null ? e.getMessage().toLowerCase() : "";
+        if (message.contains("not found") || message.contains("topilmadi")) {
+            log.warn("Entity topilmadi: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(new ErrorResponse(HttpStatus.NOT_FOUND.value(), e.getMessage()));
+        }
+        
         log.error("Ichki server xatosi: {}", e.getMessage(), e);
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(new ErrorResponse(HttpStatus.INTERNAL_SERVER_ERROR.value(), "Ichki server xatosi: " + e.getMessage()));

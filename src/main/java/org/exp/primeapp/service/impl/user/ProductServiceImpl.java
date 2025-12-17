@@ -8,6 +8,7 @@ import org.exp.primeapp.models.dto.responce.user.ProductSizeRes;
 import org.exp.primeapp.models.dto.responce.user.page.PageRes;
 import org.exp.primeapp.models.entities.Attachment;
 import org.exp.primeapp.models.entities.Product;
+import org.exp.primeapp.models.enums.ProductTag;
 import org.exp.primeapp.repository.AttachmentRepository;
 import org.exp.primeapp.repository.ProductRepository;
 import org.exp.primeapp.service.face.user.ProductService;
@@ -15,6 +16,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 import static java.util.stream.Collectors.toList;
@@ -94,7 +96,7 @@ public class ProductServiceImpl implements ProductService {
     @Override
     public ProductRes getProductById(Long productId) {
         Product product = productRepository.findById(productId)
-                .orElseThrow(() -> new RuntimeException("Product not found with productId: " + productId));
+                .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("Product not found with productId: " + productId));
         return convertToProductRes(product);
     }
 
@@ -121,6 +123,19 @@ public class ProductServiceImpl implements ProductService {
                 .map(size -> new ProductSizeRes(size.getSize(), size.getAmount()))
                 .collect(toList());
 
+        // Discount'ni hisoblab discountPrice'ni set qilish
+        // Faqat discount > 0 va tag = SALE bo'lsagina discount hisoblanadi
+        BigDecimal price = product.getPrice();
+        Integer discount = product.getDiscount() != null ? product.getDiscount() : 0;
+        BigDecimal discountPrice = price;
+        
+        if (discount > 0 && discount <= 100 && product.getTag() == ProductTag.SALE) {
+            // discountPrice = price - (price * discount / 100)
+            BigDecimal discountAmount = price.multiply(BigDecimal.valueOf(discount))
+                    .divide(BigDecimal.valueOf(100), 2, java.math.RoundingMode.HALF_UP);
+            discountPrice = price.subtract(discountAmount);
+        }
+
         return new ProductRes(
                 product.getId(),
                 product.getName(),
@@ -130,9 +145,9 @@ public class ProductServiceImpl implements ProductService {
                 product.getTag().name(),
                 product.getCategory().getName(),
                 product.getDescription(),
-                product.getPrice(),
-                product.getPrice(),
-                product.getDiscount(),
+                price,
+                discountPrice,
+                discount,
                 attachmentUrls,
                 productSizes
         );

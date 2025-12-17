@@ -3,6 +3,7 @@ package org.exp.primeapp.controller.user.product;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.exp.primeapp.configs.security.JwtCookieService;
 import org.exp.primeapp.models.dto.responce.user.ProductRes;
 import org.exp.primeapp.models.dto.responce.user.page.PageRes;
@@ -16,6 +17,7 @@ import org.springframework.web.bind.annotation.*;
 
 import static org.exp.primeapp.utils.Const.*;
 
+@Slf4j
 @RestController
 @RequestMapping(API + V1 + PRODUCT)
 @RequiredArgsConstructor
@@ -98,9 +100,15 @@ public class ProductController {
                 jwtCookieService.setJwtCookie(newToken, jwtCookieService.getCookieNameUser(), response, request);
                 sessionService.setAccessToken(session.getSessionId(), newToken);
                 
+                // successHandler.get() exception tashlasa, GlobalExceptionHandler handle qiladi
                 return successHandler.get();
+            } catch (jakarta.persistence.EntityNotFoundException | org.springframework.web.server.ResponseStatusException e) {
+                // EntityNotFoundException va ResponseStatusException GlobalExceptionHandler ga o'tkazish
+                throw e;
             } catch (Exception e) {
-                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+                // Faqat session token bilan bog'liq exception'larni catch qilish
+                log.error("Error in handleSessionTokenRequest (count > 0): {}", e.getMessage(), e);
+                throw new RuntimeException("Session token processing failed: " + e.getMessage(), e);
             }
         } else {
             // Count = 0
@@ -119,9 +127,15 @@ public class ProductController {
                     jwtCookieService.setJwtCookie(newToken, jwtCookieService.getCookieNameUser(), response, request);
                     sessionService.setAccessToken(session.getSessionId(), newToken);
                     
+                    // successHandler.get() exception tashlasa, GlobalExceptionHandler handle qiladi
                     return successHandler.get();
+                } catch (jakarta.persistence.EntityNotFoundException | org.springframework.web.server.ResponseStatusException e) {
+                    // EntityNotFoundException va ResponseStatusException GlobalExceptionHandler ga o'tkazish
+                    throw e;
                 } catch (Exception e) {
-                    return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+                    // Faqat session token bilan bog'liq exception'larni catch qilish
+                    log.error("Error in handleSessionTokenRequest (expired): {}", e.getMessage(), e);
+                    throw new RuntimeException("Session token processing failed: " + e.getMessage(), e);
                 }
             } else {
                 // Valid: 418 I'm a teapot response
