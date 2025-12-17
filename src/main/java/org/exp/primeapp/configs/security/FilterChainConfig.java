@@ -68,6 +68,9 @@ public class FilterChainConfig {
         http.cors(cors -> cors.configurationSource(corsConfigurationSource()));
         http.authorizeHttpRequests(auth ->
                 auth
+                        // Allow all OPTIONS requests (CORS preflight)
+                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+                        
                         // Public auth endpoints
                         .requestMatchers(
                                 HttpMethod.POST,
@@ -277,8 +280,23 @@ public class FilterChainConfig {
         // Allow all methods
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "HEAD"));
         
-        // Allow all headers
-        configuration.setAllowedHeaders(Arrays.asList("*"));
+        // Allow all headers - aniq headerlar ro'yxati
+        configuration.setAllowedHeaders(Arrays.asList(
+                "Authorization",
+                "Content-Type",
+                "X-Requested-With",
+                "Accept",
+                "Origin",
+                "Access-Control-Request-Method",
+                "Access-Control-Request-Headers",
+                "X-Forwarded-For",
+                "X-Real-IP",
+                "Accept-Language",
+                "Cache-Control",
+                "Pragma",
+                "Cookie",
+                "Set-Cookie"
+        ));
         
         // Allow credentials - frontend credentials: 'include' bilan ishlashi uchun
         configuration.setAllowCredentials(true);
@@ -288,8 +306,14 @@ public class FilterChainConfig {
         
         configuration.setMaxAge(3600L); // Cache preflight requests for 1 hour
         
-        // Expose all headers
-        configuration.setExposedHeaders(Arrays.asList("*"));
+        // Expose headers
+        configuration.setExposedHeaders(Arrays.asList(
+                "Authorization",
+                "Content-Type",
+                "Access-Control-Allow-Origin",
+                "Access-Control-Allow-Credentials",
+                "Set-Cookie"
+        ));
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);
