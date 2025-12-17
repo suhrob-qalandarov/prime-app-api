@@ -26,7 +26,9 @@ import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import jakarta.servlet.http.HttpServletResponse;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 
 import static org.exp.primeapp.utils.Const.*;
 
@@ -251,17 +253,38 @@ public class FilterChainConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
 
-        // Allow all origins - CORS o'chirildi, barcha so'rovlar qabul qilinadi
-        configuration.setAllowedOriginPatterns(Arrays.asList("*"));
+        List<String> allowedOriginPatterns = new ArrayList<>();
         
+        // Add main URL and API URL (frontend va backend)
+        if (mainUrl != null && !mainUrl.isEmpty()) {
+            allowedOriginPatterns.add(mainUrl);
+        }
+        if (apiUrl != null && !apiUrl.isEmpty()) {
+            allowedOriginPatterns.add(apiUrl);
+        }
+
+        // Add local URLs from properties (comma-separated)
+        if (localUrls != null && !localUrls.isEmpty()) {
+            String[] localUrlArray = localUrls.split(",");
+            for (String url : localUrlArray) {
+                String trimmedUrl = url.trim();
+                if (!trimmedUrl.isEmpty() && !allowedOriginPatterns.contains(trimmedUrl)) {
+                    allowedOriginPatterns.add(trimmedUrl);
+                }
+            }
+        }
+
         // Allow all methods
-        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "HEAD", "*"));
+        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "HEAD"));
         
         // Allow all headers
         configuration.setAllowedHeaders(Arrays.asList("*"));
         
-        // Allow credentials must be false when using wildcard origin
-        configuration.setAllowCredentials(false);
+        // Allow credentials - frontend credentials: 'include' bilan ishlashi uchun
+        configuration.setAllowCredentials(true);
+        
+        // Use setAllowedOriginPatterns - supports exact matches and patterns
+        configuration.setAllowedOriginPatterns(allowedOriginPatterns);
         
         configuration.setMaxAge(3600L); // Cache preflight requests for 1 hour
         
