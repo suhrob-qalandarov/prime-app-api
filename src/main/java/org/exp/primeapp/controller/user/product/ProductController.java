@@ -60,18 +60,6 @@ public class ProductController {
         });
     }
 
-    @GetMapping("/by-category/{categoryId}")
-    public ResponseEntity<?> getProductsByCategory(
-            @PathVariable Long categoryId,
-            Pageable pageable,
-            HttpServletRequest request,
-            HttpServletResponse response) {
-        return handleSessionTokenRequest("product", request, response, () -> {
-            PageRes<ProductRes> pageableProducts = productService.getProductsByCategoryId(categoryId, pageable);
-            return ResponseEntity.ok(pageableProducts);
-        });
-    }
-
     /**
      * Session token bilan ishlash - count tekshirish va yangilash
      */
