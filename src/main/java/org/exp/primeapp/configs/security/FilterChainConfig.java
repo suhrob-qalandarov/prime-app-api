@@ -180,16 +180,6 @@ public class FilterChainConfig {
                                 API + V1 + ADMIN + SETTING + "/**"
                         ).hasRole("SUPER_ADMIN")
 
-                        // Actuator health endpoint - public for health checks
-                        .requestMatchers(
-                                "/actuator/health"
-                        ).permitAll()
-
-                        // Actuator endpoints - only for SWE role
-                        .requestMatchers(
-                                "/actuator/**"
-                        ).hasRole("SWE")
-
                         // All other requests require authentication
                         .anyRequest().authenticated()
         );
