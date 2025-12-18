@@ -46,6 +46,15 @@ public class ProductController {
             @RequestParam(required = false) String sizeName,
             @RequestParam(required = false) String brandName,
             @Parameter(
+                    description = "Product tag filter",
+                    schema = @Schema(
+                            type = "string",
+                            allowableValues = {"NEW", "HOT", "SALE"},
+                            example = "SALE"
+                    )
+            )
+            @RequestParam(required = false) String tag,
+            @Parameter(
                     description = "Sort by option",
                     schema = @Schema(
                             type = "string",
@@ -61,7 +70,7 @@ public class ProductController {
         return sessionTokenUtil.handleSessionTokenRequest("product", request, response, () -> {
             Pageable pageable = PageRequest.of(page, size);
             PageRes<ProductPageRes> pageableProducts = productService.getActiveProducts(
-                    spotlightName, categoryName, colorName, sizeName, brandName, sortBy, pageable);
+                    spotlightName, categoryName, colorName, sizeName, brandName, tag, sortBy, pageable);
             return ResponseEntity.ok(pageableProducts);
         });
     }

@@ -17,6 +17,7 @@ public interface ProductService {
             String colorName,
             String sizeName,
             String brandName,
+            String tag,
             String sortBy,
             Pageable pageable);
     PageRes<ProductRes> getProductsByCategoryId(Long categoryId, Pageable pageable);

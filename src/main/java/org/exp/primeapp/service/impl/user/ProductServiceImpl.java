@@ -77,6 +77,7 @@ public class ProductServiceImpl implements ProductService {
             String colorName,
             String sizeName,
             String brandName,
+            String tag,
             String sortBy,
             Pageable pageable) {
         
@@ -85,7 +86,8 @@ public class ProductServiceImpl implements ProductService {
                             (categoryName != null && !categoryName.isBlank()) ||
                             (colorName != null && !colorName.isBlank()) ||
                             (sizeName != null && !sizeName.isBlank()) ||
-                            (brandName != null && !brandName.isBlank());
+                            (brandName != null && !brandName.isBlank()) ||
+                            (tag != null && !tag.isBlank());
         
         // Sort qo'shish - faqat sortBy parametridan, Pageable ichidagi sort e'tiborsiz qoldiriladi
         Sort sort = buildSort(sortBy);
@@ -103,7 +105,7 @@ public class ProductServiceImpl implements ProductService {
         
         // Filterlar bor - Specification ishlatish
         Specification<Product> spec = buildProductSpecification(
-                spotlightName, categoryName, colorName, sizeName, brandName);
+                spotlightName, categoryName, colorName, sizeName, brandName, tag);
         
         Page<ProductPageRes> productRes = productRepository.findAll(spec, sortedPageable)
                 .map(this::convertToProductPageRes);
@@ -115,7 +117,8 @@ public class ProductServiceImpl implements ProductService {
             String categoryName,
             String colorName,
             String sizeName,
-            String brandName) {
+            String brandName,
+            String tag) {
         return (root, query, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
             
@@ -140,6 +143,16 @@ public class ProductServiceImpl implements ProductService {
             // Brand name filter
             if (brandName != null && !brandName.isBlank()) {
                 predicates.add(cb.equal(root.get("brand"), brandName));
+            }
+            
+            // Tag filter
+            if (tag != null && !tag.isBlank()) {
+                try {
+                    ProductTag productTag = ProductTag.valueOf(tag);
+                    predicates.add(cb.equal(root.get("tag"), productTag));
+                } catch (IllegalArgumentException e) {
+                    // Invalid tag enum, ignore
+                }
             }
             
             // Size filter - requires join with ProductSize
