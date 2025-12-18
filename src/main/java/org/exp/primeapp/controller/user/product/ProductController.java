@@ -1,5 +1,7 @@
 package org.exp.primeapp.controller.user.product;
 
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
@@ -43,7 +45,15 @@ public class ProductController {
             @RequestParam(required = false) String colorName,
             @RequestParam(required = false) String sizeName,
             @RequestParam(required = false) String brandName,
-            @RequestParam(required = false) String sortBy, // "discount", "low-price", "high-price"
+            @Parameter(
+                    description = "Sort by option",
+                    schema = @Schema(
+                            type = "string",
+                            allowableValues = {"discount", "low-price", "high-price"},
+                            example = "low-price"
+                    )
+            )
+            @RequestParam(required = false) String sortBy,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
             HttpServletRequest request,
