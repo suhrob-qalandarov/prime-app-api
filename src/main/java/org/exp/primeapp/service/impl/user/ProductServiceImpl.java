@@ -76,6 +76,7 @@ public class ProductServiceImpl implements ProductService {
             String categoryName,
             String colorName,
             String sizeName,
+            String brandName,
             String sortBy,
             Pageable pageable) {
         
@@ -83,7 +84,8 @@ public class ProductServiceImpl implements ProductService {
         boolean hasFilters = (spotlightName != null && !spotlightName.isBlank()) ||
                             (categoryName != null && !categoryName.isBlank()) ||
                             (colorName != null && !colorName.isBlank()) ||
-                            (sizeName != null && !sizeName.isBlank());
+                            (sizeName != null && !sizeName.isBlank()) ||
+                            (brandName != null && !brandName.isBlank());
         
         // Sort qo'shish - faqat sortBy parametridan, Pageable ichidagi sort e'tiborsiz qoldiriladi
         Sort sort = buildSort(sortBy);
@@ -101,7 +103,7 @@ public class ProductServiceImpl implements ProductService {
         
         // Filterlar bor - Specification ishlatish
         Specification<Product> spec = buildProductSpecification(
-                spotlightName, categoryName, colorName, sizeName);
+                spotlightName, categoryName, colorName, sizeName, brandName);
         
         Page<ProductPageRes> productRes = productRepository.findAll(spec, sortedPageable)
                 .map(this::convertToProductPageRes);
@@ -112,7 +114,8 @@ public class ProductServiceImpl implements ProductService {
             String spotlightName,
             String categoryName,
             String colorName,
-            String sizeName) {
+            String sizeName,
+            String brandName) {
         return (root, query, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
             
@@ -132,6 +135,11 @@ public class ProductServiceImpl implements ProductService {
             // Color name filter
             if (colorName != null && !colorName.isBlank()) {
                 predicates.add(cb.equal(root.get("colorName"), colorName));
+            }
+            
+            // Brand name filter
+            if (brandName != null && !brandName.isBlank()) {
+                predicates.add(cb.equal(root.get("brand"), brandName));
             }
             
             // Size filter - requires join with ProductSize

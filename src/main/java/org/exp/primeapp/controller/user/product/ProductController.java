@@ -46,6 +46,7 @@ public class ProductController {
             @RequestParam(required = false) String categoryName,
             @RequestParam(required = false) String colorName,
             @RequestParam(required = false) String sizeName,
+            @RequestParam(required = false) String brandName,
             @RequestParam(required = false) String sortBy, // "discount", "low-price", "high-price"
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
@@ -54,7 +55,7 @@ public class ProductController {
         return handleSessionTokenRequest("product", request, response, () -> {
             Pageable pageable = PageRequest.of(page, size);
             PageRes<ProductPageRes> pageableProducts = productService.getActiveProducts(
-                    spotlightName, categoryName, colorName, sizeName, sortBy, pageable);
+                    spotlightName, categoryName, colorName, sizeName, brandName, sortBy, pageable);
             return ResponseEntity.ok(pageableProducts);
         });
     }
