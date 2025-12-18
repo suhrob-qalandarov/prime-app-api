@@ -41,11 +41,17 @@ public class ProductController {
 
     @GetMapping
     public ResponseEntity<?> getProducts(
+            @RequestParam(required = false) String spotlightName,
+            @RequestParam(required = false) String categoryName,
+            @RequestParam(required = false) String colorName,
+            @RequestParam(required = false) String sizeName,
+            @RequestParam(required = false) String sortBy, // "discount", "low-price", "high-price"
             Pageable pageable,
             HttpServletRequest request,
             HttpServletResponse response) {
         return handleSessionTokenRequest("product", request, response, () -> {
-            PageRes<ProductPageRes> pageableProducts = productService.getActiveProducts(pageable);
+            PageRes<ProductPageRes> pageableProducts = productService.getActiveProducts(
+                    spotlightName, categoryName, colorName, sizeName, sortBy, pageable);
             return ResponseEntity.ok(pageableProducts);
         });
     }

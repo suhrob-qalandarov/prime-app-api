@@ -11,6 +11,13 @@ import java.util.List;
 public interface ProductService {
 
     PageRes<ProductPageRes> getActiveProducts(Pageable pageable);
+    PageRes<ProductPageRes> getActiveProducts(
+            String spotlightName,
+            String categoryName,
+            String colorName,
+            String sizeName,
+            String sortBy,
+            Pageable pageable);
     PageRes<ProductRes> getProductsByCategoryId(Long categoryId, Pageable pageable);
 
     ProductRes getProductById(Long id);

@@ -1,5 +1,7 @@
 package org.exp.primeapp.service.impl.user;
 
+import jakarta.persistence.criteria.Join;
+import jakarta.persistence.criteria.Predicate;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.exp.primeapp.models.dto.responce.user.FeaturedProductRes;
@@ -9,15 +11,21 @@ import org.exp.primeapp.models.dto.responce.user.ProductSizeRes;
 import org.exp.primeapp.models.dto.responce.user.page.PageRes;
 import org.exp.primeapp.models.entities.Attachment;
 import org.exp.primeapp.models.entities.Product;
+import org.exp.primeapp.models.entities.ProductSize;
 import org.exp.primeapp.models.enums.ProductTag;
+import org.exp.primeapp.models.enums.Size;
 import org.exp.primeapp.repository.AttachmentRepository;
 import org.exp.primeapp.repository.ProductRepository;
 import org.exp.primeapp.service.face.user.ProductService;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
 import java.util.List;
 
 import static java.util.stream.Collectors.toList;
@@ -60,6 +68,103 @@ public class ProductServiceImpl implements ProductService {
         Page<ProductPageRes> productRes = productRepository.findAllByActive(true, pageable)
                 .map(this::convertToProductPageRes);
         return toPageRes(productRes);
+    }
+
+    @Override
+    public PageRes<ProductPageRes> getActiveProducts(
+            String spotlightName,
+            String categoryName,
+            String colorName,
+            String sizeName,
+            String sortBy,
+            Pageable pageable) {
+        
+        // Agar barcha filterlar bo'sh bo'lsa, oddiy query ishlatish
+        boolean hasFilters = (spotlightName != null && !spotlightName.isBlank()) ||
+                            (categoryName != null && !categoryName.isBlank()) ||
+                            (colorName != null && !colorName.isBlank()) ||
+                            (sizeName != null && !sizeName.isBlank());
+        
+        // Sort qo'shish
+        Sort sort = buildSort(sortBy);
+        Pageable sortedPageable = PageRequest.of(
+                pageable.getPageNumber(),
+                pageable.getPageSize(),
+                sort);
+        
+        if (!hasFilters) {
+            // Filterlar yo'q - oddiy query (tezroq va ishonchli)
+            Page<ProductPageRes> productRes = productRepository.findAllByActive(true, sortedPageable)
+                    .map(this::convertToProductPageRes);
+            return toPageRes(productRes);
+        }
+        
+        // Filterlar bor - Specification ishlatish
+        Specification<Product> spec = buildProductSpecification(
+                spotlightName, categoryName, colorName, sizeName);
+        
+        Page<ProductPageRes> productRes = productRepository.findAll(spec, sortedPageable)
+                .map(this::convertToProductPageRes);
+        return toPageRes(productRes);
+    }
+
+    private Specification<Product> buildProductSpecification(
+            String spotlightName,
+            String categoryName,
+            String colorName,
+            String sizeName) {
+        return (root, query, cb) -> {
+            List<Predicate> predicates = new ArrayList<>();
+            
+            // Active filter
+            predicates.add(cb.equal(root.get("active"), true));
+            
+            // Spotlight name filter
+            if (spotlightName != null && !spotlightName.isBlank()) {
+                predicates.add(cb.equal(root.get("category").get("spotlightName"), spotlightName));
+            }
+            
+            // Category name filter
+            if (categoryName != null && !categoryName.isBlank()) {
+                predicates.add(cb.equal(root.get("category").get("name"), categoryName));
+            }
+            
+            // Color name filter
+            if (colorName != null && !colorName.isBlank()) {
+                predicates.add(cb.equal(root.get("colorName"), colorName));
+            }
+            
+            // Size filter - requires join with ProductSize
+            if (sizeName != null && !sizeName.isBlank()) {
+                try {
+                    Size size = Size.valueOf(sizeName);
+                    Join<Product, ProductSize> sizesJoin = root.join("sizes");
+                    predicates.add(cb.equal(sizesJoin.get("size"), size));
+                    query.distinct(true); // Prevent duplicates
+                } catch (IllegalArgumentException e) {
+                    // Invalid size enum, ignore
+                }
+            }
+            
+            return cb.and(predicates.toArray(new Predicate[0]));
+        };
+    }
+
+    private Sort buildSort(String sortBy) {
+        if (sortBy == null || sortBy.isBlank()) {
+            return Sort.by(Sort.Direction.ASC, "id"); // Default sort
+        }
+        
+        switch (sortBy.toLowerCase()) {
+            case "discount":
+                return Sort.by(Sort.Direction.DESC, "discount");
+            case "low-price":
+                return Sort.by(Sort.Direction.ASC, "price");
+            case "high-price":
+                return Sort.by(Sort.Direction.DESC, "price");
+            default:
+                return Sort.by(Sort.Direction.ASC, "id");
+        }
     }
 
     @Override
