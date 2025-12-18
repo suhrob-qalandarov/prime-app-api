@@ -1,6 +1,7 @@
 package org.exp.primeapp.service.face.user;
 
 import org.exp.primeapp.models.dto.responce.user.FeaturedProductRes;
+import org.exp.primeapp.models.dto.responce.user.ProductPageRes;
 import org.exp.primeapp.models.dto.responce.user.ProductRes;
 import org.exp.primeapp.models.dto.responce.user.page.PageRes;
 import org.springframework.data.domain.Pageable;
@@ -9,7 +10,7 @@ import java.util.List;
 
 public interface ProductService {
 
-    PageRes<ProductRes> getActiveProducts(Pageable pageable);
+    PageRes<ProductPageRes> getActiveProducts(Pageable pageable);
     PageRes<ProductRes> getProductsByCategoryId(Long categoryId, Pageable pageable);
 
     ProductRes getProductById(Long id);

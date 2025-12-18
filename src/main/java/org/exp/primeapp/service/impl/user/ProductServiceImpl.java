@@ -3,6 +3,7 @@ package org.exp.primeapp.service.impl.user;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.exp.primeapp.models.dto.responce.user.FeaturedProductRes;
+import org.exp.primeapp.models.dto.responce.user.ProductPageRes;
 import org.exp.primeapp.models.dto.responce.user.ProductRes;
 import org.exp.primeapp.models.dto.responce.user.ProductSizeRes;
 import org.exp.primeapp.models.dto.responce.user.page.PageRes;
@@ -55,9 +56,9 @@ public class ProductServiceImpl implements ProductService {
     }
 
     @Override
-    public PageRes<ProductRes> getActiveProducts(Pageable pageable) {
-        Page<ProductRes> productRes = productRepository.findAllByActive(true, pageable)
-                .map(this::convertToProductRes);
+    public PageRes<ProductPageRes> getActiveProducts(Pageable pageable) {
+        Page<ProductPageRes> productRes = productRepository.findAllByActive(true, pageable)
+                .map(this::convertToProductPageRes);
         return toPageRes(productRes);
     }
 
@@ -150,6 +151,40 @@ public class ProductServiceImpl implements ProductService {
                 discount,
                 attachmentUrls,
                 productSizes
+        );
+    }
+
+    public ProductPageRes convertToProductPageRes(Product product) {
+        // Query orqali attachments ni topamiz - faqat birinchi rasm
+        String mainImage = attachmentRepository.findByProductId(product.getId())
+                .stream()
+                .findFirst()
+                .map(Attachment::getUrl)
+                .orElse(null);
+
+        // Discount'ni hisoblab discountPrice'ni set qilish
+        // Faqat discount > 0 va tag = SALE bo'lsagina discount hisoblanadi
+        BigDecimal price = product.getPrice();
+        Integer discount = product.getDiscount() != null ? product.getDiscount() : 0;
+        BigDecimal discountPrice = price;
+        
+        if (discount > 0 && discount <= 100 && product.getTag() == ProductTag.SALE) {
+            // discountPrice = price - (price * discount / 100)
+            BigDecimal discountAmount = price.multiply(BigDecimal.valueOf(discount))
+                    .divide(BigDecimal.valueOf(100), 2, java.math.RoundingMode.HALF_UP);
+            discountPrice = price.subtract(discountAmount);
+        }
+
+        return new ProductPageRes(
+                product.getId(),
+                product.getName(),
+                product.getBrand(),
+                product.getColorHex(),
+                product.getTag().name(),
+                price,
+                discountPrice,
+                discount,
+                mainImage
         );
     }
 }

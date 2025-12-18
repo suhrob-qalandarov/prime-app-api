@@ -5,6 +5,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.exp.primeapp.configs.security.JwtCookieService;
+import org.exp.primeapp.models.dto.responce.user.ProductPageRes;
 import org.exp.primeapp.models.dto.responce.user.ProductRes;
 import org.exp.primeapp.models.dto.responce.user.page.PageRes;
 import org.exp.primeapp.models.entities.Session;
@@ -44,7 +45,7 @@ public class ProductController {
             HttpServletRequest request,
             HttpServletResponse response) {
         return handleSessionTokenRequest("product", request, response, () -> {
-            PageRes<ProductRes> pageableProducts = productService.getActiveProducts(pageable);
+            PageRes<ProductPageRes> pageableProducts = productService.getActiveProducts(pageable);
             return ResponseEntity.ok(pageableProducts);
         });
     }
