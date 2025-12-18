@@ -85,7 +85,7 @@ public class ProductServiceImpl implements ProductService {
                             (colorName != null && !colorName.isBlank()) ||
                             (sizeName != null && !sizeName.isBlank());
         
-        // Sort qo'shish
+        // Sort qo'shish - faqat sortBy parametridan, Pageable ichidagi sort e'tiborsiz qoldiriladi
         Sort sort = buildSort(sortBy);
         Pageable sortedPageable = PageRequest.of(
                 pageable.getPageNumber(),
@@ -152,7 +152,7 @@ public class ProductServiceImpl implements ProductService {
 
     private Sort buildSort(String sortBy) {
         if (sortBy == null || sortBy.isBlank()) {
-            return Sort.by(Sort.Direction.ASC, "id"); // Default sort
+            return Sort.unsorted(); // Default sort yo'q
         }
         
         switch (sortBy.toLowerCase()) {
@@ -163,7 +163,7 @@ public class ProductServiceImpl implements ProductService {
             case "high-price":
                 return Sort.by(Sort.Direction.DESC, "price");
             default:
-                return Sort.by(Sort.Direction.ASC, "id");
+                return Sort.unsorted(); // Noto'g'ri sortBy bo'lsa ham sort yo'q
         }
     }
 

@@ -11,6 +11,7 @@ import org.exp.primeapp.models.dto.responce.user.page.PageRes;
 import org.exp.primeapp.models.entities.Session;
 import org.exp.primeapp.service.face.global.session.SessionService;
 import org.exp.primeapp.service.face.user.ProductService;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -46,10 +47,12 @@ public class ProductController {
             @RequestParam(required = false) String colorName,
             @RequestParam(required = false) String sizeName,
             @RequestParam(required = false) String sortBy, // "discount", "low-price", "high-price"
-            Pageable pageable,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
             HttpServletRequest request,
             HttpServletResponse response) {
         return handleSessionTokenRequest("product", request, response, () -> {
+            Pageable pageable = PageRequest.of(page, size);
             PageRes<ProductPageRes> pageableProducts = productService.getActiveProducts(
                     spotlightName, categoryName, colorName, sizeName, sortBy, pageable);
             return ResponseEntity.ok(pageableProducts);
