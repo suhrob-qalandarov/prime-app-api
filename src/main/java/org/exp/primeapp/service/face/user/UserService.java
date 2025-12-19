@@ -2,6 +2,7 @@ package org.exp.primeapp.service.face.user;
 
 import org.exp.primeapp.models.dto.responce.admin.AdminUserDashboardRes;
 import org.exp.primeapp.models.dto.responce.admin.AdminUserDetailRes;
+import org.exp.primeapp.models.dto.responce.admin.AdminUserRes;
 import org.exp.primeapp.models.dto.responce.user.UserRes;
 import org.exp.primeapp.models.dto.responce.user.page.PageRes;
 import org.exp.primeapp.models.entities.User;
@@ -25,7 +26,7 @@ public interface UserService {
 
     UserRes getById(Long id);
 
-    UserRes getAdminUserDataFromToken(User user);
+    AdminUserRes getAdminUserDataFromToken(User user);
 
     Boolean getUserHasAdminFromToken(User user);
 

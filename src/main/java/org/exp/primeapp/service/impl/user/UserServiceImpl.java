@@ -78,9 +78,13 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    public UserRes getAdminUserDataFromToken(User user) {
-        UserRes userRes = convertToUserRes(user);
-        return userRes.isAdmin() ? userRes : null;
+    public AdminUserRes getAdminUserDataFromToken(User user) {
+        boolean isAdmin = user.getRoles().stream()
+                .anyMatch(role -> role.getName().equals("ROLE_ADMIN") || role.getName().equals("ROLE_VISITOR"));
+        if (!isAdmin) {
+            return null;
+        }
+        return convertToAdminUserResForMe(user);
     }
 
     @Override
@@ -139,16 +143,58 @@ public class UserServiceImpl implements UserService {
     }
 
     private AdminUserRes convertToAdminUserRes(User user) {
-        return new AdminUserRes(
-                user.getTelegramId(),
-                user.getFirstName(),
-                user.getLastName(),
-                user.getTgUsername(),
-                user.getPhone(),
-                user.getRoles().stream().map(Role::getName).toList(),
-                user.getActive(),
-                user.getCreatedAt()
-        );
+        return AdminUserRes.builder()
+                .id(user.getId())
+                .telegramId(user.getTelegramId())
+                .firstName(user.getFirstName())
+                .lastName(user.getLastName())
+                .username(user.getTgUsername())
+                .phone(user.getPhone())
+                .sessions(null) // Dashboard uchun sessions kerak emas
+                .active(user.getActive())
+                .isAdmin(user.getRoles().stream()
+                        .anyMatch(role -> role.getName().equals("ROLE_ADMIN") || role.getName().equals("ROLE_VISITOR")))
+                .isVisitor(user.getRoles().stream()
+                        .anyMatch(role -> role.getName().equals("ROLE_VISITOR")))
+                .isSuperAdmin(user.getRoles().stream()
+                        .anyMatch(role -> role.getName().equals("ROLE_SUPER_ADMIN")))
+                .createdAt(user.getCreatedAt())
+                .build();
+    }
+
+    private AdminUserRes convertToAdminUserResForMe(User user) {
+        // Convert sessions to SessionRes
+        List<SessionRes> sessions = user.getSessions() != null ? user.getSessions().stream()
+                .map(s -> SessionRes.builder()
+                        .sessionId(s.getSessionId())
+                        .ip(s.getIp())
+                        .browserInfo(s.getBrowserInfo())
+                        .isActive(s.getIsActive())
+                        .isDeleted(s.getIsDeleted())
+                        .isAuthenticated(s.getIsAuthenticated())
+                        .isMainSession(s.getIsMainSession())
+                        .lastAccessedAt(s.getLastAccessedAt())
+                        .migratedAt(s.getMigratedAt())
+                        .build())
+                .toList() : List.of();
+
+        return AdminUserRes.builder()
+                .id(user.getId())
+                .telegramId(user.getTelegramId())
+                .firstName(userUtil.truncateName(user.getFirstName()))
+                .lastName(userUtil.truncateName(user.getLastName()))
+                .username(user.getTgUsername())
+                .phone(user.getPhone())
+                .sessions(sessions)
+                .active(user.getActive())
+                .isAdmin(user.getRoles().stream()
+                        .anyMatch(role -> role.getName().equals("ROLE_ADMIN") || role.getName().equals("ROLE_VISITOR")))
+                .isVisitor(user.getRoles().stream()
+                        .anyMatch(role -> role.getName().equals("ROLE_VISITOR")))
+                .isSuperAdmin(user.getRoles().stream()
+                        .anyMatch(role -> role.getName().equals("ROLE_SUPER_ADMIN")))
+                .createdAt(user.getCreatedAt())
+                .build();
     }
 
     @Override
