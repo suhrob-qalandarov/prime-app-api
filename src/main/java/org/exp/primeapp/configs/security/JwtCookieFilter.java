@@ -33,7 +33,7 @@ public class JwtCookieFilter extends OncePerRequestFilter {
             @NonNull FilterChain filterChain
     ) throws ServletException, IOException {
 
-        // Skip JWT validation for Swagger/OpenAPI endpoints, session endpoints, and actuator health
+        // Skip JWT validation for Swagger/OpenAPI endpoints, session endpoints, actuator health, and admin auth
         String requestPath = request.getRequestURI();
         if (requestPath.startsWith("/swagger-ui") || 
             requestPath.startsWith("/v3/api-docs") ||
@@ -41,12 +41,15 @@ public class JwtCookieFilter extends OncePerRequestFilter {
             requestPath.startsWith("/swagger-ui.html/") ||
             requestPath.startsWith("/actuator/health") ||
             requestPath.equals("/api/v2/auth/session") ||
-            requestPath.startsWith("/api/v2/auth/code/")) {
+            requestPath.startsWith("/api/v2/auth/code/") ||
+            requestPath.equals("/api/v1/admin/auth") ||
+            requestPath.equals("/api/v2/admin/auth")) {
             filterChain.doFilter(request, response);
             return;
         }
         
         // Admin endpoints - faqat Spring Security authentication, session token tekshiruv kerak emas
+        // Admin auth endpoint'i yuqorida skip qilingan
         boolean isAdminEndpoint = requestPath.startsWith("/api/v1/admin") || 
                                   requestPath.startsWith("/api/v2/admin");
         
