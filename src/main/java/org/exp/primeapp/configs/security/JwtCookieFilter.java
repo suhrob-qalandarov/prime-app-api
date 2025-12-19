@@ -46,8 +46,56 @@ public class JwtCookieFilter extends OncePerRequestFilter {
             return;
         }
         
+        // Admin endpoints - faqat Spring Security authentication, session token tekshiruv kerak emas
+        boolean isAdminEndpoint = requestPath.startsWith("/api/v1/admin") || 
+                                  requestPath.startsWith("/api/v2/admin");
+        
         // Public endpoints - token bo'lmasa ham o'tkazib yuborish
         boolean isPublicEndpoint = isPublicEndpoint(requestPath, request.getMethod());
+
+        // Admin endpoint'lar uchun - faqat Spring Security authentication, session token tekshiruv kerak emas
+        if (isAdminEndpoint) {
+            // Admin endpoint'lar uchun faqat token validation va user authentication
+            // Session count tekshiruv kerak emas - Spring Security o'zi tekshiradi
+            String token = null;
+            
+            // Get token from header
+            String authHeader = request.getHeader(AUTHORIZATION);
+            if (authHeader != null && !authHeader.trim().isEmpty()) {
+                if (authHeader.startsWith(TOKEN_PREFIX)) {
+                    token = authHeader.substring(TOKEN_PREFIX.length()).trim();
+                } else {
+                    String trimmedHeader = authHeader.trim();
+                    if (!trimmedHeader.contains(" ") && trimmedHeader.length() > 0) {
+                        token = trimmedHeader;
+                    }
+                }
+            }
+            
+            // If token not in header, get from cookie
+            if (token == null) {
+                token = jwtService.extractTokenFromCookie(request);
+            }
+            
+            // Token bo'lsa, faqat validation va authentication
+            if (token != null) {
+                try {
+                    if (jwtService.validateToken(token, request)) {
+                        User user = jwtService.getUserObject(token);
+                        if (user != null && user.getId() != null) {
+                            var auth = new UsernamePasswordAuthenticationToken(user, null, user.getAuthorities());
+                            SecurityContextHolder.getContext().setAuthentication(auth);
+                            log.debug("Admin user authenticated: {}", user.getId());
+                        }
+                    }
+                } catch (Exception e) {
+                    log.debug("Token validation failed for admin endpoint: {}", e.getMessage());
+                }
+            }
+            // Admin endpoint'lar uchun Spring Security o'zi tekshiradi
+            filterChain.doFilter(request, response);
+            return;
+        }
 
         // Get token from header
         String authHeader = request.getHeader(AUTHORIZATION);
@@ -73,7 +121,7 @@ public class JwtCookieFilter extends OncePerRequestFilter {
                 }
             }
         }
-
+        
         // Check if token doesn't exist, get from cookie
         if (token == null) {
             log.debug("No token in header, checking cookies. Request URI: {}, Origin: {}", 
