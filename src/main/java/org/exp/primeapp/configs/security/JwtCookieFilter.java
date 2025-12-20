@@ -33,7 +33,7 @@ public class JwtCookieFilter extends OncePerRequestFilter {
             @NonNull FilterChain filterChain
     ) throws ServletException, IOException {
 
-        // Skip JWT validation for Swagger/OpenAPI endpoints, session endpoints, and actuator health
+        // Skip JWT validation for Swagger/OpenAPI endpoints, session endpoints, actuator health, and admin auth
         String requestPath = request.getRequestURI();
         if (requestPath.startsWith("/swagger-ui") || 
             requestPath.startsWith("/v3/api-docs") ||
@@ -41,13 +41,64 @@ public class JwtCookieFilter extends OncePerRequestFilter {
             requestPath.startsWith("/swagger-ui.html/") ||
             requestPath.startsWith("/actuator/health") ||
             requestPath.equals("/api/v2/auth/session") ||
-            requestPath.startsWith("/api/v2/auth/code/")) {
+            requestPath.startsWith("/api/v2/auth/code/") ||
+            requestPath.equals("/api/v1/admin/auth") ||
+            requestPath.equals("/api/v2/admin/auth")) {
             filterChain.doFilter(request, response);
             return;
         }
         
+        // Admin endpoints - faqat Spring Security authentication, session token tekshiruv kerak emas
+        // Admin auth endpoint'i yuqorida skip qilingan
+        boolean isAdminEndpoint = requestPath.startsWith("/api/v1/admin") || 
+                                  requestPath.startsWith("/api/v2/admin");
+        
         // Public endpoints - token bo'lmasa ham o'tkazib yuborish
         boolean isPublicEndpoint = isPublicEndpoint(requestPath, request.getMethod());
+
+        // Admin endpoint'lar uchun - faqat Spring Security authentication, session token tekshiruv kerak emas
+        if (isAdminEndpoint) {
+            // Admin endpoint'lar uchun faqat token validation va user authentication
+            // Session count tekshiruv kerak emas - Spring Security o'zi tekshiradi
+            String token = null;
+            
+            // Get token from header
+            String authHeader = request.getHeader(AUTHORIZATION);
+            if (authHeader != null && !authHeader.trim().isEmpty()) {
+                if (authHeader.startsWith(TOKEN_PREFIX)) {
+                    token = authHeader.substring(TOKEN_PREFIX.length()).trim();
+                } else {
+                    String trimmedHeader = authHeader.trim();
+                    if (!trimmedHeader.contains(" ") && trimmedHeader.length() > 0) {
+                        token = trimmedHeader;
+                    }
+                }
+            }
+            
+            // If token not in header, get from cookie
+            if (token == null) {
+                token = jwtService.extractTokenFromCookie(request);
+            }
+            
+            // Token bo'lsa, faqat validation va authentication
+            if (token != null) {
+                try {
+                    if (jwtService.validateToken(token, request)) {
+                        User user = jwtService.getUserObject(token);
+                        if (user != null && user.getId() != null) {
+                            var auth = new UsernamePasswordAuthenticationToken(user, null, user.getAuthorities());
+                            SecurityContextHolder.getContext().setAuthentication(auth);
+                            log.debug("Admin user authenticated: {}", user.getId());
+                        }
+                    }
+                } catch (Exception e) {
+                    log.debug("Token validation failed for admin endpoint: {}", e.getMessage());
+                }
+            }
+            // Admin endpoint'lar uchun Spring Security o'zi tekshiradi
+            filterChain.doFilter(request, response);
+            return;
+        }
 
         // Get token from header
         String authHeader = request.getHeader(AUTHORIZATION);
@@ -73,7 +124,7 @@ public class JwtCookieFilter extends OncePerRequestFilter {
                 }
             }
         }
-
+        
         // Check if token doesn't exist, get from cookie
         if (token == null) {
             log.debug("No token in header, checking cookies. Request URI: {}, Origin: {}", 

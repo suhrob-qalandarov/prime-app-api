@@ -44,7 +44,10 @@ public class AdminAuthServiceImpl implements AdminAuthService {
     @Transactional
     public LoginRes checkAdminLogin(AdminLoginReq loginReq, HttpServletResponse response, HttpServletRequest request) {
         User u = userRepository.findByPhoneAndVerifyCode(loginReq.phoneNumber(), loginReq.verifyCode())
-                .orElseThrow();
+                .orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(
+                        org.springframework.http.HttpStatus.UNAUTHORIZED,
+                        "Invalid phone number or verification code"
+                ));
 
         // Session topish yoki yaratish
         Session session = sessionService.getOrCreateSession(request, response);

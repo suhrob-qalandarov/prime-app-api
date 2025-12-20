@@ -81,6 +81,17 @@ public class CategoryServiceImpl implements CategoryService {
 
     @Override
     public AdminCategoryRes saveCategory(@NonNull CategoryReq categoryReq) {
+        // Calculate orderNumber - get max orderNumber and add 1, or start from 1 if no categories exist
+        Long orderNumber = 1L;
+        List<Category> allCategories = categoryRepository.findAllByOrderByOrderNumberAsc();
+        if (!allCategories.isEmpty()) {
+            Long maxOrderNumber = allCategories.stream()
+                    .map(Category::getOrderNumber)
+                    .max(Long::compareTo)
+                    .orElse(0L);
+            orderNumber = maxOrderNumber + 1;
+        }
+
         Category saved = categoryRepository.save(
                 Category.builder()
                         .name(categoryReq.name())
@@ -89,6 +100,7 @@ public class CategoryServiceImpl implements CategoryService {
                                         ? categoryReq.spotlightName()
                                         : null
                         )
+                        .orderNumber(orderNumber)
                         .active(false)
                         .build()
         );

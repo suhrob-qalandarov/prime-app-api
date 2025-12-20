@@ -77,6 +77,12 @@ public class FilterChainConfig {
                                 API + V2 + AUTH + "/code/*"
                         ).permitAll()
                         
+                        // Public admin auth endpoint (login)
+                        .requestMatchers(
+                                HttpMethod.POST,
+                                API + V1 + ADMIN + AUTH
+                        ).permitAll()
+                        
                         // Public session endpoints
                         .requestMatchers(
                                 HttpMethod.GET,

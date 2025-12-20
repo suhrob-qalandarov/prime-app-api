@@ -53,11 +53,25 @@ public class BotRunner implements CommandLineRunner {
         }
 
         bot.setUpdatesListener(updates -> {
+            log.debug("Received {} updates from Telegram", updates.size());
             for (Update update : updates) {
                 executorService.execute(() -> {
-                    if (update.message() != null) messageHandler.accept(update.message());
-                    else if (update.callbackQuery() != null) callbackHandler.accept(update.callbackQuery());
-                    else log.warn("Unknown update: {}", update);
+                    try {
+                        log.debug("Processing update: updateId={}, message={}, callbackQuery={}", 
+                                update.updateId(), 
+                                update.message() != null ? "present" : "null",
+                                update.callbackQuery() != null ? "present" : "null");
+                        
+                        if (update.message() != null) {
+                            messageHandler.accept(update.message());
+                        } else if (update.callbackQuery() != null) {
+                            callbackHandler.accept(update.callbackQuery());
+                        } else {
+                            log.warn("Unknown update type: updateId={}", update.updateId());
+                        }
+                    } catch (Exception e) {
+                        log.error("Error processing update: updateId={}", update.updateId(), e);
+                    }
                 });
             }
             return UpdatesListener.CONFIRMED_UPDATES_ALL;
