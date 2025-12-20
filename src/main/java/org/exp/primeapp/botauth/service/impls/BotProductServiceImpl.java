@@ -12,6 +12,7 @@ import org.exp.primeapp.models.entities.Attachment;
 import org.exp.primeapp.models.entities.Category;
 import org.exp.primeapp.models.entities.Product;
 import org.exp.primeapp.models.entities.ProductSize;
+import org.exp.primeapp.models.enums.CategoryStatus;
 import org.exp.primeapp.models.enums.Size;
 import org.exp.primeapp.repository.AttachmentRepository;
 import org.exp.primeapp.repository.CategoryRepository;
@@ -234,6 +235,14 @@ public class BotProductServiceImpl implements BotProductService {
                 }
             }
             productRepository.save(savedProduct);
+
+            // Check category status and update to VISIBLE if it's CREATED
+            Category category = state.getCategory();
+            if (category != null && category.getStatus() == CategoryStatus.CREATED) {
+                category.setStatus(CategoryStatus.VISIBLE);
+                categoryRepository.save(category);
+                log.info("Category {} status updated from CREATED to VISIBLE", category.getId());
+            }
 
             // Clear state
             clearProductCreationState(userId);
