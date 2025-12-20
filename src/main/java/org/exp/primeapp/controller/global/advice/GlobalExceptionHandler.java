@@ -13,6 +13,7 @@ import org.springframework.web.server.ResponseStatusException;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.NoSuchElementException;
 
 @Slf4j
 @RestControllerAdvice
@@ -71,6 +72,13 @@ public class GlobalExceptionHandler {
         log.warn("Noto'g'ri holat: {}", e.getMessage());
         return ResponseEntity.badRequest()
                 .body(new ErrorResponse(HttpStatus.BAD_REQUEST.value(), e.getMessage()));
+    }
+
+    @ExceptionHandler(NoSuchElementException.class)
+    public ResponseEntity<ErrorResponse> handleNoSuchElement(NoSuchElementException e) {
+        log.warn("Element topilmadi: {}", e.getMessage());
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                .body(new ErrorResponse(HttpStatus.UNAUTHORIZED.value(), "Invalid credentials"));
     }
 
     @ExceptionHandler(IOException.class)
