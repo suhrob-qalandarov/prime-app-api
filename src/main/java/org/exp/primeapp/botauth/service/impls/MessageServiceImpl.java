@@ -87,31 +87,45 @@ public class MessageServiceImpl implements MessageService {
                     .parseMode(ParseMode.HTML)
                     .replyMarkup(buttonService.sendShareContactBtn());
             
-            // Send main message first
             SendResponse response = telegramBot.execute(sendMessage);
             
             if (response.isOk()) {
                 log.info("✅ Start message sent successfully to chatId: {}", chatId);
-                
-                // Send admin button separately
-                SendMessage adminButtonMessage = new SendMessage(chatId,
-                        "👨‍💼 Admin panel:")
-                        .parseMode(ParseMode.HTML)
-                        .replyMarkup(buttonService.createAddProductButton());
-                
-                SendResponse adminResponse = telegramBot.execute(adminButtonMessage);
-                if (adminResponse.isOk()) {
-                    log.info("✅ Admin button sent successfully to chatId: {}", chatId);
-                } else {
-                    log.error("❌ Failed to send admin button to chatId: {}. Error: {} (errorCode: {})", 
-                            chatId, adminResponse.description(), adminResponse.errorCode());
-                }
             } else {
                 log.error("❌ Failed to send start message to chatId: {}. Error: {} (errorCode: {})", 
                         chatId, response.description(), response.errorCode());
             }
         } catch (Exception e) {
             log.error("❌ Exception while sending start message for admin to chatId: {}", chatId, e);
+        }
+    }
+
+    @Override
+    public void sendAdminMenu(Long chatId, String firstName) {
+        try {
+            if (telegramBot == null) {
+                log.error("❌ Telegram bot is null! Cannot send admin menu to chatId: {}", chatId);
+                return;
+            }
+            
+            log.info("Sending admin menu to chatId: {}, firstName: {}", chatId, firstName);
+            
+            SendMessage sendMessage = new SendMessage(chatId,
+                    "👨‍💼 <b>Xush kelibsiz, Admin!</b>\n\n" +
+                    "Quyidagi bo'limlardan birini tanlang:")
+                    .parseMode(ParseMode.HTML)
+                    .replyMarkup(buttonService.createAdminMainMenuButtons());
+            
+            SendResponse response = telegramBot.execute(sendMessage);
+            
+            if (response.isOk()) {
+                log.info("✅ Admin menu sent successfully to chatId: {}", chatId);
+            } else {
+                log.error("❌ Failed to send admin menu to chatId: {}. Error: {} (errorCode: {})", 
+                        chatId, response.description(), response.errorCode());
+            }
+        } catch (Exception e) {
+            log.error("❌ Exception while sending admin menu to chatId: {}", chatId, e);
         }
     }
 

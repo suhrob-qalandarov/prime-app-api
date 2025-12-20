@@ -95,4 +95,48 @@ public class ButtonServiceImpl implements ButtonService {
                 }
         );
     }
+
+    @Override
+    public InlineKeyboardMarkup createAdminMainMenuButtons() {
+        return new InlineKeyboardMarkup(
+                new InlineKeyboardButton[]{
+                        new InlineKeyboardButton("🛍️ Product").callbackData("admin_menu_product")
+                },
+                new InlineKeyboardButton[]{
+                        new InlineKeyboardButton("📂 Category").callbackData("admin_menu_category")
+                },
+                new InlineKeyboardButton[]{
+                        new InlineKeyboardButton("📦 Orders").callbackData("admin_menu_orders")
+                }
+        );
+    }
+
+    @Override
+    public InlineKeyboardMarkup createProductMenuButtons() {
+        return new InlineKeyboardMarkup(
+                new InlineKeyboardButton[]{
+                        new InlineKeyboardButton("➕ Add").callbackData("add_product"),
+                        new InlineKeyboardButton("✏️ Edit").callbackData("admin_product_edit")
+                },
+                new InlineKeyboardButton[]{
+                        new InlineKeyboardButton("📥 Add Income").callbackData("admin_product_add_income")
+                },
+                new InlineKeyboardButton[]{
+                        new InlineKeyboardButton("⬅️ Back").callbackData("admin_menu_back")
+                }
+        );
+    }
+
+    @Override
+    public InlineKeyboardMarkup createCategoryMenuButtons() {
+        return new InlineKeyboardMarkup(
+                new InlineKeyboardButton[]{
+                        new InlineKeyboardButton("➕ Add").callbackData("admin_category_add"),
+                        new InlineKeyboardButton("✏️ Edit").callbackData("admin_category_edit")
+                },
+                new InlineKeyboardButton[]{
+                        new InlineKeyboardButton("⬅️ Back").callbackData("admin_menu_back")
+                }
+        );
+    }
 }

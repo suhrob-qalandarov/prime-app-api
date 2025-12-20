@@ -7,6 +7,8 @@ public interface MessageService {
     void sendStartMsg(Long chatId, String firstName);
 
     void sendStartMsgForAdmin(Long chatId, String firstName);
+    
+    void sendAdminMenu(Long chatId, String firstName);
 
     void sendLoginMsg(Long chatId);
 

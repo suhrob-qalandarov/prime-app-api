@@ -39,12 +39,29 @@ public class MessageHandler implements Consumer<Message> {
             if (message.contact() != null) {
                 Contact contact = message.contact();
                 messageService.removeKeyboardAndSendMsg(chatId);
-                messageService.sendCode(user);
                 userService.updateUserPhoneById(chatId, contact.phoneNumber());
+                
+                // Check if user is admin
+                boolean isAdmin = user.getRoles() != null && user.getRoles().stream()
+                        .anyMatch(role -> role.getName() != null && 
+                                (role.getName().equals("ROLE_ADMIN") || 
+                                 role.getName().equals("ROLE_SUPER_ADMIN")));
+                
+                if (isAdmin) {
+                    // Admin - send admin menu
+                    String firstName = user.getFirstName() != null ? user.getFirstName() : "Admin";
+                    messageService.sendAdminMenu(chatId, firstName);
+                } else {
+                    // Regular user - send code
+                    messageService.sendCode(user);
+                }
 
             } else if (text != null && text.trim().startsWith("/start")) {
                 log.info("Processing /start command from chatId: {}", chatId);
                 String firstName = user.getFirstName() != null ? user.getFirstName() : "Foydalanuvchi";
+                
+                // Check if user has phone number (already registered)
+                boolean hasPhone = user.getPhone() != null && !user.getPhone().trim().isEmpty();
                 
                 // Check if user is admin or super admin
                 boolean isAdmin = user.getRoles() != null && user.getRoles().stream()
@@ -52,10 +69,23 @@ public class MessageHandler implements Consumer<Message> {
                                 (role.getName().equals("ROLE_ADMIN") || 
                                  role.getName().equals("ROLE_SUPER_ADMIN")));
                 
-                if (isAdmin) {
-                    log.info("User {} is admin, sending admin start message", userId);
+                if (hasPhone) {
+                    // User already has phone
+                    if (isAdmin) {
+                        // Admin with phone - send admin menu
+                        log.info("Admin {} already has phone, sending admin menu", userId);
+                        messageService.sendAdminMenu(chatId, firstName);
+                    } else {
+                        // Regular user with phone - send code page
+                        log.info("User {} already has phone, sending code page", userId);
+                        messageService.sendCode(user);
+                    }
+                } else if (isAdmin) {
+                    // Admin without phone - ask for contact first
+                    log.info("User {} is admin but no phone, asking for contact", userId);
                     messageService.sendStartMsgForAdmin(chatId, firstName);
                 } else {
+                    // Regular user without phone - ask for contact
                     messageService.sendStartMsg(chatId, firstName);
                 }
                 log.info("Start message sent to chatId: {}", chatId);

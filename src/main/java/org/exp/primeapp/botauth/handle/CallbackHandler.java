@@ -41,6 +41,104 @@ public class CallbackHandler implements Consumer<CallbackQuery> {
         Long userId = user.getId();
         Long chatId = user.getTelegramId();
 
+        // Handle admin menu callbacks
+        if (data.equals("admin_menu_product")) {
+            com.pengrad.telegrambot.model.Message callbackMessage = callbackQuery.message();
+            Integer messageId = callbackMessage != null ? callbackMessage.messageId() : null;
+            if (messageId != null) {
+                telegramBot.execute(new EditMessageText(chatId, messageId,
+                        "🛍️ <b>Product bo'limi</b>\n\nQuyidagi amallardan birini tanlang:")
+                        .parseMode(ParseMode.HTML)
+                        .replyMarkup(buttonService.createProductMenuButtons())
+                );
+            } else {
+                telegramBot.execute(new SendMessage(chatId,
+                        "🛍️ <b>Product bo'limi</b>\n\nQuyidagi amallardan birini tanlang:")
+                        .parseMode(ParseMode.HTML)
+                        .replyMarkup(buttonService.createProductMenuButtons())
+                );
+            }
+            telegramBot.execute(new AnswerCallbackQuery(callbackId).text("Product bo'limi"));
+            return;
+        }
+
+        if (data.equals("admin_menu_category")) {
+            com.pengrad.telegrambot.model.Message callbackMessage = callbackQuery.message();
+            Integer messageId = callbackMessage != null ? callbackMessage.messageId() : null;
+            if (messageId != null) {
+                telegramBot.execute(new EditMessageText(chatId, messageId,
+                        "📂 <b>Category bo'limi</b>\n\nQuyidagi amallardan birini tanlang:")
+                        .parseMode(ParseMode.HTML)
+                        .replyMarkup(buttonService.createCategoryMenuButtons())
+                );
+            } else {
+                telegramBot.execute(new SendMessage(chatId,
+                        "📂 <b>Category bo'limi</b>\n\nQuyidagi amallardan birini tanlang:")
+                        .parseMode(ParseMode.HTML)
+                        .replyMarkup(buttonService.createCategoryMenuButtons())
+                );
+            }
+            telegramBot.execute(new AnswerCallbackQuery(callbackId).text("Category bo'limi"));
+            return;
+        }
+
+        if (data.equals("admin_menu_orders")) {
+            telegramBot.execute(new AnswerCallbackQuery(callbackId)
+                    .text("Orders bo'limi keyinroq qo'shiladi")
+                    .showAlert(true));
+            return;
+        }
+
+        if (data.equals("admin_menu_back")) {
+            com.pengrad.telegrambot.model.Message callbackMessage = callbackQuery.message();
+            Integer messageId = callbackMessage != null ? callbackMessage.messageId() : null;
+            if (messageId != null) {
+                telegramBot.execute(new EditMessageText(chatId, messageId,
+                        "👨‍💼 <b>Xush kelibsiz, Admin!</b>\n\n" +
+                        "Quyidagi bo'limlardan birini tanlang:")
+                        .parseMode(ParseMode.HTML)
+                        .replyMarkup(buttonService.createAdminMainMenuButtons())
+                );
+            } else {
+                telegramBot.execute(new SendMessage(chatId,
+                        "👨‍💼 <b>Xush kelibsiz, Admin!</b>\n\n" +
+                        "Quyidagi bo'limlardan birini tanlang:")
+                        .parseMode(ParseMode.HTML)
+                        .replyMarkup(buttonService.createAdminMainMenuButtons())
+                );
+            }
+            telegramBot.execute(new AnswerCallbackQuery(callbackId).text("Asosiy menyu"));
+            return;
+        }
+
+        if (data.equals("admin_product_edit")) {
+            telegramBot.execute(new AnswerCallbackQuery(callbackId)
+                    .text("Product tahrirlash funksiyasi keyinroq qo'shiladi")
+                    .showAlert(true));
+            return;
+        }
+
+        if (data.equals("admin_product_add_income")) {
+            telegramBot.execute(new AnswerCallbackQuery(callbackId)
+                    .text("Product income qo'shish funksiyasi keyinroq qo'shiladi")
+                    .showAlert(true));
+            return;
+        }
+
+        if (data.equals("admin_category_add")) {
+            telegramBot.execute(new AnswerCallbackQuery(callbackId)
+                    .text("Category qo'shish funksiyasi keyinroq qo'shiladi")
+                    .showAlert(true));
+            return;
+        }
+
+        if (data.equals("admin_category_edit")) {
+            telegramBot.execute(new AnswerCallbackQuery(callbackId)
+                    .text("Category tahrirlash funksiyasi keyinroq qo'shiladi")
+                    .showAlert(true));
+            return;
+        }
+
         if (data.equals("renew_code")) {
             if (user.getVerifyCodeExpiration().isAfter(LocalDateTime.now())) {
                 telegramBot.execute(new AnswerCallbackQuery(callbackId)
@@ -63,9 +161,12 @@ public class CallbackHandler implements Consumer<CallbackQuery> {
         // Handle product creation callbacks
         ProductCreationState state = botProductService.getProductCreationState(userId);
         if (state == null && !data.equals("renew_code")) {
-            telegramBot.execute(new AnswerCallbackQuery(callbackId)
-                    .text("Mahsulot qo'shish jarayoni topilmadi. /add_product bilan boshlang.")
-                    .showAlert(true));
+            // Don't show error for admin menu callbacks
+            if (!data.startsWith("admin_")) {
+                telegramBot.execute(new AnswerCallbackQuery(callbackId)
+                        .text("Mahsulot qo'shish jarayoni topilmadi. /add_product bilan boshlang.")
+                        .showAlert(true));
+            }
             return;
         }
 
