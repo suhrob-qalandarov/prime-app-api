@@ -5,7 +5,9 @@ import com.pengrad.telegrambot.model.Message;
 import com.pengrad.telegrambot.model.PhotoSize;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.exp.primeapp.botauth.models.CategoryCreationState;
 import org.exp.primeapp.botauth.models.ProductCreationState;
+import org.exp.primeapp.botauth.service.interfaces.BotCategoryService;
 import org.exp.primeapp.botauth.service.interfaces.BotProductService;
 import org.exp.primeapp.botauth.service.interfaces.MessageService;
 import org.exp.primeapp.botauth.service.interfaces.UserService;
@@ -23,6 +25,7 @@ public class MessageHandler implements Consumer<Message> {
     private final MessageService messageService;
     private final UserService userService;
     private final BotProductService botProductService;
+    private final BotCategoryService botCategoryService;
 
     @Override
     public void accept(Message message) {
@@ -102,12 +105,18 @@ public class MessageHandler implements Consumer<Message> {
                 messageService.sendProductNamePrompt(chatId);
 
             } else {
-                // Check if user is in product creation flow
-                ProductCreationState state = botProductService.getProductCreationState(userId);
-                if (state != null) {
-                    handleProductCreationMessage(message, user, state);
+                // Check if user is in category creation flow
+                CategoryCreationState categoryState = botCategoryService.getCategoryCreationState(userId);
+                if (categoryState != null) {
+                    handleCategoryCreationMessage(message, user, categoryState);
                 } else {
-                    log.debug("No handler for message from chatId: {}, text: {}", chatId, text);
+                    // Check if user is in product creation flow
+                    ProductCreationState state = botProductService.getProductCreationState(userId);
+                    if (state != null) {
+                        handleProductCreationMessage(message, user, state);
+                    } else {
+                        log.debug("No handler for message from chatId: {}, text: {}", chatId, text);
+                    }
                 }
             }
         } catch (Exception e) {
@@ -251,5 +260,26 @@ public class MessageHandler implements Consumer<Message> {
             }
         }
         return info.toString();
+    }
+
+    private void handleCategoryCreationMessage(Message message, User user, CategoryCreationState state) {
+        String text = message.text();
+        Long chatId = user.getTelegramId();
+        Long userId = user.getId();
+
+        // Handle text messages only
+        if (text == null || text.trim().isEmpty()) {
+            return;
+        }
+
+        switch (state.getCurrentStep()) {
+            case WAITING_NAME:
+                botCategoryService.handleCategoryName(userId, text);
+                messageService.sendSpotlightNamePrompt(chatId);
+                break;
+
+            default:
+                break;
+        }
     }
 }

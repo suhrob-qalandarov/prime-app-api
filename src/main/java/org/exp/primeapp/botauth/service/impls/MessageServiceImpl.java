@@ -322,4 +322,56 @@ public class MessageServiceImpl implements MessageService {
                 .parseMode(ParseMode.HTML)
         );
     }
+
+    @Override
+    public void sendCategoryCreationStart(Long chatId) {
+        telegramBot.execute(new SendMessage(chatId,
+                "📂 <b>Yangi kategoriya qo'shish</b>\n\n" +
+                "Kategoriya qo'shish jarayonini boshlaymiz. Quyidagi ma'lumotlarni kiriting:")
+                .parseMode(ParseMode.HTML)
+        );
+    }
+
+    @Override
+    public void sendCategoryNamePrompt(Long chatId) {
+        telegramBot.execute(new SendMessage(chatId,
+                "📝 <b>1/2</b> Kategoriya nomini kiriting:")
+                .parseMode(ParseMode.HTML)
+        );
+    }
+
+    @Override
+    public void sendSpotlightNamePrompt(Long chatId) {
+        telegramBot.execute(new SendMessage(chatId,
+                "📂 <b>2/2</b> Spotlight nomini tanlang:")
+                .parseMode(ParseMode.HTML)
+                .replyMarkup(buttonService.createSpotlightNameButtons())
+        );
+    }
+
+    @Override
+    public void sendCategoryConfirmation(Long chatId, String categoryInfo) {
+        telegramBot.execute(new SendMessage(chatId,
+                "✅ <b>Kategoriya ma'lumotlari:</b>\n\n" + categoryInfo +
+                "\n\nKategoriyani qo'shishni tasdiqlaysizmi?")
+                .parseMode(ParseMode.HTML)
+                .replyMarkup(buttonService.createCategoryConfirmationButtons())
+        );
+    }
+
+    @Override
+    public void sendCategorySavedSuccess(Long chatId) {
+        telegramBot.execute(new SendMessage(chatId,
+                "✅ Kategoriya muvaffaqiyatli qo'shildi!")
+                .parseMode(ParseMode.HTML)
+        );
+    }
+
+    @Override
+    public void sendCategoryCreationCancelled(Long chatId) {
+        telegramBot.execute(new SendMessage(chatId,
+                "❌ Kategoriya qo'shish bekor qilindi.")
+                .parseMode(ParseMode.HTML)
+        );
+    }
 }

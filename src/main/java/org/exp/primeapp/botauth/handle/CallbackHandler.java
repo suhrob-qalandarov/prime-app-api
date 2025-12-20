@@ -8,7 +8,9 @@ import com.pengrad.telegrambot.request.EditMessageText;
 import com.pengrad.telegrambot.request.SendMessage;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.exp.primeapp.botauth.models.CategoryCreationState;
 import org.exp.primeapp.botauth.models.ProductCreationState;
+import org.exp.primeapp.botauth.service.interfaces.BotCategoryService;
 import org.exp.primeapp.botauth.service.interfaces.BotProductService;
 import org.exp.primeapp.botauth.service.interfaces.ButtonService;
 import org.exp.primeapp.botauth.service.interfaces.MessageService;
@@ -30,6 +32,7 @@ public class CallbackHandler implements Consumer<CallbackQuery> {
     private final UserService userService;
     private final MessageService messageService;
     private final BotProductService botProductService;
+    private final BotCategoryService botCategoryService;
     private final ButtonService buttonService;
     private final TelegramBot telegramBot;
 
@@ -126,9 +129,60 @@ public class CallbackHandler implements Consumer<CallbackQuery> {
         }
 
         if (data.equals("admin_category_add")) {
-            telegramBot.execute(new AnswerCallbackQuery(callbackId)
-                    .text("Category qo'shish funksiyasi keyinroq qo'shiladi")
-                    .showAlert(true));
+            botCategoryService.startCategoryCreation(userId);
+            messageService.sendCategoryCreationStart(chatId);
+            messageService.sendCategoryNamePrompt(chatId);
+            telegramBot.execute(new AnswerCallbackQuery(callbackId).text("Kategoriya qo'shish boshlandi"));
+            return;
+        }
+
+        if (data.startsWith("spotlight_")) {
+            String spotlightName = data.replace("spotlight_", "");
+            // Map callback data to actual spotlight name
+            String actualSpotlightName = switch (spotlightName) {
+                case "tepa_kiyimlar" -> "Tepa kiyimlar";
+                case "shimlar" -> "Shimlar";
+                case "oyoq_kiyimlar" -> "Oyoq kiyimlar";
+                case "aksessuarlar" -> "Aksessuarlar";
+                default -> spotlightName;
+            };
+            
+            botCategoryService.handleSpotlightName(userId, actualSpotlightName);
+            CategoryCreationState state = botCategoryService.getCategoryCreationState(userId);
+            if (state != null) {
+                String categoryInfo = buildCategoryInfo(state);
+                messageService.sendCategoryConfirmation(chatId, categoryInfo);
+            }
+            telegramBot.execute(new AnswerCallbackQuery(callbackId).text("Spotlight nomi tanlandi"));
+            return;
+        }
+
+        if (data.equals("confirm_category")) {
+            try {
+                CategoryCreationState state = botCategoryService.getCategoryCreationState(userId);
+                if (state == null) {
+                    telegramBot.execute(new AnswerCallbackQuery(callbackId)
+                            .text("Kategoriya qo'shish jarayoni topilmadi")
+                            .showAlert(true));
+                    return;
+                }
+                
+                botCategoryService.confirmAndSaveCategory(userId);
+                messageService.sendCategorySavedSuccess(chatId);
+                telegramBot.execute(new AnswerCallbackQuery(callbackId).text("Kategoriya qo'shildi"));
+            } catch (Exception e) {
+                log.error("Error confirming category: {}", e.getMessage(), e);
+                telegramBot.execute(new AnswerCallbackQuery(callbackId)
+                        .text("Xatolik: " + e.getMessage())
+                        .showAlert(true));
+            }
+            return;
+        }
+
+        if (data.equals("cancel_category")) {
+            botCategoryService.cancelCategoryCreation(userId);
+            messageService.sendCategoryCreationCancelled(chatId);
+            telegramBot.execute(new AnswerCallbackQuery(callbackId).text("Bekor qilindi"));
             return;
         }
 
@@ -290,5 +344,14 @@ public class CallbackHandler implements Consumer<CallbackQuery> {
             messageService.sendProductCreationCancelled(chatId);
             telegramBot.execute(new AnswerCallbackQuery(callbackId).text("Bekor qilindi"));
         }
+    }
+
+    private String buildCategoryInfo(CategoryCreationState state) {
+        StringBuilder info = new StringBuilder();
+        info.append("<b>Nomi:</b> ").append(state.getName()).append("\n");
+        if (state.getSpotlightName() != null) {
+            info.append("<b>Spotlight nomi:</b> ").append(state.getSpotlightName()).append("\n");
+        }
+        return info.toString();
     }
 }

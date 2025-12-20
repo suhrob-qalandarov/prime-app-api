@@ -43,4 +43,16 @@ public interface MessageService {
     void sendProductCreationCancelled(Long chatId);
     
     void sendProductSizeQuantityPrompt(Long chatId, org.exp.primeapp.botauth.models.ProductCreationState state);
+    
+    void sendCategoryCreationStart(Long chatId);
+    
+    void sendCategoryNamePrompt(Long chatId);
+    
+    void sendSpotlightNamePrompt(Long chatId);
+    
+    void sendCategoryConfirmation(Long chatId, String categoryInfo);
+    
+    void sendCategorySavedSuccess(Long chatId);
+    
+    void sendCategoryCreationCancelled(Long chatId);
 }

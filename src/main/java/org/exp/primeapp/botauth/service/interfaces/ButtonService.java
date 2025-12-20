@@ -27,4 +27,8 @@ public interface ButtonService {
     InlineKeyboardMarkup createProductMenuButtons();
     
     InlineKeyboardMarkup createCategoryMenuButtons();
+    
+    InlineKeyboardMarkup createSpotlightNameButtons();
+    
+    InlineKeyboardMarkup createCategoryConfirmationButtons();
 }
