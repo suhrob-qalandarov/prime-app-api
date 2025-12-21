@@ -251,16 +251,30 @@ public class MessageServiceImpl implements MessageService {
         message += "• Maksimum: 3 ta rasm\n";
         message += "• Hozirgi: " + currentCount + " ta";
         
-        if (currentCount > 0 && currentCount < 3) {
-            telegramBot.execute(new SendMessage(chatId, message)
-                    .parseMode(ParseMode.HTML)
-                    .replyMarkup(buttonService.createContinueOrFinishImageButtons())
-            );
-        } else {
-            telegramBot.execute(new SendMessage(chatId, message)
-                    .parseMode(ParseMode.HTML)
-            );
-        }
+        telegramBot.execute(new SendMessage(chatId, message)
+                .parseMode(ParseMode.HTML)
+        );
+    }
+
+    @Override
+    public void sendImageSavedSuccess(Long chatId, int currentCount, int remaining) {
+        String message = "✅ Rasm muvaffaqiyatli saqlandi!\n";
+        message += "Qo'shish mumkin yana " + remaining + " ta rasm!";
+        
+        telegramBot.execute(new SendMessage(chatId, message)
+                .parseMode(ParseMode.HTML)
+                .replyMarkup(buttonService.createNextStepImageButton())
+        );
+    }
+
+    @Override
+    public void sendImagesCompleted(Long chatId, int totalCount) {
+        String message = "✅ Mahsulot rasmlari muvaffaqiyatli saqlandi!\n";
+        message += "Hozirgi: " + totalCount + " ta";
+        
+        telegramBot.execute(new SendMessage(chatId, message)
+                .parseMode(ParseMode.HTML)
+        );
     }
 
     @Override

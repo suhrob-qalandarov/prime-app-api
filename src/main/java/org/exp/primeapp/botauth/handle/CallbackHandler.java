@@ -316,10 +316,14 @@ public class CallbackHandler implements Consumer<CallbackQuery> {
                 return;
             }
             
+            int totalCount = state.getAttachmentUrls() != null ? state.getAttachmentUrls().size() : 0;
+            messageService.sendImagesCompleted(chatId, totalCount);
+            
             state.setCurrentStep(ProductCreationState.Step.WAITING_SPOTLIGHT_NAME);
+            // Send spotlight name prompt in separate message
             messageService.sendSpotlightNamePromptForProduct(chatId);
             
-            telegramBot.execute(new AnswerCallbackQuery(callbackId).text("Rasmlar qabul qilindi"));
+            telegramBot.execute(new AnswerCallbackQuery(callbackId).text("Keyingi qadamga o'tildi"));
 
         } else if (data.equals("confirm_product")) {
             try {

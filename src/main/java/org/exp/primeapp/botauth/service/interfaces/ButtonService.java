@@ -20,6 +20,8 @@ public interface ButtonService {
     
     InlineKeyboardMarkup createContinueOrFinishImageButtons();
     
+    InlineKeyboardMarkup createNextStepImageButton();
+    
     InlineKeyboardMarkup createAddProductButton();
     
     InlineKeyboardMarkup createAdminMainMenuButtons();

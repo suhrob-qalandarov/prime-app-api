@@ -88,6 +88,15 @@ public class ButtonServiceImpl implements ButtonService {
     }
 
     @Override
+    public InlineKeyboardMarkup createNextStepImageButton() {
+        return new InlineKeyboardMarkup(
+                new InlineKeyboardButton[]{
+                        new InlineKeyboardButton("➡️ Keyingi qadamga o'tish").callbackData("continue_images")
+                }
+        );
+    }
+
+    @Override
     public InlineKeyboardMarkup createAddProductButton() {
         return new InlineKeyboardMarkup(
                 new InlineKeyboardButton[]{

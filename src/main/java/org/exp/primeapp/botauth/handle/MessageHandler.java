@@ -147,14 +147,20 @@ public class MessageHandler implements Consumer<Message> {
                 botProductService.handleProductImage(userId, fileId);
                 
                 int currentCount = state.getAttachmentUrls() != null ? state.getAttachmentUrls().size() : 0;
-                if (state.hasMinimumImages() && state.canAddMoreImages()) {
-                    messageService.sendProductImagePrompt(chatId, currentCount);
-                } else if (state.hasMinimumImages()) {
-                    // Max 3 images reached, move to spotlight name selection step
+                int remaining = 3 - currentCount;
+                
+                if (currentCount >= 3) {
+                    // Max 3 images reached
+                    messageService.sendImagesCompleted(chatId, currentCount);
                     state.setCurrentStep(ProductCreationState.Step.WAITING_SPOTLIGHT_NAME);
+                    // Send spotlight name prompt in separate message
                     messageService.sendSpotlightNamePromptForProduct(chatId);
+                } else if (state.hasMinimumImages()) {
+                    // At least 1 image, can add more
+                    messageService.sendImageSavedSuccess(chatId, currentCount, remaining);
                 } else {
-                    messageService.sendProductImagePrompt(chatId, currentCount);
+                    // Still need minimum images
+                    messageService.sendImageSavedSuccess(chatId, currentCount, remaining);
                 }
             }
             return;

@@ -32,6 +32,10 @@ public interface MessageService {
     
     void sendProductImagePrompt(Long chatId, int currentCount);
     
+    void sendImageSavedSuccess(Long chatId, int currentCount, int remaining);
+    
+    void sendImagesCompleted(Long chatId, int totalCount);
+    
     void sendSpotlightNamePromptForProduct(Long chatId);
     
     void sendCategorySelection(Long chatId);
