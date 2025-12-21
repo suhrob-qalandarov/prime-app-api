@@ -342,10 +342,65 @@ public class CallbackHandler implements Consumer<CallbackQuery> {
         ProductCreationState state = botProductService.getProductCreationState(userId);
         if (state == null && !data.equals("renew_code")) {
             // Don't show error for admin menu callbacks and user role callbacks
-            if (!data.startsWith("admin_") && !data.startsWith("set_")) {
+            if (!data.startsWith("admin_") && !data.startsWith("set_") && !data.startsWith("select_color_") && !data.equals("skip_color")) {
                 telegramBot.execute(new AnswerCallbackQuery(callbackId)
                         .text("Mahsulot qo'shish jarayoni topilmadi. /add_product bilan boshlang.")
                         .showAlert(true));
+            }
+            return;
+        }
+
+        if (data.startsWith("select_color_")) {
+            // Handle color selection
+            if (state != null && state.getCurrentStep() == ProductCreationState.Step.WAITING_COLOR) {
+                // Parse color data: select_color_ColorName_#HexCode
+                // Note: Color name may contain apostrophes, so we split by last underscore
+                String colorData = data.replace("select_color_", "");
+                int lastUnderscoreIndex = colorData.lastIndexOf("_");
+                if (lastUnderscoreIndex > 0 && lastUnderscoreIndex < colorData.length() - 1) {
+                    String colorName = colorData.substring(0, lastUnderscoreIndex);
+                    String colorHex = colorData.substring(lastUnderscoreIndex + 1);
+                    
+                    // Edit the message to show selected color
+                    com.pengrad.telegrambot.model.Message callbackMessage = callbackQuery.message();
+                    Integer messageId = callbackMessage != null ? callbackMessage.messageId() : null;
+                    
+                    if (messageId != null) {
+                        telegramBot.execute(new EditMessageText(chatId, messageId,
+                                "🎨 <b>4/9</b> Rangni tanlang: " + colorName)
+                                .parseMode(ParseMode.HTML)
+                                .replyMarkup(new InlineKeyboardMarkup(new InlineKeyboardButton[0][]))
+                        );
+                    }
+                    
+                    botProductService.handleProductColor(userId, colorName, colorHex);
+                    state.setCurrentStep(ProductCreationState.Step.WAITING_MAIN_IMAGE);
+                    messageService.sendMainImagePrompt(chatId);
+                    telegramBot.execute(new AnswerCallbackQuery(callbackId).text("Rang tanlandi"));
+                }
+            }
+            return;
+        }
+
+        if (data.equals("skip_color")) {
+            // Skip color selection - set to default values
+            if (state != null && state.getCurrentStep() == ProductCreationState.Step.WAITING_COLOR) {
+                com.pengrad.telegrambot.model.Message callbackMessage = callbackQuery.message();
+                Integer messageId = callbackMessage != null ? callbackMessage.messageId() : null;
+                
+                if (messageId != null) {
+                    telegramBot.execute(new EditMessageText(chatId, messageId,
+                            "🎨 <b>4/9</b> Rangni tanlang: (O'tkazib yuborildi)")
+                            .parseMode(ParseMode.HTML)
+                            .replyMarkup(new InlineKeyboardMarkup(new InlineKeyboardButton[0][]))
+                    );
+                }
+                
+                // Set default color values
+                botProductService.handleProductColor(userId, "N/A", "#808080");
+                state.setCurrentStep(ProductCreationState.Step.WAITING_MAIN_IMAGE);
+                messageService.sendMainImagePrompt(chatId);
+                telegramBot.execute(new AnswerCallbackQuery(callbackId).text("Keyingi qadamga o'tildi"));
             }
             return;
         }
@@ -370,8 +425,8 @@ public class CallbackHandler implements Consumer<CallbackQuery> {
                 }
                 
                 botProductService.handleProductBrand(userId, ""); // Empty brand
-                state.setCurrentStep(ProductCreationState.Step.WAITING_MAIN_IMAGE);
-                messageService.sendMainImagePrompt(chatId);
+                state.setCurrentStep(ProductCreationState.Step.WAITING_COLOR);
+                messageService.sendProductColorPrompt(chatId);
                 telegramBot.execute(new AnswerCallbackQuery(callbackId).text("Keyingi qadamga o'tildi"));
             }
             return;

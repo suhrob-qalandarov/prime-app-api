@@ -319,6 +319,15 @@ public class MessageServiceImpl implements MessageService {
     }
 
     @Override
+    public void sendProductColorPrompt(Long chatId) {
+        telegramBot.execute(new SendMessage(chatId,
+                "🎨 <b>4/9</b> Rangni tanlang:")
+                .parseMode(ParseMode.HTML)
+                .replyMarkup(buttonService.createColorButtons())
+        );
+    }
+
+    @Override
     public void sendProductImagePrompt(Long chatId, int currentCount) {
         String message = "📷 <b>4/9</b> Mahsulot rasmlarini yuboring:\n\n";
         message += "• Minimum: 1 ta rasm\n";

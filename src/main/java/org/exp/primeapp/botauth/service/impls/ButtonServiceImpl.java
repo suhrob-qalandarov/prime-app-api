@@ -1,6 +1,7 @@
 package org.exp.primeapp.botauth.service.impls;
 
 import com.pengrad.telegrambot.model.request.*;
+import org.exp.primeapp.botauth.models.ProductColor;
 import org.exp.primeapp.botauth.service.interfaces.ButtonService;
 import org.exp.primeapp.models.entities.Category;
 import org.exp.primeapp.models.enums.Size;
@@ -260,5 +261,52 @@ public class ButtonServiceImpl implements ButtonService {
                         new InlineKeyboardButton("➡️ Keyingi qadam").callbackData("skip_additional_images")
                 }
         );
+    }
+
+    @Override
+    public InlineKeyboardMarkup createColorButtons() {
+        List<InlineKeyboardButton[]> buttons = new ArrayList<>();
+        List<InlineKeyboardButton> row = new ArrayList<>();
+        
+        ProductColor[] colors = ProductColor.getAllColors();
+        for (int i = 0; i < colors.length; i++) {
+            ProductColor color = colors[i];
+            // Emoji bilan rang ko'rsatish
+            String colorName = color.getName();
+            String colorHex = color.getHex();
+            String emoji = getColorEmoji(colorName);
+            InlineKeyboardButton button = new InlineKeyboardButton(emoji + " " + colorName)
+                    .callbackData("select_color_" + colorName + "_" + colorHex);
+            
+            row.add(button);
+            
+            // 3 ta button qator bo'lganda yangi qator yaratamiz
+            if (row.size() == 3 || i == colors.length - 1) {
+                buttons.add(row.toArray(new InlineKeyboardButton[0]));
+                row.clear();
+            }
+        }
+        
+        // Add "Keyingi qadam" button to skip color selection
+        buttons.add(new InlineKeyboardButton[]{
+                new InlineKeyboardButton("➡️ Keyingi qadam").callbackData("skip_color")
+        });
+        
+        return new InlineKeyboardMarkup(buttons.toArray(new InlineKeyboardButton[0][]));
+    }
+    
+    private String getColorEmoji(String colorName) {
+        return switch (colorName) {
+            case "Qora" -> "⚫";
+            case "Oq" -> "⚪";
+            case "Qizil" -> "🔴";
+            case "Ko'k" -> "🔵";
+            case "Yashil" -> "🟢";
+            case "Sariq" -> "🟡";
+            case "Qizg'ish" -> "🩷";
+            case "Kulrang" -> "⚪";
+            case "Jigarrang" -> "🟤";
+            default -> "🎨";
+        };
     }
 }

@@ -99,6 +99,17 @@ public class BotProductServiceImpl implements BotProductService {
             return;
         }
         state.setBrand(brand);
+        state.setCurrentStep(ProductCreationState.Step.WAITING_COLOR);
+    }
+
+    @Override
+    public void handleProductColor(Long userId, String colorName, String colorHex) {
+        ProductCreationState state = getProductCreationState(userId);
+        if (state == null || state.getCurrentStep() != ProductCreationState.Step.WAITING_COLOR) {
+            return;
+        }
+        state.setColorName(colorName);
+        state.setColorHex(colorHex);
         state.setCurrentStep(ProductCreationState.Step.WAITING_MAIN_IMAGE);
     }
 
@@ -243,6 +254,14 @@ public class BotProductServiceImpl implements BotProductService {
                 state.getPrice() == null) {
                 throw new RuntimeException("Product data is incomplete");
             }
+            
+            // Color is optional - use default values if not provided
+            String colorName = (state.getColorName() != null && !state.getColorName().trim().isEmpty()) 
+                    ? state.getColorName() 
+                    : "N/A";
+            String colorHex = (state.getColorHex() != null && !state.getColorHex().trim().isEmpty()) 
+                    ? state.getColorHex() 
+                    : "#808080";
 
             // Brand is optional - use empty string if not provided
             String brand = (state.getBrand() != null && !state.getBrand().trim().isEmpty()) 
@@ -254,8 +273,8 @@ public class BotProductServiceImpl implements BotProductService {
                     .name(state.getName())
                     .description(state.getDescription())
                     .brand(brand)
-                    .colorName("Default") // You might want to add this to the flow
-                    .colorHex("#000000") // You might want to add this to the flow
+                    .colorName(colorName)
+                    .colorHex(colorHex)
                     .price(state.getPrice())
                     .categoryId(state.getCategory().getId())
                     .attachmentUrls(new HashSet<>(state.getAttachmentUrls()))

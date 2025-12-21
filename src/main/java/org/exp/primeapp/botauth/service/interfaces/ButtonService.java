@@ -47,4 +47,6 @@ public interface ButtonService {
     InlineKeyboardMarkup createSkipAdditionalImagesButton();
     
     InlineKeyboardMarkup createSpotlightNameButtonsWithBack();
+    
+    InlineKeyboardMarkup createColorButtons();
 }

@@ -34,6 +34,8 @@ public interface MessageService {
     
     void sendProductBrandPrompt(Long chatId);
     
+    void sendProductColorPrompt(Long chatId);
+    
     void sendProductImagePrompt(Long chatId, int currentCount);
     
     void sendMainImagePrompt(Long chatId);

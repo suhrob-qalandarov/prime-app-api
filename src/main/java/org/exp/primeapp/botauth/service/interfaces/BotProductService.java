@@ -18,6 +18,8 @@ public interface BotProductService {
     
     void handleProductBrand(Long userId, String brand);
     
+    void handleProductColor(Long userId, String colorName, String colorHex);
+    
     void handleProductImage(Long userId, String fileId);
     
     void handleSpotlightNameSelection(Long userId, String spotlightName);

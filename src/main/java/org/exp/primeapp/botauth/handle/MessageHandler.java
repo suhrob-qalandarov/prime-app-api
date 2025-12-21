@@ -253,9 +253,9 @@ public class MessageHandler implements Consumer<Message> {
                     // Empty brand - set to empty string
                     botProductService.handleProductBrand(userId, "");
                 }
-                // After brand, move to main image step
-                state.setCurrentStep(ProductCreationState.Step.WAITING_MAIN_IMAGE);
-                messageService.sendMainImagePrompt(chatId);
+                // After brand, move to color selection step
+                state.setCurrentStep(ProductCreationState.Step.WAITING_COLOR);
+                messageService.sendProductColorPrompt(chatId);
                 break;
 
             case WAITING_QUANTITIES:

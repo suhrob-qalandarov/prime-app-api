@@ -19,6 +19,7 @@ public class ProductCreationState {
         WAITING_NAME,
         WAITING_DESCRIPTION,
         WAITING_BRAND,
+        WAITING_COLOR,
         WAITING_MAIN_IMAGE,
         WAITING_ADDITIONAL_IMAGES,
         WAITING_SPOTLIGHT_NAME,
@@ -33,6 +34,8 @@ public class ProductCreationState {
     private String name;
     private String description;
     private String brand;
+    private String colorName;
+    private String colorHex;
     private List<String> imageFileIds; // Telegram file_id lar
     private List<String> attachmentUrls; // Saqlangan attachment URL lar
     private String spotlightName; // Selected spotlight name
