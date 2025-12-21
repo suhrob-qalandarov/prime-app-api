@@ -1,6 +1,7 @@
 package org.exp.primeapp.botauth.service.impls;
 
 import com.pengrad.telegrambot.TelegramBot;
+import com.pengrad.telegrambot.model.request.InlineKeyboardMarkup;
 import com.pengrad.telegrambot.model.request.ParseMode;
 import com.pengrad.telegrambot.model.request.ReplyKeyboardRemove;
 import com.pengrad.telegrambot.request.DeleteMessage;
@@ -306,24 +307,31 @@ public class MessageServiceImpl implements MessageService {
         telegramBot.execute(new SendMessage(chatId,
                 "📝 <b>2/9</b> Mahsulot tavsifini kiriting:")
                 .parseMode(ParseMode.HTML)
+                .replyMarkup(buttonService.createBackButton("WAITING_NAME"))
         );
     }
 
     @Override
     public void sendProductBrandPrompt(Long chatId) {
+        InlineKeyboardMarkup nextStepButton = buttonService.createNextStepButton();
+        InlineKeyboardMarkup withBack = ((ButtonServiceImpl) buttonService).addBackButton(nextStepButton, "WAITING_DESCRIPTION");
+        
         telegramBot.execute(new SendMessage(chatId,
                 "🏷️ <b>3/9</b> Brend nomini kiriting:")
                 .parseMode(ParseMode.HTML)
-                .replyMarkup(buttonService.createNextStepButton())
+                .replyMarkup(withBack)
         );
     }
 
     @Override
     public void sendProductColorPrompt(Long chatId) {
+        InlineKeyboardMarkup colorButtons = buttonService.createColorButtons();
+        InlineKeyboardMarkup withBack = ((ButtonServiceImpl) buttonService).addBackButton(colorButtons, "WAITING_BRAND");
+        
         telegramBot.execute(new SendMessage(chatId,
                 "🎨 <b>4/9</b> Rangni tanlang:")
                 .parseMode(ParseMode.HTML)
-                .replyMarkup(buttonService.createColorButtons())
+                .replyMarkup(withBack)
         );
     }
 
@@ -342,20 +350,24 @@ public class MessageServiceImpl implements MessageService {
     @Override
     public void sendMainImagePrompt(Long chatId) {
         telegramBot.execute(new SendMessage(chatId,
-                "📷 <b>4/9</b> Mahsulotning asosiy rasmlarini yuboring:")
+                "📷 <b>5/9</b> Mahsulotning asosiy rasmlarini yuboring:")
                 .parseMode(ParseMode.HTML)
+                .replyMarkup(buttonService.createBackButton("WAITING_COLOR"))
         );
     }
 
     @Override
     public void sendAdditionalImagesPrompt(Long chatId, int currentCount) {
-        String message = "📷 <b>4/9</b> Mahsulotning qo'shimcha rasmlarini yuboring:\n\n";
+        String message = "📷 <b>5/9</b> Mahsulotning qo'shimcha rasmlarini yuboring:\n\n";
         message += "• Maksimum: 2 ta qo'shimcha rasm\n";
         message += "• Hozirgi: " + currentCount + " ta";
         
+        InlineKeyboardMarkup skipButton = buttonService.createSkipAdditionalImagesButton();
+        InlineKeyboardMarkup withBack = ((ButtonServiceImpl) buttonService).addBackButton(skipButton, "WAITING_MAIN_IMAGE");
+        
         telegramBot.execute(new SendMessage(chatId, message)
                 .parseMode(ParseMode.HTML)
-                .replyMarkup(buttonService.createSkipAdditionalImagesButton())
+                .replyMarkup(withBack)
         );
     }
 
@@ -383,7 +395,7 @@ public class MessageServiceImpl implements MessageService {
     @Override
     public void sendSpotlightNamePromptForProduct(Long chatId) {
         telegramBot.execute(new SendMessage(chatId,
-                "📂 <b>5/9</b> Toifani tanlang:")
+                "📂 <b>6/9</b> Toifani tanlang:")
                 .parseMode(ParseMode.HTML)
                 .replyMarkup(buttonService.createSpotlightNameButtonsWithBack())
         );
@@ -392,24 +404,27 @@ public class MessageServiceImpl implements MessageService {
     @Override
     public void sendCategorySelection(Long chatId) {
         telegramBot.execute(new SendMessage(chatId,
-                "📂 <b>6/9</b> Kategoriyani tanlang:")
+                "📂 <b>7/9</b> Kategoriyani tanlang:")
                 .parseMode(ParseMode.HTML)
+                .replyMarkup(buttonService.createBackButton("WAITING_SPOTLIGHT_NAME"))
         );
     }
 
     @Override
     public void sendSizeSelection(Long chatId) {
         telegramBot.execute(new SendMessage(chatId,
-                "📏 <b>7/9</b> O'lchamlarni tanlang (bir nechtasini tanlash mumkin):")
+                "📏 <b>8/9</b> O'lchamlarni tanlang (bir nechtasini tanlash mumkin):")
                 .parseMode(ParseMode.HTML)
+                .replyMarkup(buttonService.createBackButton("WAITING_CATEGORY"))
         );
     }
 
     @Override
     public void sendProductPricePrompt(Long chatId) {
         telegramBot.execute(new SendMessage(chatId,
-                "💰 <b>8/9</b> Mahsulot narxini kiriting (so'm):")
+                "💰 <b>9/9</b> Mahsulot narxini kiriting (so'm):")
                 .parseMode(ParseMode.HTML)
+                .replyMarkup(buttonService.createBackButton("WAITING_QUANTITIES"))
         );
     }
 
@@ -454,6 +469,7 @@ public class MessageServiceImpl implements MessageService {
         
         telegramBot.execute(new SendMessage(chatId, prompt.toString())
                 .parseMode(ParseMode.HTML)
+                .replyMarkup(buttonService.createBackButton("WAITING_SIZES"))
         );
     }
 

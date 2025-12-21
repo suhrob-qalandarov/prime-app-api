@@ -342,10 +342,37 @@ public class CallbackHandler implements Consumer<CallbackQuery> {
         ProductCreationState state = botProductService.getProductCreationState(userId);
         if (state == null && !data.equals("renew_code")) {
             // Don't show error for admin menu callbacks and user role callbacks
-            if (!data.startsWith("admin_") && !data.startsWith("set_") && !data.startsWith("select_color_") && !data.equals("skip_color")) {
+            if (!data.startsWith("admin_") && !data.startsWith("set_") && !data.startsWith("select_color_") 
+                    && !data.equals("skip_color") && !data.startsWith("back_to_")) {
                 telegramBot.execute(new AnswerCallbackQuery(callbackId)
                         .text("Mahsulot qo'shish jarayoni topilmadi. /add_product bilan boshlang.")
                         .showAlert(true));
+            }
+            return;
+        }
+
+        if (data.startsWith("back_to_")) {
+            // Handle back button - go to previous step
+            if (state != null) {
+                String stepName = data.replace("back_to_", "");
+                ProductCreationState.Step targetStep = getStepFromString(stepName);
+                
+                if (targetStep != null) {
+                    // Get the current message to edit
+                    com.pengrad.telegrambot.model.Message callbackMessage = callbackQuery.message();
+                    Integer messageId = callbackMessage != null ? callbackMessage.messageId() : null;
+                    
+                    state.setCurrentStep(targetStep);
+                    
+                    if (messageId != null) {
+                        // Edit the existing message instead of sending a new one
+                        editPromptForStep(chatId, messageId, targetStep, state);
+                    } else {
+                        // Fallback: send new message if messageId is not available
+                        sendPromptForStep(chatId, targetStep, state);
+                    }
+                    telegramBot.execute(new AnswerCallbackQuery(callbackId).text("Orqaga qaytildi"));
+                }
             }
             return;
         }
@@ -601,5 +628,137 @@ public class CallbackHandler implements Consumer<CallbackQuery> {
             info.append("<b>Spotlight nomi:</b> ").append(state.getSpotlightName()).append("\n");
         }
         return info.toString();
+    }
+    
+    private ProductCreationState.Step getStepFromString(String stepName) {
+        try {
+            return ProductCreationState.Step.valueOf(stepName);
+        } catch (IllegalArgumentException e) {
+            return null;
+        }
+    }
+    
+    private void sendPromptForStep(Long chatId, ProductCreationState.Step step, ProductCreationState state) {
+        switch (step) {
+            case WAITING_NAME:
+                messageService.sendProductNamePrompt(chatId);
+                break;
+            case WAITING_DESCRIPTION:
+                messageService.sendProductDescriptionPrompt(chatId);
+                break;
+            case WAITING_BRAND:
+                messageService.sendProductBrandPrompt(chatId);
+                break;
+            case WAITING_COLOR:
+                messageService.sendProductColorPrompt(chatId);
+                break;
+            case WAITING_MAIN_IMAGE:
+                messageService.sendMainImagePrompt(chatId);
+                break;
+            case WAITING_ADDITIONAL_IMAGES:
+                int currentCount = state.getAttachmentUrls() != null ? state.getAttachmentUrls().size() : 0;
+                messageService.sendAdditionalImagesPrompt(chatId, currentCount);
+                break;
+            case WAITING_SPOTLIGHT_NAME:
+                messageService.sendSpotlightNamePromptForProduct(chatId);
+                break;
+            case WAITING_CATEGORY:
+                messageService.sendCategorySelection(chatId);
+                break;
+            case WAITING_SIZES:
+                messageService.sendSizeSelection(chatId);
+                break;
+            case WAITING_QUANTITIES:
+                messageService.sendProductSizeQuantityPrompt(chatId, state);
+                break;
+            case WAITING_PRICE:
+                messageService.sendProductPricePrompt(chatId);
+                break;
+            default:
+                break;
+        }
+    }
+    
+    private void editPromptForStep(Long chatId, Integer messageId, ProductCreationState.Step step, ProductCreationState state) {
+        String text;
+        InlineKeyboardMarkup replyMarkup = null;
+        
+        switch (step) {
+            case WAITING_NAME:
+                text = "📝 <b>1/9</b> Mahsulot nomini kiriting:";
+                break;
+            case WAITING_DESCRIPTION:
+                text = "📝 <b>2/9</b> Mahsulot tavsifini kiriting:";
+                replyMarkup = buttonService.createBackButton("WAITING_NAME");
+                break;
+            case WAITING_BRAND:
+                text = "🏷️ <b>3/9</b> Brend nomini kiriting:";
+                InlineKeyboardMarkup nextStepButton = buttonService.createNextStepButton();
+                replyMarkup = ((org.exp.primeapp.botauth.service.impls.ButtonServiceImpl) buttonService).addBackButton(nextStepButton, "WAITING_DESCRIPTION");
+                break;
+            case WAITING_COLOR:
+                text = "🎨 <b>4/9</b> Rangni tanlang:";
+                InlineKeyboardMarkup colorButtons = buttonService.createColorButtons();
+                replyMarkup = ((org.exp.primeapp.botauth.service.impls.ButtonServiceImpl) buttonService).addBackButton(colorButtons, "WAITING_BRAND");
+                break;
+            case WAITING_MAIN_IMAGE:
+                text = "📷 <b>5/9</b> Mahsulotning asosiy rasmlarini yuboring:";
+                replyMarkup = buttonService.createBackButton("WAITING_COLOR");
+                break;
+            case WAITING_ADDITIONAL_IMAGES:
+                int currentCount = state.getAttachmentUrls() != null ? state.getAttachmentUrls().size() : 0;
+                text = "📷 <b>5/9</b> Mahsulotning qo'shimcha rasmlarini yuboring:\n\n";
+                text += "• Maksimum: 2 ta qo'shimcha rasm\n";
+                text += "• Hozirgi: " + currentCount + " ta";
+                InlineKeyboardMarkup skipButton = buttonService.createSkipAdditionalImagesButton();
+                replyMarkup = ((org.exp.primeapp.botauth.service.impls.ButtonServiceImpl) buttonService).addBackButton(skipButton, "WAITING_MAIN_IMAGE");
+                break;
+            case WAITING_SPOTLIGHT_NAME:
+                text = "📂 <b>6/9</b> Toifani tanlang:";
+                replyMarkup = buttonService.createSpotlightNameButtonsWithBack();
+                break;
+            case WAITING_CATEGORY:
+                text = "📂 <b>7/9</b> Kategoriyani tanlang:";
+                replyMarkup = buttonService.createBackButton("WAITING_SPOTLIGHT_NAME");
+                break;
+            case WAITING_SIZES:
+                text = "📏 <b>8/9</b> O'lchamlarni tanlang (bir nechtasini tanlash mumkin):";
+                replyMarkup = buttonService.createBackButton("WAITING_CATEGORY");
+                break;
+            case WAITING_QUANTITIES:
+                StringBuilder prompt = new StringBuilder("📊 Har bir o'lcham uchun miqdorni kiriting:\n\n");
+                for (Size size : state.getSelectedSizes()) {
+                    Integer currentQty = state.getSizeQuantities().getOrDefault(size, 0);
+                    if (currentQty == 0) {
+                        prompt.append("• <b>").append(size.getLabel()).append("</b>: miqdorni kiriting (raqam)\n");
+                    } else {
+                        prompt.append("• <b>").append(size.getLabel()).append("</b>: ✅ ").append(currentQty).append(" ta\n");
+                    }
+                }
+                text = prompt.toString();
+                replyMarkup = buttonService.createBackButton("WAITING_SIZES");
+                break;
+            case WAITING_PRICE:
+                text = "💰 <b>9/9</b> Mahsulot narxini kiriting (so'm):";
+                replyMarkup = buttonService.createBackButton("WAITING_QUANTITIES");
+                break;
+            default:
+                text = "";
+                break;
+        }
+        
+        if (!text.isEmpty()) {
+            EditMessageText editMessage = new EditMessageText(chatId, messageId, text)
+                    .parseMode(ParseMode.HTML);
+            
+            if (replyMarkup != null) {
+                editMessage.replyMarkup(replyMarkup);
+            } else {
+                // Remove inline keyboard if no reply markup
+                editMessage.replyMarkup(new InlineKeyboardMarkup(new InlineKeyboardButton[0][]));
+            }
+            
+            telegramBot.execute(editMessage);
+        }
     }
 }

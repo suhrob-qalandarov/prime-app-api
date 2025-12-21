@@ -327,6 +327,38 @@ public class BotProductServiceImpl implements BotProductService {
     }
 
     @Override
+    public void goToPreviousStep(Long userId) {
+        ProductCreationState state = getProductCreationState(userId);
+        if (state == null) {
+            return;
+        }
+        
+        ProductCreationState.Step currentStep = state.getCurrentStep();
+        ProductCreationState.Step previousStep = getPreviousStep(currentStep);
+        
+        if (previousStep != null) {
+            state.setCurrentStep(previousStep);
+        }
+    }
+    
+    private ProductCreationState.Step getPreviousStep(ProductCreationState.Step currentStep) {
+        return switch (currentStep) {
+            case WAITING_NAME -> null; // First step, no previous
+            case WAITING_DESCRIPTION -> ProductCreationState.Step.WAITING_NAME;
+            case WAITING_BRAND -> ProductCreationState.Step.WAITING_DESCRIPTION;
+            case WAITING_COLOR -> ProductCreationState.Step.WAITING_BRAND;
+            case WAITING_MAIN_IMAGE -> ProductCreationState.Step.WAITING_COLOR;
+            case WAITING_ADDITIONAL_IMAGES -> ProductCreationState.Step.WAITING_MAIN_IMAGE;
+            case WAITING_SPOTLIGHT_NAME -> ProductCreationState.Step.WAITING_ADDITIONAL_IMAGES;
+            case WAITING_CATEGORY -> ProductCreationState.Step.WAITING_SPOTLIGHT_NAME;
+            case WAITING_SIZES -> ProductCreationState.Step.WAITING_CATEGORY;
+            case WAITING_QUANTITIES -> ProductCreationState.Step.WAITING_SIZES;
+            case WAITING_PRICE -> ProductCreationState.Step.WAITING_QUANTITIES;
+            case CONFIRMATION -> ProductCreationState.Step.WAITING_PRICE;
+        };
+    }
+
+    @Override
     public List<Category> getAllCategories() {
         return categoryRepository.findAllByOrderByOrderNumberAsc();
     }

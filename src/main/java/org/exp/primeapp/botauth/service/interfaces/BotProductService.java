@@ -36,6 +36,8 @@ public interface BotProductService {
     
     void cancelProductCreation(Long userId);
     
+    void goToPreviousStep(Long userId);
+    
     List<org.exp.primeapp.models.entities.Category> getAllCategories();
     
     List<org.exp.primeapp.models.entities.Category> getCategoriesBySpotlightName(String spotlightName);

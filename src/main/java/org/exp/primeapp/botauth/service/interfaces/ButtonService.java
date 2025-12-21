@@ -49,4 +49,6 @@ public interface ButtonService {
     InlineKeyboardMarkup createSpotlightNameButtonsWithBack();
     
     InlineKeyboardMarkup createColorButtons();
+    
+    InlineKeyboardMarkup createBackButton(String step);
 }

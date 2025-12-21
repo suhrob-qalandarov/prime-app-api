@@ -295,6 +295,26 @@ public class ButtonServiceImpl implements ButtonService {
         return new InlineKeyboardMarkup(buttons.toArray(new InlineKeyboardButton[0][]));
     }
     
+    public InlineKeyboardMarkup addBackButton(InlineKeyboardMarkup original, String step) {
+        if (original == null || original.inlineKeyboard() == null) {
+            return createBackButton(step);
+        }
+        
+        List<InlineKeyboardButton[]> buttons = new ArrayList<>();
+        // Add all existing buttons
+        for (InlineKeyboardButton[] row : original.inlineKeyboard()) {
+            if (row != null && row.length > 0) {
+                buttons.add(row);
+            }
+        }
+        // Add back button as a new row
+        buttons.add(new InlineKeyboardButton[]{
+                new InlineKeyboardButton("⬅️ Orqaga").callbackData("back_to_" + step)
+        });
+        
+        return new InlineKeyboardMarkup(buttons.toArray(new InlineKeyboardButton[0][]));
+    }
+    
     private String getColorEmoji(String colorName) {
         return switch (colorName) {
             case "Qora" -> "⚫";
@@ -308,5 +328,14 @@ public class ButtonServiceImpl implements ButtonService {
             case "Jigarrang" -> "🟤";
             default -> "🎨";
         };
+    }
+
+    @Override
+    public InlineKeyboardMarkup createBackButton(String step) {
+        return new InlineKeyboardMarkup(
+                new InlineKeyboardButton[]{
+                        new InlineKeyboardButton("⬅️ Orqaga").callbackData("back_to_" + step)
+                }
+        );
     }
 }
