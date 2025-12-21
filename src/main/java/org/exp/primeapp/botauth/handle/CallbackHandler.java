@@ -2,8 +2,11 @@ package org.exp.primeapp.botauth.handle;
 
 import com.pengrad.telegrambot.TelegramBot;
 import com.pengrad.telegrambot.model.CallbackQuery;
+import com.pengrad.telegrambot.model.request.InlineKeyboardButton;
+import com.pengrad.telegrambot.model.request.InlineKeyboardMarkup;
 import com.pengrad.telegrambot.model.request.ParseMode;
 import com.pengrad.telegrambot.request.AnswerCallbackQuery;
+import com.pengrad.telegrambot.request.EditMessageReplyMarkup;
 import com.pengrad.telegrambot.request.EditMessageText;
 import com.pengrad.telegrambot.request.SendMessage;
 import lombok.RequiredArgsConstructor;
@@ -324,6 +327,22 @@ public class CallbackHandler implements Consumer<CallbackQuery> {
         if (data.equals("skip_brand")) {
             // Skip brand step - set brand to empty and move to next step
             if (state != null && state.getCurrentStep() == ProductCreationState.Step.WAITING_BRAND) {
+                // Edit the message to show "O'tkazib yuborildi" and remove inline keyboard
+                com.pengrad.telegrambot.model.Message callbackMessage = callbackQuery.message();
+                Integer messageId = callbackMessage != null ? callbackMessage.messageId() : null;
+                
+                if (messageId != null) {
+                    // Edit message to show skipped status
+                    telegramBot.execute(new EditMessageText(chatId, messageId,
+                            "🏷️ <b>3/9</b> Brend nomini kiriting: (O'tkazib yuborildi)")
+                            .parseMode(ParseMode.HTML)
+                    );
+                    // Remove inline keyboard using EditMessageReplyMarkup with empty keyboard
+                    telegramBot.execute(new EditMessageReplyMarkup(chatId, messageId)
+                            .replyMarkup(new InlineKeyboardMarkup(new InlineKeyboardButton[0][]))
+                    );
+                }
+                
                 botProductService.handleProductBrand(userId, ""); // Empty brand
                 state.setCurrentStep(ProductCreationState.Step.WAITING_IMAGES);
                 messageService.sendProductImagePrompt(chatId, 0);
