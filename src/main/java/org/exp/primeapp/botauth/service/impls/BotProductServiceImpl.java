@@ -178,7 +178,12 @@ public class BotProductServiceImpl implements BotProductService {
 
         try {
             Size size = Size.valueOf(sizeName);
-            if (!state.getSelectedSizes().contains(size)) {
+            // Toggle: if size is already selected, remove it; otherwise add it
+            if (state.getSelectedSizes().contains(size)) {
+                state.getSelectedSizes().remove(size);
+                // Also remove quantity if exists
+                state.getSizeQuantities().remove(size);
+            } else {
                 state.getSelectedSizes().add(size);
             }
         } catch (IllegalArgumentException e) {
