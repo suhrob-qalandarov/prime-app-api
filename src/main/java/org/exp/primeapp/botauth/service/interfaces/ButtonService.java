@@ -9,6 +9,10 @@ import java.util.List;
 
 public interface ButtonService {
     Keyboard sendShareContactBtn();
+    
+    Keyboard createAdminMainReplyKeyboard();
+    
+    Keyboard createAdminCancelReplyKeyboard();
 
     InlineKeyboardMarkup sendRenewCodeBtn();
     

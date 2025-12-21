@@ -9,6 +9,10 @@ public interface MessageService {
     void sendStartMsgForAdmin(Long chatId, String firstName);
     
     void sendAdminMenu(Long chatId, String firstName);
+    
+    void sendAdminMenuWithCancel(Long chatId);
+    
+    void sendAdminSectionMessage(Long chatId, String sectionName);
 
     void sendLoginMsg(Long chatId);
 

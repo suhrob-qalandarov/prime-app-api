@@ -104,19 +104,44 @@ public class MessageHandler implements Consumer<Message> {
                 messageService.sendProductCreationStart(chatId);
                 messageService.sendProductNamePrompt(chatId);
 
-            } else {
-                // Check if user is in category creation flow
-                CategoryCreationState categoryState = botCategoryService.getCategoryCreationState(userId);
-                if (categoryState != null) {
-                    handleCategoryCreationMessage(message, user, categoryState);
-                } else {
-                    // Check if user is in product creation flow
-                    ProductCreationState state = botProductService.getProductCreationState(userId);
-                    if (state != null) {
-                        handleProductCreationMessage(message, user, state);
-                    } else {
-                        log.debug("No handler for message from chatId: {}, text: {}", chatId, text);
+            } else if (text != null) {
+                // Check if user is admin and handle admin menu buttons
+                boolean isAdmin = user.getRoles() != null && user.getRoles().stream()
+                        .anyMatch(role -> role.getName() != null && 
+                                (role.getName().equals("ROLE_ADMIN") || 
+                                 role.getName().equals("ROLE_SUPER_ADMIN")));
+                
+                if (isAdmin) {
+                    if (text.equals("📊 Dashboard")) {
+                        messageService.sendAdminSectionMessage(chatId, "Dashboard");
+                        return;
+                    } else if (text.equals("📦 Buyurtmalar")) {
+                        messageService.sendAdminSectionMessage(chatId, "Buyurtmalar");
+                        return;
+                    } else if (text.equals("🛍️ Mahsulotlar")) {
+                        messageService.sendAdminSectionMessage(chatId, "Mahsulotlar");
+                        return;
+                    } else if (text.equals("📂 Kategoriyalar")) {
+                        messageService.sendAdminSectionMessage(chatId, "Kategoriyalar");
+                        return;
+                    } else if (text.equals("❌ Bekor qilish")) {
+                        messageService.sendAdminMenuWithCancel(chatId);
+                        return;
                     }
+                }
+            }
+            
+            // Check if user is in category creation flow
+            CategoryCreationState categoryState = botCategoryService.getCategoryCreationState(userId);
+            if (categoryState != null) {
+                handleCategoryCreationMessage(message, user, categoryState);
+            } else {
+                // Check if user is in product creation flow
+                ProductCreationState state = botProductService.getProductCreationState(userId);
+                if (state != null) {
+                    handleProductCreationMessage(message, user, state);
+                } else {
+                    log.debug("No handler for message from chatId: {}, text: {}", chatId, text);
                 }
             }
         } catch (Exception e) {

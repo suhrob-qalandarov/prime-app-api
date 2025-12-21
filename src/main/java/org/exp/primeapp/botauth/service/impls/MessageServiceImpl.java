@@ -112,9 +112,9 @@ public class MessageServiceImpl implements MessageService {
             
             SendMessage sendMessage = new SendMessage(chatId,
                     "👨‍💼 <b>Xush kelibsiz, Admin!</b>\n\n" +
-                    "Quyidagi bo'limlardan birini tanlang:")
+                    "Quyidagi bo'limlardan birini tanlang👇")
                     .parseMode(ParseMode.HTML)
-                    .replyMarkup(buttonService.createAdminMainMenuButtons());
+                    .replyMarkup(buttonService.createAdminMainReplyKeyboard());
             
             SendResponse response = telegramBot.execute(sendMessage);
             
@@ -126,6 +126,74 @@ public class MessageServiceImpl implements MessageService {
             }
         } catch (Exception e) {
             log.error("❌ Exception while sending admin menu to chatId: {}", chatId, e);
+        }
+    }
+    
+    @Override
+    public void sendAdminMenuWithCancel(Long chatId) {
+        try {
+            if (telegramBot == null) {
+                log.error("❌ Telegram bot is null! Cannot send admin menu to chatId: {}", chatId);
+                return;
+            }
+            
+            SendMessage sendMessage = new SendMessage(chatId,
+                    "👨‍💼 <b>Xush kelibsiz, Admin!</b>\n\n" +
+                    "Quyidagi bo'limlardan birini tanlang👇")
+                    .parseMode(ParseMode.HTML)
+                    .replyMarkup(buttonService.createAdminMainReplyKeyboard());
+            
+            telegramBot.execute(sendMessage);
+        } catch (Exception e) {
+            log.error("❌ Exception while sending admin menu to chatId: {}", chatId, e);
+        }
+    }
+    
+    @Override
+    public void sendAdminSectionMessage(Long chatId, String sectionName) {
+        try {
+            if (telegramBot == null) {
+                return;
+            }
+            
+            SendMessage sendMessage;
+            
+            if (sectionName.equals("Mahsulotlar")) {
+                // Send inline keyboard message
+                SendMessage inlineMessage = new SendMessage(chatId,
+                        "🛍️ <b>Mahsulotlar bo'limi</b>\n\nQuyidagi amallardan birini tanlang:")
+                        .parseMode(ParseMode.HTML)
+                        .replyMarkup(buttonService.createProductMenuButtons());
+                telegramBot.execute(inlineMessage);
+                
+                // Send reply keyboard "Bekor qilish" button
+                SendMessage cancelMessage = new SendMessage(chatId, " ")
+                        .replyMarkup(buttonService.createAdminCancelReplyKeyboard());
+                telegramBot.execute(cancelMessage);
+                return;
+            } else if (sectionName.equals("Kategoriyalar")) {
+                // Send inline keyboard message
+                SendMessage inlineMessage = new SendMessage(chatId,
+                        "📂 <b>Kategoriyalar bo'limi</b>\n\nQuyidagi amallardan birini tanlang:")
+                        .parseMode(ParseMode.HTML)
+                        .replyMarkup(buttonService.createCategoryMenuButtons());
+                telegramBot.execute(inlineMessage);
+                
+                // Send reply keyboard "Bekor qilish" button
+                SendMessage cancelMessage = new SendMessage(chatId, " ")
+                        .replyMarkup(buttonService.createAdminCancelReplyKeyboard());
+                telegramBot.execute(cancelMessage);
+                return;
+            } else {
+                sendMessage = new SendMessage(chatId,
+                        "📂 <b>" + sectionName + "</b> bo'limi")
+                        .parseMode(ParseMode.HTML)
+                        .replyMarkup(buttonService.createAdminCancelReplyKeyboard());
+            }
+            
+            telegramBot.execute(sendMessage);
+        } catch (Exception e) {
+            log.error("❌ Exception while sending admin section message to chatId: {}", chatId, e);
         }
     }
 

@@ -20,6 +20,27 @@ public class ButtonServiceImpl implements ButtonService {
     }
 
     @Override
+    public Keyboard createAdminMainReplyKeyboard() {
+        return new ReplyKeyboardMarkup(
+                new KeyboardButton[]{
+                        new KeyboardButton("📊 Dashboard"),
+                        new KeyboardButton("📦 Buyurtmalar")
+                },
+                new KeyboardButton[]{
+                        new KeyboardButton("🛍️ Mahsulotlar"),
+                        new KeyboardButton("📂 Kategoriyalar")
+                }
+        ).resizeKeyboard(true);
+    }
+
+    @Override
+    public Keyboard createAdminCancelReplyKeyboard() {
+        return new ReplyKeyboardMarkup(
+                new KeyboardButton("❌ Bekor qilish")
+        ).resizeKeyboard(true);
+    }
+
+    @Override
     public InlineKeyboardMarkup sendRenewCodeBtn() {
         return new InlineKeyboardMarkup(new InlineKeyboardButton("🔄Yangilash").callbackData("renew_code"));
     }
@@ -129,9 +150,6 @@ public class ButtonServiceImpl implements ButtonService {
                 },
                 new InlineKeyboardButton[]{
                         new InlineKeyboardButton("📥 Add Income").callbackData("admin_product_add_income")
-                },
-                new InlineKeyboardButton[]{
-                        new InlineKeyboardButton("⬅️ Back").callbackData("admin_menu_back")
                 }
         );
     }
@@ -142,9 +160,6 @@ public class ButtonServiceImpl implements ButtonService {
                 new InlineKeyboardButton[]{
                         new InlineKeyboardButton("➕ Add").callbackData("admin_category_add"),
                         new InlineKeyboardButton("✏️ Edit").callbackData("admin_category_edit")
-                },
-                new InlineKeyboardButton[]{
-                        new InlineKeyboardButton("⬅️ Back").callbackData("admin_menu_back")
                 }
         );
     }
