@@ -12,6 +12,7 @@ import org.exp.primeapp.botauth.models.CategoryCreationState;
 import org.exp.primeapp.botauth.models.ProductCreationState;
 import org.exp.primeapp.botauth.service.interfaces.BotCategoryService;
 import org.exp.primeapp.botauth.service.interfaces.BotProductService;
+import org.exp.primeapp.botauth.service.interfaces.BotUserService;
 import org.exp.primeapp.botauth.service.interfaces.ButtonService;
 import org.exp.primeapp.botauth.service.interfaces.MessageService;
 import org.exp.primeapp.botauth.service.interfaces.UserService;
@@ -33,6 +34,7 @@ public class CallbackHandler implements Consumer<CallbackQuery> {
     private final MessageService messageService;
     private final BotProductService botProductService;
     private final BotCategoryService botCategoryService;
+    private final BotUserService botUserService;
     private final ButtonService buttonService;
     private final TelegramBot telegramBot;
 
@@ -226,12 +228,76 @@ public class CallbackHandler implements Consumer<CallbackQuery> {
             telegramBot.execute(new AnswerCallbackQuery(callbackId).text("Mahsulot qo'shish boshlandi"));
             return;
         }
+        
+        // Handle user role callbacks (before product creation state check)
+        if (data.equals("set_admin_search")) {
+            // Check if user is super admin
+            boolean isSuperAdmin = user.getRoles() != null && user.getRoles().stream()
+                    .anyMatch(role -> role.getName() != null && 
+                            role.getName().equals("ROLE_SUPER_ADMIN"));
+            
+            if (!isSuperAdmin) {
+                telegramBot.execute(new AnswerCallbackQuery(callbackId)
+                        .text("Faqat Super Admin bu funksiyani ishlatishi mumkin")
+                        .showAlert(true));
+                return;
+            }
+            
+            messageService.sendPhoneNumberPrompt(chatId);
+            botUserService.setUserSearchState(userId, true);
+            telegramBot.execute(new AnswerCallbackQuery(callbackId).text("Telefon raqam kiriting"));
+            return;
+        }
+        
+        if (data.startsWith("set_admin_")) {
+            Long targetUserId = Long.parseLong(data.substring("set_admin_".length()));
+            
+            try {
+                botUserService.addRoleToUser(targetUserId, "ROLE_ADMIN");
+                messageService.sendRoleAddedSuccess(chatId, "ROLE_ADMIN");
+                telegramBot.execute(new AnswerCallbackQuery(callbackId).text("Admin role qo'shildi"));
+            } catch (Exception e) {
+                log.error("Failed to add admin role to user: {}", targetUserId, e);
+                telegramBot.execute(new AnswerCallbackQuery(callbackId)
+                        .text("Xatolik: " + e.getMessage())
+                        .showAlert(true));
+            }
+            return;
+        }
+        
+        if (data.startsWith("set_super_admin_")) {
+            // Check if user is super admin
+            boolean isSuperAdmin = user.getRoles() != null && user.getRoles().stream()
+                    .anyMatch(role -> role.getName() != null && 
+                            role.getName().equals("ROLE_SUPER_ADMIN"));
+            
+            if (!isSuperAdmin) {
+                telegramBot.execute(new AnswerCallbackQuery(callbackId)
+                        .text("Faqat Super Admin bu funksiyani ishlatishi mumkin")
+                        .showAlert(true));
+                return;
+            }
+            
+            Long targetUserId = Long.parseLong(data.substring("set_super_admin_".length()));
+            
+            try {
+                botUserService.addRoleToUser(targetUserId, "ROLE_SUPER_ADMIN");
+                messageService.sendRoleAddedSuccess(chatId, "ROLE_SUPER_ADMIN");
+                telegramBot.execute(new AnswerCallbackQuery(callbackId).text("Super Admin role qo'shildi"));
+            } catch (Exception e) {
+                log.error("Failed to add super admin role to user: {}", targetUserId, e);
+                telegramBot.execute(new AnswerCallbackQuery(callbackId)
+                        .text("Xatolik: " + e.getMessage())
+                        .showAlert(true));
+            }
+            return;
+        }
 
         // Handle product creation callbacks
         ProductCreationState state = botProductService.getProductCreationState(userId);
         if (state == null && !data.equals("renew_code")) {
-            // Don't show error for admin menu callbacks
-            if (!data.startsWith("admin_")) {
+            // Don't show error for admin menu callbacks and user role callbacks
+            if (!data.startsWith("admin_") && !data.startsWith("set_")) {
                 telegramBot.execute(new AnswerCallbackQuery(callbackId)
                         .text("Mahsulot qo'shish jarayoni topilmadi. /add_product bilan boshlang.")
                         .showAlert(true));

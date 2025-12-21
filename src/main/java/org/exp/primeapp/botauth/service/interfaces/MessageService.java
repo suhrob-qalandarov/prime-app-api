@@ -67,4 +67,14 @@ public interface MessageService {
     void sendCategorySavedSuccess(Long chatId);
     
     void sendCategoryCreationCancelled(Long chatId);
+    
+    void sendUsersStatistics(Long chatId, long totalCount, long adminCount, long superAdminCount, boolean isSuperAdmin);
+    
+    void sendPhoneNumberPrompt(Long chatId);
+    
+    void sendUserNotFound(Long chatId);
+    
+    void sendUserInfo(Long chatId, User user, boolean canSetAdmin, boolean canSetSuperAdmin);
+    
+    void sendRoleAddedSuccess(Long chatId, String roleName);
 }

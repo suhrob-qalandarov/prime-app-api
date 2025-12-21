@@ -37,4 +37,8 @@ public interface ButtonService {
     InlineKeyboardMarkup createSpotlightNameButtons();
     
     InlineKeyboardMarkup createCategoryConfirmationButtons();
+    
+    InlineKeyboardMarkup createSetAdminButton();
+    
+    InlineKeyboardMarkup createUserRoleButtons(boolean canSetAdmin, boolean canSetSuperAdmin, Long userId);
 }

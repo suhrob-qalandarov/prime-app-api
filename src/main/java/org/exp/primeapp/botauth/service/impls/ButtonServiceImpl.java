@@ -29,6 +29,9 @@ public class ButtonServiceImpl implements ButtonService {
                 new KeyboardButton[]{
                         new KeyboardButton("🛍️ Mahsulotlar"),
                         new KeyboardButton("📂 Kategoriyalar")
+                },
+                new KeyboardButton[]{
+                        new KeyboardButton("👥 Foydalanuvchilar")
                 }
         ).resizeKeyboard(true);
     }
@@ -190,5 +193,33 @@ public class ButtonServiceImpl implements ButtonService {
                         new InlineKeyboardButton("❌ Bekor qilish").callbackData("cancel_category")
                 }
         );
+    }
+
+    @Override
+    public InlineKeyboardMarkup createSetAdminButton() {
+        return new InlineKeyboardMarkup(
+                new InlineKeyboardButton[]{
+                        new InlineKeyboardButton("👨‍💼 Set Admin").callbackData("set_admin_search")
+                }
+        );
+    }
+
+    @Override
+    public InlineKeyboardMarkup createUserRoleButtons(boolean canSetAdmin, boolean canSetSuperAdmin, Long userId) {
+        List<InlineKeyboardButton[]> buttons = new ArrayList<>();
+        
+        if (canSetAdmin) {
+            buttons.add(new InlineKeyboardButton[]{
+                    new InlineKeyboardButton("👨‍💼 Set Admin").callbackData("set_admin_" + userId)
+            });
+        }
+        
+        if (canSetSuperAdmin) {
+            buttons.add(new InlineKeyboardButton[]{
+                    new InlineKeyboardButton("👑 Set Super Admin").callbackData("set_super_admin_" + userId)
+            });
+        }
+        
+        return new InlineKeyboardMarkup(buttons.toArray(new InlineKeyboardButton[0][]));
     }
 }

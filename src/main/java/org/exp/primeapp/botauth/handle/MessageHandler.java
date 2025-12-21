@@ -9,6 +9,7 @@ import org.exp.primeapp.botauth.models.CategoryCreationState;
 import org.exp.primeapp.botauth.models.ProductCreationState;
 import org.exp.primeapp.botauth.service.interfaces.BotCategoryService;
 import org.exp.primeapp.botauth.service.interfaces.BotProductService;
+import org.exp.primeapp.botauth.service.interfaces.BotUserService;
 import org.exp.primeapp.botauth.service.interfaces.MessageService;
 import org.exp.primeapp.botauth.service.interfaces.UserService;
 import org.exp.primeapp.models.entities.User;
@@ -26,6 +27,7 @@ public class MessageHandler implements Consumer<Message> {
     private final UserService userService;
     private final BotProductService botProductService;
     private final BotCategoryService botCategoryService;
+    private final BotUserService botUserService;
 
     @Override
     public void accept(Message message) {
@@ -124,11 +126,27 @@ public class MessageHandler implements Consumer<Message> {
                     } else if (text.equals("📂 Kategoriyalar")) {
                         messageService.sendAdminSectionMessage(chatId, "Kategoriyalar");
                         return;
+                    } else if (text.equals("👥 Foydalanuvchilar")) {
+                        // Check if user is super admin
+                        boolean isSuperAdmin = user.getRoles() != null && user.getRoles().stream()
+                                .anyMatch(role -> role.getName() != null && 
+                                        role.getName().equals("ROLE_SUPER_ADMIN"));
+                        
+                        long[] counts = botUserService.getUserCounts();
+                        messageService.sendUsersStatistics(chatId, counts[0], counts[1], counts[2], isSuperAdmin);
+                        return;
                     } else if (text.equals("❌ Bekor qilish")) {
+                        botUserService.setUserSearchState(userId, false);
                         messageService.sendAdminMenuWithCancel(chatId);
                         return;
                     }
                 }
+            }
+            
+            // Check if user is in user search flow
+            if (botUserService.getUserSearchState(userId)) {
+                handleUserSearchMessage(message, user);
+                return;
             }
             
             // Check if user is in category creation flow
@@ -322,6 +340,32 @@ public class MessageHandler implements Consumer<Message> {
 
             default:
                 break;
+        }
+    }
+    
+    private void handleUserSearchMessage(Message message, User user) {
+        String text = message.text();
+        Long chatId = user.getTelegramId();
+        Long userId = user.getId();
+        
+        if (text == null || text.trim().isEmpty()) {
+            return;
+        }
+        
+        // Search user by phone number
+        User foundUser = botUserService.findUserByPhone(text.trim());
+        
+        if (foundUser == null) {
+            messageService.sendUserNotFound(chatId);
+            botUserService.setUserSearchState(userId, false);
+        } else {
+            // Check if user can set admin or super admin
+            boolean canSetAdmin = !botUserService.hasRole(foundUser, "ROLE_ADMIN") && 
+                                 !botUserService.hasRole(foundUser, "ROLE_SUPER_ADMIN");
+            boolean canSetSuperAdmin = !botUserService.hasRole(foundUser, "ROLE_SUPER_ADMIN");
+            
+            messageService.sendUserInfo(chatId, foundUser, canSetAdmin, canSetSuperAdmin);
+            botUserService.setUserSearchState(userId, false);
         }
     }
 }
