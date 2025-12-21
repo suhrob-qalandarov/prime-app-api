@@ -142,6 +142,12 @@ public class FilterChainConfig {
                                 API + V1 + ATTACHMENT + "/*"
                         ).permitAll() // Token validation controller/service da qilinadi
 
+                        // /uploads/** path - public (session token bilan himoyalangan)
+                        .requestMatchers(
+                                HttpMethod.GET,
+                                "/uploads/**"
+                        ).permitAll() // Session token validation controller da qilinadi
+
                         // Allow GET requests to AdminProductController for ROLE_ADMIN and ROLE_VISITOR
                         .requestMatchers(
                                 HttpMethod.GET,
