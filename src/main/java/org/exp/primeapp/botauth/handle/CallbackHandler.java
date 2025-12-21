@@ -443,9 +443,8 @@ public class CallbackHandler implements Consumer<CallbackQuery> {
                     );
                 }
                 
-                int totalCount = state.getAttachmentUrls() != null ? state.getAttachmentUrls().size() : 0;
-                messageService.sendImagesCompleted(chatId, totalCount);
-                
+                // Don't send "Mahsulot rasmlari muvaffaqiyatli saqlandi!" message when skipping additional images
+                // Just move to next step
                 state.setCurrentStep(ProductCreationState.Step.WAITING_SPOTLIGHT_NAME);
                 messageService.sendSpotlightNamePromptForProduct(chatId);
                 telegramBot.execute(new AnswerCallbackQuery(callbackId).text("Keyingi qadamga o'tildi"));
