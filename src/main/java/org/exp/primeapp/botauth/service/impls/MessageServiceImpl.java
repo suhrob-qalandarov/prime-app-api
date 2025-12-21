@@ -160,30 +160,34 @@ public class MessageServiceImpl implements MessageService {
             SendMessage sendMessage;
             
             if (sectionName.equals("Mahsulotlar")) {
-                // Send inline keyboard message
-                SendMessage inlineMessage = new SendMessage(chatId,
+                // First, remove old keyboard and set new cancel button
+                SendMessage cancelMessage = new SendMessage(chatId,
                         "🛍️ <b>Mahsulotlar bo'limi</b>\n\nQuyidagi amallardan birini tanlang:")
+                        .parseMode(ParseMode.HTML)
+                        .replyMarkup(buttonService.createAdminCancelReplyKeyboard());
+                telegramBot.execute(cancelMessage);
+                
+                // Then send inline keyboard message
+                SendMessage inlineMessage = new SendMessage(chatId,
+                        "⬇️ Quyidagi tugmalardan birini tanlang:")
                         .parseMode(ParseMode.HTML)
                         .replyMarkup(buttonService.createProductMenuButtons());
                 telegramBot.execute(inlineMessage);
-                
-                // Send reply keyboard "Bekor qilish" button
-                SendMessage cancelMessage = new SendMessage(chatId, " ")
-                        .replyMarkup(buttonService.createAdminCancelReplyKeyboard());
-                telegramBot.execute(cancelMessage);
                 return;
             } else if (sectionName.equals("Kategoriyalar")) {
-                // Send inline keyboard message
-                SendMessage inlineMessage = new SendMessage(chatId,
+                // First, remove old keyboard and set new cancel button
+                SendMessage cancelMessage = new SendMessage(chatId,
                         "📂 <b>Kategoriyalar bo'limi</b>\n\nQuyidagi amallardan birini tanlang:")
+                        .parseMode(ParseMode.HTML)
+                        .replyMarkup(buttonService.createAdminCancelReplyKeyboard());
+                telegramBot.execute(cancelMessage);
+                
+                // Then send inline keyboard message
+                SendMessage inlineMessage = new SendMessage(chatId,
+                        "⬇️ Quyidagi tugmalardan birini tanlang:")
                         .parseMode(ParseMode.HTML)
                         .replyMarkup(buttonService.createCategoryMenuButtons());
                 telegramBot.execute(inlineMessage);
-                
-                // Send reply keyboard "Bekor qilish" button
-                SendMessage cancelMessage = new SendMessage(chatId, " ")
-                        .replyMarkup(buttonService.createAdminCancelReplyKeyboard());
-                telegramBot.execute(cancelMessage);
                 return;
             } else {
                 sendMessage = new SendMessage(chatId,
@@ -479,23 +483,24 @@ public class MessageServiceImpl implements MessageService {
     public void sendUsersStatistics(Long chatId, long totalCount, long adminCount, long superAdminCount, boolean isSuperAdmin) {
         try {
             StringBuilder message = new StringBuilder();
-            message.append("👥 <b>Foydalanuvchilar statistikasi</b>\n\n");
+            message.append("👥 <b>Foydalanuvchilar bo'limi</b>\n\n");
             message.append("📊 Umumiy foydalanuvchilar: ").append(totalCount).append(" ta\n");
             message.append("👨‍💼 Adminlar: ").append(adminCount).append(" ta\n");
             message.append("👑 Super Adminlar: ").append(superAdminCount).append(" ta\n");
             
+            // Send main message with cancel button
+            SendMessage mainMessage = new SendMessage(chatId, message.toString())
+                    .parseMode(ParseMode.HTML)
+                    .replyMarkup(buttonService.createAdminCancelReplyKeyboard());
+            telegramBot.execute(mainMessage);
+            
+            // Send inline button if super admin
             if (isSuperAdmin) {
-                message.append("\n⬇️ Quyidagi tugmani bosib, admin qo'shishingiz mumkin:");
-                telegramBot.execute(new SendMessage(chatId, message.toString())
+                telegramBot.execute(new SendMessage(chatId,
+                        "⬇️ Quyidagi tugmani bosib, admin qo'shishingiz mumkin:")
                         .parseMode(ParseMode.HTML)
                         .replyMarkup(buttonService.createSetAdminButton()));
-            } else {
-                telegramBot.execute(new SendMessage(chatId, message.toString())
-                        .parseMode(ParseMode.HTML));
             }
-            SendMessage cancelMessage = new SendMessage(chatId, " ")
-                    .replyMarkup(buttonService.createAdminCancelReplyKeyboard());
-            telegramBot.execute(cancelMessage);
         } catch (Exception e) {
             log.error("❌ Exception while sending users statistics to chatId: {}", chatId, e);
         }

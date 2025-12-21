@@ -50,15 +50,23 @@ public class CallbackHandler implements Consumer<CallbackQuery> {
         if (data.equals("admin_menu_product")) {
             com.pengrad.telegrambot.model.Message callbackMessage = callbackQuery.message();
             Integer messageId = callbackMessage != null ? callbackMessage.messageId() : null;
+            
+            // First, send reply keyboard "Bekor qilish" button (removes main keyboard)
+            telegramBot.execute(new SendMessage(chatId,
+                    "🛍️ <b>Product bo'limi</b>\n\nQuyidagi amallardan birini tanlang:")
+                    .parseMode(ParseMode.HTML)
+                    .replyMarkup(buttonService.createAdminCancelReplyKeyboard()));
+            
+            // Then send inline keyboard message
             if (messageId != null) {
                 telegramBot.execute(new EditMessageText(chatId, messageId,
-                        "🛍️ <b>Product bo'limi</b>\n\nQuyidagi amallardan birini tanlang:")
+                        "⬇️ Quyidagi tugmalardan birini tanlang:")
                         .parseMode(ParseMode.HTML)
                         .replyMarkup(buttonService.createProductMenuButtons())
                 );
             } else {
                 telegramBot.execute(new SendMessage(chatId,
-                        "🛍️ <b>Product bo'limi</b>\n\nQuyidagi amallardan birini tanlang:")
+                        "⬇️ Quyidagi tugmalardan birini tanlang:")
                         .parseMode(ParseMode.HTML)
                         .replyMarkup(buttonService.createProductMenuButtons())
                 );
@@ -70,15 +78,23 @@ public class CallbackHandler implements Consumer<CallbackQuery> {
         if (data.equals("admin_menu_category")) {
             com.pengrad.telegrambot.model.Message callbackMessage = callbackQuery.message();
             Integer messageId = callbackMessage != null ? callbackMessage.messageId() : null;
+            
+            // First, send reply keyboard "Bekor qilish" button (removes main keyboard)
+            telegramBot.execute(new SendMessage(chatId,
+                    "📂 <b>Category bo'limi</b>\n\nQuyidagi amallardan birini tanlang:")
+                    .parseMode(ParseMode.HTML)
+                    .replyMarkup(buttonService.createAdminCancelReplyKeyboard()));
+            
+            // Then send inline keyboard message
             if (messageId != null) {
                 telegramBot.execute(new EditMessageText(chatId, messageId,
-                        "📂 <b>Category bo'limi</b>\n\nQuyidagi amallardan birini tanlang:")
+                        "⬇️ Quyidagi tugmalardan birini tanlang:")
                         .parseMode(ParseMode.HTML)
                         .replyMarkup(buttonService.createCategoryMenuButtons())
                 );
             } else {
                 telegramBot.execute(new SendMessage(chatId,
-                        "📂 <b>Category bo'limi</b>\n\nQuyidagi amallardan birini tanlang:")
+                        "⬇️ Quyidagi tugmalardan birini tanlang:")
                         .parseMode(ParseMode.HTML)
                         .replyMarkup(buttonService.createCategoryMenuButtons())
                 );

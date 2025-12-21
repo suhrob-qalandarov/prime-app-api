@@ -136,8 +136,24 @@ public class MessageHandler implements Consumer<Message> {
                         messageService.sendUsersStatistics(chatId, counts[0], counts[1], counts[2], isSuperAdmin);
                         return;
                     } else if (text.equals("❌ Bekor qilish")) {
+                        // Cancel all active states
                         botUserService.setUserSearchState(userId, false);
-                        messageService.sendAdminMenuWithCancel(chatId);
+                        
+                        // Cancel product creation if active
+                        ProductCreationState productState = botProductService.getProductCreationState(userId);
+                        if (productState != null) {
+                            botProductService.cancelProductCreation(userId);
+                        }
+                        
+                        // Cancel category creation if active
+                        CategoryCreationState categoryState = botCategoryService.getCategoryCreationState(userId);
+                        if (categoryState != null) {
+                            botCategoryService.cancelCategoryCreation(userId);
+                        }
+                        
+                        // Return to main menu
+                        String firstName = user.getFirstName() != null ? user.getFirstName() : "Admin";
+                        messageService.sendAdminMenu(chatId, firstName);
                         return;
                     }
                 }
