@@ -19,6 +19,7 @@ public class ProductCreationState {
         WAITING_DESCRIPTION,
         WAITING_BRAND,
         WAITING_IMAGES,
+        WAITING_SPOTLIGHT_NAME,
         WAITING_CATEGORY,
         WAITING_SIZES,
         WAITING_QUANTITIES,
@@ -31,6 +32,7 @@ public class ProductCreationState {
     private String brand;
     private List<String> imageFileIds; // Telegram file_id lar
     private List<String> attachmentUrls; // Saqlangan attachment URL lar
+    private String spotlightName; // Selected spotlight name
     private Category category;
     private List<Size> selectedSizes;
     private Map<Size, Integer> sizeQuantities; // Size -> quantity

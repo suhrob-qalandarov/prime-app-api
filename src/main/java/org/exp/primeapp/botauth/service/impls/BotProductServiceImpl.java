@@ -141,6 +141,16 @@ public class BotProductServiceImpl implements BotProductService {
     }
 
     @Override
+    public void handleSpotlightNameSelection(Long userId, String spotlightName) {
+        ProductCreationState state = getProductCreationState(userId);
+        if (state == null || state.getCurrentStep() != ProductCreationState.Step.WAITING_SPOTLIGHT_NAME) {
+            return;
+        }
+        state.setSpotlightName(spotlightName);
+        state.setCurrentStep(ProductCreationState.Step.WAITING_CATEGORY);
+    }
+
+    @Override
     public void handleCategorySelection(Long userId, Long categoryId) {
         ProductCreationState state = getProductCreationState(userId);
         if (state == null || state.getCurrentStep() != ProductCreationState.Step.WAITING_CATEGORY) {
@@ -260,6 +270,16 @@ public class BotProductServiceImpl implements BotProductService {
     @Override
     public List<Category> getAllCategories() {
         return categoryRepository.findAllByOrderByOrderNumberAsc();
+    }
+
+    @Override
+    public List<Category> getCategoriesBySpotlightName(String spotlightName) {
+        // Get categories by spotlight name with CREATED or VISIBLE status
+        List<org.exp.primeapp.models.enums.CategoryStatus> statuses = List.of(
+                org.exp.primeapp.models.enums.CategoryStatus.CREATED,
+                org.exp.primeapp.models.enums.CategoryStatus.VISIBLE
+        );
+        return categoryRepository.findBySpotlightNameAndStatusInOrderByOrderNumberAsc(spotlightName, statuses);
     }
 
     private String downloadAndSaveFile(String fileUrl, String originalFilePath) throws IOException {

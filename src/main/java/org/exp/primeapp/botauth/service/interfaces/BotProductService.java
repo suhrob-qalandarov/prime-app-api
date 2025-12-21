@@ -20,6 +20,8 @@ public interface BotProductService {
     
     void handleProductImage(Long userId, String fileId);
     
+    void handleSpotlightNameSelection(Long userId, String spotlightName);
+    
     void handleCategorySelection(Long userId, Long categoryId);
     
     void handleSizeSelection(Long userId, String sizeName);
@@ -31,5 +33,7 @@ public interface BotProductService {
     void cancelProductCreation(Long userId);
     
     List<org.exp.primeapp.models.entities.Category> getAllCategories();
+    
+    List<org.exp.primeapp.models.entities.Category> getCategoriesBySpotlightName(String spotlightName);
 }
 

@@ -150,10 +150,9 @@ public class MessageHandler implements Consumer<Message> {
                 if (state.hasMinimumImages() && state.canAddMoreImages()) {
                     messageService.sendProductImagePrompt(chatId, currentCount);
                 } else if (state.hasMinimumImages()) {
-                    // Max 3 images reached, move to next step
-                    state.setCurrentStep(ProductCreationState.Step.WAITING_CATEGORY);
-                    messageService.sendCategorySelection(chatId);
-                    // Category buttons will be sent in callback handler
+                    // Max 3 images reached, move to spotlight name selection step
+                    state.setCurrentStep(ProductCreationState.Step.WAITING_SPOTLIGHT_NAME);
+                    messageService.sendSpotlightNamePromptForProduct(chatId);
                 } else {
                     messageService.sendProductImagePrompt(chatId, currentCount);
                 }

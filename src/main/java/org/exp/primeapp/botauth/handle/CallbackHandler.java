@@ -147,13 +147,28 @@ public class CallbackHandler implements Consumer<CallbackQuery> {
                 default -> spotlightName;
             };
             
-            botCategoryService.handleSpotlightName(userId, actualSpotlightName);
-            CategoryCreationState state = botCategoryService.getCategoryCreationState(userId);
-            if (state != null) {
-                String categoryInfo = buildCategoryInfo(state);
-                messageService.sendCategoryConfirmation(chatId, categoryInfo);
+            // Check if it's for product creation or category creation
+            ProductCreationState productState = botProductService.getProductCreationState(userId);
+            if (productState != null && productState.getCurrentStep() == ProductCreationState.Step.WAITING_SPOTLIGHT_NAME) {
+                // Product creation flow
+                botProductService.handleSpotlightNameSelection(userId, actualSpotlightName);
+                List<Category> categories = botProductService.getCategoriesBySpotlightName(actualSpotlightName);
+                messageService.sendCategorySelection(chatId);
+                telegramBot.execute(new SendMessage(chatId, "📂 Kategoriyani tanlang:")
+                        .parseMode(ParseMode.HTML)
+                        .replyMarkup(buttonService.createCategoryButtons(categories))
+                );
+                telegramBot.execute(new AnswerCallbackQuery(callbackId).text("Toifa tanlandi"));
+            } else {
+                // Category creation flow
+                botCategoryService.handleSpotlightName(userId, actualSpotlightName);
+                CategoryCreationState categoryState = botCategoryService.getCategoryCreationState(userId);
+                if (categoryState != null) {
+                    String categoryInfo = buildCategoryInfo(categoryState);
+                    messageService.sendCategoryConfirmation(chatId, categoryInfo);
+                }
+                telegramBot.execute(new AnswerCallbackQuery(callbackId).text("Spotlight nomi tanlandi"));
             }
-            telegramBot.execute(new AnswerCallbackQuery(callbackId).text("Spotlight nomi tanlandi"));
             return;
         }
 
@@ -301,13 +316,8 @@ public class CallbackHandler implements Consumer<CallbackQuery> {
                 return;
             }
             
-            state.setCurrentStep(ProductCreationState.Step.WAITING_CATEGORY);
-            List<Category> categories = botProductService.getAllCategories();
-            messageService.sendCategorySelection(chatId);
-            telegramBot.execute(new SendMessage(chatId, "📂 Kategoriyani tanlang:")
-                    .parseMode(ParseMode.HTML)
-                    .replyMarkup(buttonService.createCategoryButtons(categories))
-            );
+            state.setCurrentStep(ProductCreationState.Step.WAITING_SPOTLIGHT_NAME);
+            messageService.sendSpotlightNamePromptForProduct(chatId);
             
             telegramBot.execute(new AnswerCallbackQuery(callbackId).text("Rasmlar qabul qilindi"));
 
