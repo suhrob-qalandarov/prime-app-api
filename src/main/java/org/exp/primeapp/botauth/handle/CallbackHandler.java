@@ -392,16 +392,31 @@ public class CallbackHandler implements Consumer<CallbackQuery> {
                 return;
             }
             
-            // Move to quantity input step
-            state.setCurrentStep(ProductCreationState.Step.WAITING_QUANTITIES);
+            // Edit the message to show selected sizes and quantity prompt
+            com.pengrad.telegrambot.model.Message callbackMessage = callbackQuery.message();
+            Integer messageId = callbackMessage != null ? callbackMessage.messageId() : null;
+            
+            // Build message with selected sizes
             StringBuilder quantityPrompt = new StringBuilder("📊 Har bir o'lcham uchun miqdorni kiriting:\n\n");
             for (Size size : state.getSelectedSizes()) {
-                quantityPrompt.append(size.getLabel()).append(": /qty_").append(size.name()).append("\n");
+                quantityPrompt.append("• ").append(size.getLabel()).append("\n");
             }
             
-            telegramBot.execute(new SendMessage(chatId, quantityPrompt.toString())
-                    .parseMode(ParseMode.HTML)
-            );
+            // Move to quantity input step
+            state.setCurrentStep(ProductCreationState.Step.WAITING_QUANTITIES);
+            
+            if (messageId != null) {
+                // Edit existing message to remove inline keyboard and show selected sizes
+                telegramBot.execute(new EditMessageText(chatId, messageId, quantityPrompt.toString())
+                        .parseMode(ParseMode.HTML)
+                        .replyMarkup(new InlineKeyboardMarkup(new InlineKeyboardButton[0][])) // Remove inline keyboard
+                );
+            } else {
+                // If messageId is null, send new message
+                telegramBot.execute(new SendMessage(chatId, quantityPrompt.toString())
+                        .parseMode(ParseMode.HTML)
+                );
+            }
             
             telegramBot.execute(new AnswerCallbackQuery(callbackId).text("O'lchamlar tanlandi"));
 
