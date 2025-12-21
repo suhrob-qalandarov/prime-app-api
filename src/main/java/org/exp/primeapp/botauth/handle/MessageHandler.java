@@ -224,22 +224,31 @@ public class MessageHandler implements Consumer<Message> {
                         }
                         
                         if (allSizesHaveQuantities) {
-                            // All quantities set, show confirmation
-                            state.setCurrentStep(ProductCreationState.Step.CONFIRMATION);
-                            String productInfo = buildProductInfo(state);
-                            messageService.sendProductConfirmation(user.getTelegramId(), productInfo);
+                            // All quantities set, ask for price
+                            state.setCurrentStep(ProductCreationState.Step.WAITING_PRICE);
+                            messageService.sendProductPricePrompt(user.getTelegramId());
                         } else {
                             // Ask for next size quantity
                             messageService.sendProductSizeQuantityPrompt(user.getTelegramId(), state);
                         }
                     } else {
-                        // All quantities set, show confirmation
-                        state.setCurrentStep(ProductCreationState.Step.CONFIRMATION);
-                        String productInfo = buildProductInfo(state);
-                        messageService.sendProductConfirmation(user.getTelegramId(), productInfo);
+                        // All quantities set, ask for price
+                        state.setCurrentStep(ProductCreationState.Step.WAITING_PRICE);
+                        messageService.sendProductPricePrompt(user.getTelegramId());
                     }
                 } catch (NumberFormatException e) {
                     messageService.sendProductSizeQuantityPrompt(user.getTelegramId(), state);
+                }
+                break;
+
+            case WAITING_PRICE:
+                try {
+                    botProductService.handleProductPrice(userId, text);
+                    String productInfo = buildProductInfo(state);
+                    messageService.sendProductConfirmation(user.getTelegramId(), productInfo);
+                } catch (RuntimeException e) {
+                    // Invalid price format
+                    messageService.sendProductPricePrompt(user.getTelegramId());
                 }
                 break;
 
@@ -255,6 +264,9 @@ public class MessageHandler implements Consumer<Message> {
         info.append("<b>Tavsif:</b> ").append(state.getDescription()).append("\n");
         if (state.getCategory() != null) {
             info.append("<b>Kategoriya:</b> ").append(state.getCategory().getName()).append("\n");
+        }
+        if (state.getPrice() != null) {
+            info.append("<b>Narx:</b> ").append(state.getPrice()).append(" so'm\n");
         }
         info.append("<b>Rasmlar:</b> ").append(state.getAttachmentUrls() != null ? state.getAttachmentUrls().size() : 0).append(" ta\n");
         if (state.getSelectedSizes() != null && !state.getSelectedSizes().isEmpty()) {

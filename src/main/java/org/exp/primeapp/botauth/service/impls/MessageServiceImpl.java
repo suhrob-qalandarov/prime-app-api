@@ -223,7 +223,7 @@ public class MessageServiceImpl implements MessageService {
     @Override
     public void sendProductNamePrompt(Long chatId) {
         telegramBot.execute(new SendMessage(chatId,
-                "📝 <b>1/8</b> Mahsulot nomini kiriting:")
+                "📝 <b>1/9</b> Mahsulot nomini kiriting:")
                 .parseMode(ParseMode.HTML)
         );
     }
@@ -231,7 +231,7 @@ public class MessageServiceImpl implements MessageService {
     @Override
     public void sendProductDescriptionPrompt(Long chatId) {
         telegramBot.execute(new SendMessage(chatId,
-                "📝 <b>2/8</b> Mahsulot tavsifini kiriting:")
+                "📝 <b>2/9</b> Mahsulot tavsifini kiriting:")
                 .parseMode(ParseMode.HTML)
         );
     }
@@ -239,14 +239,14 @@ public class MessageServiceImpl implements MessageService {
     @Override
     public void sendProductBrandPrompt(Long chatId) {
         telegramBot.execute(new SendMessage(chatId,
-                "🏷️ <b>3/8</b> Brend nomini kiriting:")
+                "🏷️ <b>3/9</b> Brend nomini kiriting:")
                 .parseMode(ParseMode.HTML)
         );
     }
 
     @Override
     public void sendProductImagePrompt(Long chatId, int currentCount) {
-        String message = "📷 <b>4/8</b> Mahsulot rasmlarini yuboring:\n\n";
+        String message = "📷 <b>4/9</b> Mahsulot rasmlarini yuboring:\n\n";
         message += "• Minimum: 1 ta rasm\n";
         message += "• Maksimum: 3 ta rasm\n";
         message += "• Hozirgi: " + currentCount + " ta";
@@ -280,7 +280,7 @@ public class MessageServiceImpl implements MessageService {
     @Override
     public void sendSpotlightNamePromptForProduct(Long chatId) {
         telegramBot.execute(new SendMessage(chatId,
-                "📂 <b>5/8</b> Toifani tanlang:")
+                "📂 <b>5/9</b> Toifani tanlang:")
                 .parseMode(ParseMode.HTML)
                 .replyMarkup(buttonService.createSpotlightNameButtons())
         );
@@ -289,7 +289,7 @@ public class MessageServiceImpl implements MessageService {
     @Override
     public void sendCategorySelection(Long chatId) {
         telegramBot.execute(new SendMessage(chatId,
-                "📂 <b>6/8</b> Kategoriyani tanlang:")
+                "📂 <b>6/9</b> Kategoriyani tanlang:")
                 .parseMode(ParseMode.HTML)
         );
     }
@@ -297,7 +297,15 @@ public class MessageServiceImpl implements MessageService {
     @Override
     public void sendSizeSelection(Long chatId) {
         telegramBot.execute(new SendMessage(chatId,
-                "📏 <b>7/8</b> O'lchamlarni tanlang (bir nechtasini tanlash mumkin):")
+                "📏 <b>7/9</b> O'lchamlarni tanlang (bir nechtasini tanlash mumkin):")
+                .parseMode(ParseMode.HTML)
+        );
+    }
+
+    @Override
+    public void sendProductPricePrompt(Long chatId) {
+        telegramBot.execute(new SendMessage(chatId,
+                "💰 <b>8/9</b> Mahsulot narxini kiriting (so'm):")
                 .parseMode(ParseMode.HTML)
         );
     }
@@ -305,7 +313,7 @@ public class MessageServiceImpl implements MessageService {
     @Override
     public void sendProductConfirmation(Long chatId, String productInfo) {
         telegramBot.execute(new SendMessage(chatId,
-                "✅ <b>8/8</b> Mahsulot ma'lumotlari:\n\n" + productInfo +
+                "✅ <b>9/9</b> Mahsulot ma'lumotlari:\n\n" + productInfo +
                 "\n\nMahsulotni qo'shishni tasdiqlaysizmi?")
                 .parseMode(ParseMode.HTML)
                 .replyMarkup(buttonService.createConfirmationButtons())

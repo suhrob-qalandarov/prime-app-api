@@ -13,6 +13,7 @@ import org.exp.primeapp.models.entities.Category;
 import org.exp.primeapp.models.entities.Product;
 import org.exp.primeapp.models.entities.ProductSize;
 import org.exp.primeapp.models.enums.CategoryStatus;
+import org.exp.primeapp.models.enums.ProductStatus;
 import org.exp.primeapp.models.enums.Size;
 import org.exp.primeapp.repository.AttachmentRepository;
 import org.exp.primeapp.repository.CategoryRepository;
@@ -196,6 +197,26 @@ public class BotProductServiceImpl implements BotProductService {
     }
 
     @Override
+    public void handleProductPrice(Long userId, String priceText) {
+        ProductCreationState state = getProductCreationState(userId);
+        if (state == null || state.getCurrentStep() != ProductCreationState.Step.WAITING_PRICE) {
+            return;
+        }
+
+        try {
+            BigDecimal price = new BigDecimal(priceText.trim());
+            if (price.compareTo(BigDecimal.ZERO) <= 0) {
+                throw new NumberFormatException("Price must be greater than zero");
+            }
+            state.setPrice(price);
+            state.setCurrentStep(ProductCreationState.Step.CONFIRMATION);
+        } catch (NumberFormatException e) {
+            log.error("Invalid price: {}", priceText, e);
+            throw new RuntimeException("Narx noto'g'ri formatda. Iltimos, raqam kiriting (masalan: 150000)");
+        }
+    }
+
+    @Override
     @Transactional
     public void confirmAndSaveProduct(Long userId) {
         ProductCreationState state = getProductCreationState(userId);
@@ -208,7 +229,8 @@ public class BotProductServiceImpl implements BotProductService {
             if (state.getName() == null || state.getDescription() == null || 
                 state.getBrand() == null || state.getCategory() == null ||
                 state.getAttachmentUrls() == null || state.getAttachmentUrls().isEmpty() ||
-                state.getSelectedSizes() == null || state.getSelectedSizes().isEmpty()) {
+                state.getSelectedSizes() == null || state.getSelectedSizes().isEmpty() ||
+                state.getPrice() == null) {
                 throw new RuntimeException("Product data is incomplete");
             }
 
@@ -219,7 +241,7 @@ public class BotProductServiceImpl implements BotProductService {
                     .brand(state.getBrand())
                     .colorName("Default") // You might want to add this to the flow
                     .colorHex("#000000") // You might want to add this to the flow
-                    .price(BigDecimal.ZERO) // You might want to add this to the flow
+                    .price(state.getPrice())
                     .categoryId(state.getCategory().getId())
                     .attachmentUrls(new HashSet<>(state.getAttachmentUrls()))
                     .build();
@@ -244,6 +266,9 @@ public class BotProductServiceImpl implements BotProductService {
                     savedProduct.getSizes().add(productSize);
                 }
             }
+            
+            // Set status to ON_SALE
+            savedProduct.setStatus(ProductStatus.ON_SALE);
             productRepository.save(savedProduct);
 
             // Check category status and update to VISIBLE if it's CREATED

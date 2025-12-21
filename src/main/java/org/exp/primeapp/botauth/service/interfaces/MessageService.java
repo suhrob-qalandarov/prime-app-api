@@ -42,6 +42,8 @@ public interface MessageService {
     
     void sendSizeSelection(Long chatId);
     
+    void sendProductPricePrompt(Long chatId);
+    
     void sendProductConfirmation(Long chatId, String productInfo);
     
     void sendProductSavedSuccess(Long chatId);

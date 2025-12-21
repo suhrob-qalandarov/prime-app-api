@@ -5,6 +5,7 @@ import lombok.Data;
 import org.exp.primeapp.models.entities.Category;
 import org.exp.primeapp.models.enums.Size;
 
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -23,6 +24,7 @@ public class ProductCreationState {
         WAITING_CATEGORY,
         WAITING_SIZES,
         WAITING_QUANTITIES,
+        WAITING_PRICE,
         CONFIRMATION
     }
     
@@ -36,6 +38,7 @@ public class ProductCreationState {
     private Category category;
     private List<Size> selectedSizes;
     private Map<Size, Integer> sizeQuantities; // Size -> quantity
+    private BigDecimal price;
     private Long userId;
     
     public static ProductCreationState createInitial(Long userId) {

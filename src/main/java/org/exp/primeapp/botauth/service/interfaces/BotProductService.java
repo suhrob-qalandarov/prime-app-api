@@ -28,6 +28,8 @@ public interface BotProductService {
     
     void handleSizeQuantity(Long userId, String sizeName, Integer quantity);
     
+    void handleProductPrice(Long userId, String priceText);
+    
     void confirmAndSaveProduct(Long userId);
     
     void cancelProductCreation(Long userId);
