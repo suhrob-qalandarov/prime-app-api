@@ -9,6 +9,7 @@ import org.exp.primeapp.botauth.models.CategoryCreationState;
 import org.exp.primeapp.botauth.models.ProductCreationState;
 import org.exp.primeapp.botauth.service.interfaces.BotCategoryService;
 import org.exp.primeapp.botauth.service.interfaces.BotProductService;
+import org.exp.primeapp.botauth.service.interfaces.BotUserService;
 import org.exp.primeapp.botauth.service.interfaces.MessageService;
 import org.exp.primeapp.botauth.service.interfaces.UserService;
 import org.exp.primeapp.models.entities.User;
@@ -26,6 +27,7 @@ public class MessageHandler implements Consumer<Message> {
     private final UserService userService;
     private final BotProductService botProductService;
     private final BotCategoryService botCategoryService;
+    private final BotUserService botUserService;
 
     @Override
     public void accept(Message message) {
@@ -104,19 +106,60 @@ public class MessageHandler implements Consumer<Message> {
                 messageService.sendProductCreationStart(chatId);
                 messageService.sendProductNamePrompt(chatId);
 
-            } else {
-                // Check if user is in category creation flow
-                CategoryCreationState categoryState = botCategoryService.getCategoryCreationState(userId);
-                if (categoryState != null) {
-                    handleCategoryCreationMessage(message, user, categoryState);
-                } else {
-                    // Check if user is in product creation flow
-                    ProductCreationState state = botProductService.getProductCreationState(userId);
-                    if (state != null) {
-                        handleProductCreationMessage(message, user, state);
-                    } else {
-                        log.debug("No handler for message from chatId: {}, text: {}", chatId, text);
+            } else if (text != null) {
+                // Check if user is admin and handle admin menu buttons
+                boolean isAdmin = user.getRoles() != null && user.getRoles().stream()
+                        .anyMatch(role -> role.getName() != null && 
+                                (role.getName().equals("ROLE_ADMIN") || 
+                                 role.getName().equals("ROLE_SUPER_ADMIN")));
+                
+                if (isAdmin) {
+                    if (text.equals("📊 Dashboard")) {
+                        messageService.sendAdminSectionMessage(chatId, "Dashboard");
+                        return;
+                    } else if (text.equals("📦 Buyurtmalar")) {
+                        messageService.sendAdminSectionMessage(chatId, "Buyurtmalar");
+                        return;
+                    } else if (text.equals("🛍️ Mahsulotlar")) {
+                        messageService.sendAdminSectionMessage(chatId, "Mahsulotlar");
+                        return;
+                    } else if (text.equals("📂 Kategoriyalar")) {
+                        messageService.sendAdminSectionMessage(chatId, "Kategoriyalar");
+                        return;
+                    } else if (text.equals("👥 Foydalanuvchilar")) {
+                        // Check if user is super admin
+                        boolean isSuperAdmin = user.getRoles() != null && user.getRoles().stream()
+                                .anyMatch(role -> role.getName() != null && 
+                                        role.getName().equals("ROLE_SUPER_ADMIN"));
+                        
+                        long[] counts = botUserService.getUserCounts();
+                        messageService.sendUsersStatistics(chatId, counts[0], counts[1], counts[2], isSuperAdmin);
+                        return;
+                    } else if (text.equals("❌ Bekor qilish")) {
+                        botUserService.setUserSearchState(userId, false);
+                        messageService.sendAdminMenuWithCancel(chatId);
+                        return;
                     }
+                }
+            }
+            
+            // Check if user is in user search flow
+            if (botUserService.getUserSearchState(userId)) {
+                handleUserSearchMessage(message, user);
+                return;
+            }
+            
+            // Check if user is in category creation flow
+            CategoryCreationState categoryState = botCategoryService.getCategoryCreationState(userId);
+            if (categoryState != null) {
+                handleCategoryCreationMessage(message, user, categoryState);
+            } else {
+                // Check if user is in product creation flow
+                ProductCreationState state = botProductService.getProductCreationState(userId);
+                if (state != null) {
+                    handleProductCreationMessage(message, user, state);
+                } else {
+                    log.debug("No handler for message from chatId: {}, text: {}", chatId, text);
                 }
             }
         } catch (Exception e) {
@@ -147,15 +190,20 @@ public class MessageHandler implements Consumer<Message> {
                 botProductService.handleProductImage(userId, fileId);
                 
                 int currentCount = state.getAttachmentUrls() != null ? state.getAttachmentUrls().size() : 0;
-                if (state.hasMinimumImages() && state.canAddMoreImages()) {
-                    messageService.sendProductImagePrompt(chatId, currentCount);
+                int remaining = 3 - currentCount;
+                
+                if (currentCount >= 3) {
+                    // Max 3 images reached
+                    messageService.sendImagesCompleted(chatId, currentCount);
+                    state.setCurrentStep(ProductCreationState.Step.WAITING_SPOTLIGHT_NAME);
+                    // Send spotlight name prompt in separate message
+                    messageService.sendSpotlightNamePromptForProduct(chatId);
                 } else if (state.hasMinimumImages()) {
-                    // Max 3 images reached, move to next step
-                    state.setCurrentStep(ProductCreationState.Step.WAITING_CATEGORY);
-                    messageService.sendCategorySelection(chatId);
-                    // Category buttons will be sent in callback handler
+                    // At least 1 image, can add more
+                    messageService.sendImageSavedSuccess(chatId, currentCount, remaining);
                 } else {
-                    messageService.sendProductImagePrompt(chatId, currentCount);
+                    // Still need minimum images
+                    messageService.sendImageSavedSuccess(chatId, currentCount, remaining);
                 }
             }
             return;
@@ -219,22 +267,31 @@ public class MessageHandler implements Consumer<Message> {
                         }
                         
                         if (allSizesHaveQuantities) {
-                            // All quantities set, show confirmation
-                            state.setCurrentStep(ProductCreationState.Step.CONFIRMATION);
-                            String productInfo = buildProductInfo(state);
-                            messageService.sendProductConfirmation(user.getTelegramId(), productInfo);
+                            // All quantities set, ask for price
+                            state.setCurrentStep(ProductCreationState.Step.WAITING_PRICE);
+                            messageService.sendProductPricePrompt(user.getTelegramId());
                         } else {
                             // Ask for next size quantity
                             messageService.sendProductSizeQuantityPrompt(user.getTelegramId(), state);
                         }
                     } else {
-                        // All quantities set, show confirmation
-                        state.setCurrentStep(ProductCreationState.Step.CONFIRMATION);
-                        String productInfo = buildProductInfo(state);
-                        messageService.sendProductConfirmation(user.getTelegramId(), productInfo);
+                        // All quantities set, ask for price
+                        state.setCurrentStep(ProductCreationState.Step.WAITING_PRICE);
+                        messageService.sendProductPricePrompt(user.getTelegramId());
                     }
                 } catch (NumberFormatException e) {
                     messageService.sendProductSizeQuantityPrompt(user.getTelegramId(), state);
+                }
+                break;
+
+            case WAITING_PRICE:
+                try {
+                    botProductService.handleProductPrice(userId, text);
+                    String productInfo = buildProductInfo(state);
+                    messageService.sendProductConfirmation(user.getTelegramId(), productInfo);
+                } catch (RuntimeException e) {
+                    // Invalid price format
+                    messageService.sendProductPricePrompt(user.getTelegramId());
                 }
                 break;
 
@@ -250,6 +307,9 @@ public class MessageHandler implements Consumer<Message> {
         info.append("<b>Tavsif:</b> ").append(state.getDescription()).append("\n");
         if (state.getCategory() != null) {
             info.append("<b>Kategoriya:</b> ").append(state.getCategory().getName()).append("\n");
+        }
+        if (state.getPrice() != null) {
+            info.append("<b>Narx:</b> ").append(state.getPrice()).append(" so'm\n");
         }
         info.append("<b>Rasmlar:</b> ").append(state.getAttachmentUrls() != null ? state.getAttachmentUrls().size() : 0).append(" ta\n");
         if (state.getSelectedSizes() != null && !state.getSelectedSizes().isEmpty()) {
@@ -280,6 +340,32 @@ public class MessageHandler implements Consumer<Message> {
 
             default:
                 break;
+        }
+    }
+    
+    private void handleUserSearchMessage(Message message, User user) {
+        String text = message.text();
+        Long chatId = user.getTelegramId();
+        Long userId = user.getId();
+        
+        if (text == null || text.trim().isEmpty()) {
+            return;
+        }
+        
+        // Search user by phone number
+        User foundUser = botUserService.findUserByPhone(text.trim());
+        
+        if (foundUser == null) {
+            messageService.sendUserNotFound(chatId);
+            botUserService.setUserSearchState(userId, false);
+        } else {
+            // Check if user can set admin or super admin
+            boolean canSetAdmin = !botUserService.hasRole(foundUser, "ROLE_ADMIN") && 
+                                 !botUserService.hasRole(foundUser, "ROLE_SUPER_ADMIN");
+            boolean canSetSuperAdmin = !botUserService.hasRole(foundUser, "ROLE_SUPER_ADMIN");
+            
+            messageService.sendUserInfo(chatId, foundUser, canSetAdmin, canSetSuperAdmin);
+            botUserService.setUserSearchState(userId, false);
         }
     }
 }

@@ -438,6 +438,36 @@ public class JwtCookieService {
     }
 
     /**
+     * Token'dan attachment count olish
+     */
+    public Integer getAttachmentCount(String token) {
+        try {
+            Claims claims = Jwts.parser()
+                    .verifyWith(getSecretKey())
+                    .build()
+                    .parseSignedClaims(token)
+                    .getPayload();
+            
+            @SuppressWarnings("unchecked")
+            Map<String, Object> dataClaims = (Map<String, Object>) claims.get("data");
+            if (dataClaims == null) {
+                return 0;
+            }
+            
+            @SuppressWarnings("unchecked")
+            Map<String, Integer> counts = (Map<String, Integer>) dataClaims.get("counts");
+            if (counts == null) {
+                return 0;
+            }
+            
+            return counts.getOrDefault("attachment", 0);
+        } catch (Exception e) {
+            log.warn("Failed to get attachment count from token: {}", e.getMessage());
+            return 0;
+        }
+    }
+
+    /**
      * Data expiry tekshirish (data.exp tekshiriladi)
      */
     public boolean isDataExpired(String token) {

@@ -9,6 +9,10 @@ import java.util.List;
 
 public interface ButtonService {
     Keyboard sendShareContactBtn();
+    
+    Keyboard createAdminMainReplyKeyboard();
+    
+    Keyboard createAdminCancelReplyKeyboard();
 
     InlineKeyboardMarkup sendRenewCodeBtn();
     
@@ -19,6 +23,8 @@ public interface ButtonService {
     InlineKeyboardMarkup createConfirmationButtons();
     
     InlineKeyboardMarkup createContinueOrFinishImageButtons();
+    
+    InlineKeyboardMarkup createNextStepImageButton();
     
     InlineKeyboardMarkup createAddProductButton();
     
@@ -31,4 +37,8 @@ public interface ButtonService {
     InlineKeyboardMarkup createSpotlightNameButtons();
     
     InlineKeyboardMarkup createCategoryConfirmationButtons();
+    
+    InlineKeyboardMarkup createSetAdminButton();
+    
+    InlineKeyboardMarkup createUserRoleButtons(boolean canSetAdmin, boolean canSetSuperAdmin, Long userId);
 }

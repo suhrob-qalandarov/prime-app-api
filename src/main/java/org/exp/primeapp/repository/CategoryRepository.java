@@ -1,6 +1,7 @@
 package org.exp.primeapp.repository;
 
 import org.exp.primeapp.models.entities.Category;
+import org.exp.primeapp.models.enums.CategoryStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -43,4 +44,11 @@ public interface CategoryRepository extends JpaRepository<Category, Long> {
     );*/
 
     List<Category> findBySpotlightNameAndActive(String spotlightName, Boolean active);
+
+    // Status ga qarab filter qilish
+    List<Category> findByStatusOrderByOrderNumberAsc(CategoryStatus status);
+
+    List<Category> findBySpotlightNameAndStatusOrderByOrderNumberAsc(String spotlightName, CategoryStatus status);
+
+    List<Category> findBySpotlightNameAndStatusInOrderByOrderNumberAsc(String spotlightName, List<CategoryStatus> statuses);
 }

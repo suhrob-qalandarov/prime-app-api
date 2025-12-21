@@ -51,9 +51,16 @@ public class SessionTokenUtil {
         }
         
         // Count olish
-        Integer count = countType.equals("product") 
-                ? jwtCookieService.getProductCount(token)
-                : jwtCookieService.getCategoryCount(token);
+        Integer count;
+        if (countType.equals("product")) {
+            count = jwtCookieService.getProductCount(token);
+        } else if (countType.equals("category")) {
+            count = jwtCookieService.getCategoryCount(token);
+        } else if (countType.equals("attachment")) {
+            count = jwtCookieService.getAttachmentCount(token);
+        } else {
+            throw new IllegalArgumentException("Unsupported count type: " + countType);
+        }
         
         if (count > 0) {
             // Count > 0: count--, token yangilash, deliver

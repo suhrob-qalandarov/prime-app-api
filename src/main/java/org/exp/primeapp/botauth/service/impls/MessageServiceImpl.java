@@ -12,6 +12,7 @@ import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.exp.primeapp.botauth.service.interfaces.ButtonService;
 import org.exp.primeapp.botauth.service.interfaces.MessageService;
+import org.exp.primeapp.models.entities.Role;
 import org.exp.primeapp.models.entities.User;
 import org.exp.primeapp.repository.UserRepository;
 import org.springframework.stereotype.Service;
@@ -112,9 +113,9 @@ public class MessageServiceImpl implements MessageService {
             
             SendMessage sendMessage = new SendMessage(chatId,
                     "👨‍💼 <b>Xush kelibsiz, Admin!</b>\n\n" +
-                    "Quyidagi bo'limlardan birini tanlang:")
+                    "Quyidagi bo'limlardan birini tanlang👇")
                     .parseMode(ParseMode.HTML)
-                    .replyMarkup(buttonService.createAdminMainMenuButtons());
+                    .replyMarkup(buttonService.createAdminMainReplyKeyboard());
             
             SendResponse response = telegramBot.execute(sendMessage);
             
@@ -126,6 +127,74 @@ public class MessageServiceImpl implements MessageService {
             }
         } catch (Exception e) {
             log.error("❌ Exception while sending admin menu to chatId: {}", chatId, e);
+        }
+    }
+    
+    @Override
+    public void sendAdminMenuWithCancel(Long chatId) {
+        try {
+            if (telegramBot == null) {
+                log.error("❌ Telegram bot is null! Cannot send admin menu to chatId: {}", chatId);
+                return;
+            }
+            
+            SendMessage sendMessage = new SendMessage(chatId,
+                    "👨‍💼 <b>Xush kelibsiz, Admin!</b>\n\n" +
+                    "Quyidagi bo'limlardan birini tanlang👇")
+                    .parseMode(ParseMode.HTML)
+                    .replyMarkup(buttonService.createAdminMainReplyKeyboard());
+            
+            telegramBot.execute(sendMessage);
+        } catch (Exception e) {
+            log.error("❌ Exception while sending admin menu to chatId: {}", chatId, e);
+        }
+    }
+    
+    @Override
+    public void sendAdminSectionMessage(Long chatId, String sectionName) {
+        try {
+            if (telegramBot == null) {
+                return;
+            }
+            
+            SendMessage sendMessage;
+            
+            if (sectionName.equals("Mahsulotlar")) {
+                // Send inline keyboard message
+                SendMessage inlineMessage = new SendMessage(chatId,
+                        "🛍️ <b>Mahsulotlar bo'limi</b>\n\nQuyidagi amallardan birini tanlang:")
+                        .parseMode(ParseMode.HTML)
+                        .replyMarkup(buttonService.createProductMenuButtons());
+                telegramBot.execute(inlineMessage);
+                
+                // Send reply keyboard "Bekor qilish" button
+                SendMessage cancelMessage = new SendMessage(chatId, " ")
+                        .replyMarkup(buttonService.createAdminCancelReplyKeyboard());
+                telegramBot.execute(cancelMessage);
+                return;
+            } else if (sectionName.equals("Kategoriyalar")) {
+                // Send inline keyboard message
+                SendMessage inlineMessage = new SendMessage(chatId,
+                        "📂 <b>Kategoriyalar bo'limi</b>\n\nQuyidagi amallardan birini tanlang:")
+                        .parseMode(ParseMode.HTML)
+                        .replyMarkup(buttonService.createCategoryMenuButtons());
+                telegramBot.execute(inlineMessage);
+                
+                // Send reply keyboard "Bekor qilish" button
+                SendMessage cancelMessage = new SendMessage(chatId, " ")
+                        .replyMarkup(buttonService.createAdminCancelReplyKeyboard());
+                telegramBot.execute(cancelMessage);
+                return;
+            } else {
+                sendMessage = new SendMessage(chatId,
+                        "📂 <b>" + sectionName + "</b> bo'limi")
+                        .parseMode(ParseMode.HTML)
+                        .replyMarkup(buttonService.createAdminCancelReplyKeyboard());
+            }
+            
+            telegramBot.execute(sendMessage);
+        } catch (Exception e) {
+            log.error("❌ Exception while sending admin section message to chatId: {}", chatId, e);
         }
     }
 
@@ -223,7 +292,7 @@ public class MessageServiceImpl implements MessageService {
     @Override
     public void sendProductNamePrompt(Long chatId) {
         telegramBot.execute(new SendMessage(chatId,
-                "📝 <b>1/7</b> Mahsulot nomini kiriting:")
+                "📝 <b>1/9</b> Mahsulot nomini kiriting:")
                 .parseMode(ParseMode.HTML)
         );
     }
@@ -231,7 +300,7 @@ public class MessageServiceImpl implements MessageService {
     @Override
     public void sendProductDescriptionPrompt(Long chatId) {
         telegramBot.execute(new SendMessage(chatId,
-                "📝 <b>2/7</b> Mahsulot tavsifini kiriting:")
+                "📝 <b>2/9</b> Mahsulot tavsifini kiriting:")
                 .parseMode(ParseMode.HTML)
         );
     }
@@ -239,34 +308,57 @@ public class MessageServiceImpl implements MessageService {
     @Override
     public void sendProductBrandPrompt(Long chatId) {
         telegramBot.execute(new SendMessage(chatId,
-                "🏷️ <b>3/7</b> Brend nomini kiriting:")
+                "🏷️ <b>3/9</b> Brend nomini kiriting:")
                 .parseMode(ParseMode.HTML)
         );
     }
 
     @Override
     public void sendProductImagePrompt(Long chatId, int currentCount) {
-        String message = "📷 <b>4/7</b> Mahsulot rasmlarini yuboring:\n\n";
+        String message = "📷 <b>4/9</b> Mahsulot rasmlarini yuboring:\n\n";
         message += "• Minimum: 1 ta rasm\n";
         message += "• Maksimum: 3 ta rasm\n";
         message += "• Hozirgi: " + currentCount + " ta";
         
-        if (currentCount > 0 && currentCount < 3) {
-            telegramBot.execute(new SendMessage(chatId, message)
-                    .parseMode(ParseMode.HTML)
-                    .replyMarkup(buttonService.createContinueOrFinishImageButtons())
-            );
-        } else {
-            telegramBot.execute(new SendMessage(chatId, message)
-                    .parseMode(ParseMode.HTML)
-            );
-        }
+        telegramBot.execute(new SendMessage(chatId, message)
+                .parseMode(ParseMode.HTML)
+        );
+    }
+
+    @Override
+    public void sendImageSavedSuccess(Long chatId, int currentCount, int remaining) {
+        String message = "✅ Rasm muvaffaqiyatli saqlandi!\n";
+        message += "Qo'shish mumkin yana " + remaining + " ta rasm!";
+        
+        telegramBot.execute(new SendMessage(chatId, message)
+                .parseMode(ParseMode.HTML)
+                .replyMarkup(buttonService.createNextStepImageButton())
+        );
+    }
+
+    @Override
+    public void sendImagesCompleted(Long chatId, int totalCount) {
+        String message = "✅ Mahsulot rasmlari muvaffaqiyatli saqlandi!\n";
+        message += "Hozirgi: " + totalCount + " ta";
+        
+        telegramBot.execute(new SendMessage(chatId, message)
+                .parseMode(ParseMode.HTML)
+        );
+    }
+
+    @Override
+    public void sendSpotlightNamePromptForProduct(Long chatId) {
+        telegramBot.execute(new SendMessage(chatId,
+                "📂 <b>5/9</b> Toifani tanlang:")
+                .parseMode(ParseMode.HTML)
+                .replyMarkup(buttonService.createSpotlightNameButtons())
+        );
     }
 
     @Override
     public void sendCategorySelection(Long chatId) {
         telegramBot.execute(new SendMessage(chatId,
-                "📂 <b>5/7</b> Kategoriyani tanlang:")
+                "📂 <b>6/9</b> Kategoriyani tanlang:")
                 .parseMode(ParseMode.HTML)
         );
     }
@@ -274,7 +366,15 @@ public class MessageServiceImpl implements MessageService {
     @Override
     public void sendSizeSelection(Long chatId) {
         telegramBot.execute(new SendMessage(chatId,
-                "📏 <b>6/7</b> O'lchamlarni tanlang (bir nechtasini tanlash mumkin):")
+                "📏 <b>7/9</b> O'lchamlarni tanlang (bir nechtasini tanlash mumkin):")
+                .parseMode(ParseMode.HTML)
+        );
+    }
+
+    @Override
+    public void sendProductPricePrompt(Long chatId) {
+        telegramBot.execute(new SendMessage(chatId,
+                "💰 <b>8/9</b> Mahsulot narxini kiriting (so'm):")
                 .parseMode(ParseMode.HTML)
         );
     }
@@ -282,7 +382,7 @@ public class MessageServiceImpl implements MessageService {
     @Override
     public void sendProductConfirmation(Long chatId, String productInfo) {
         telegramBot.execute(new SendMessage(chatId,
-                "✅ <b>7/7</b> Mahsulot ma'lumotlari:\n\n" + productInfo +
+                "✅ <b>9/9</b> Mahsulot ma'lumotlari:\n\n" + productInfo +
                 "\n\nMahsulotni qo'shishni tasdiqlaysizmi?")
                 .parseMode(ParseMode.HTML)
                 .replyMarkup(buttonService.createConfirmationButtons())
@@ -371,6 +471,89 @@ public class MessageServiceImpl implements MessageService {
     public void sendCategoryCreationCancelled(Long chatId) {
         telegramBot.execute(new SendMessage(chatId,
                 "❌ Kategoriya qo'shish bekor qilindi.")
+                .parseMode(ParseMode.HTML)
+        );
+    }
+
+    @Override
+    public void sendUsersStatistics(Long chatId, long totalCount, long adminCount, long superAdminCount, boolean isSuperAdmin) {
+        try {
+            StringBuilder message = new StringBuilder();
+            message.append("👥 <b>Foydalanuvchilar statistikasi</b>\n\n");
+            message.append("📊 Umumiy foydalanuvchilar: ").append(totalCount).append(" ta\n");
+            message.append("👨‍💼 Adminlar: ").append(adminCount).append(" ta\n");
+            message.append("👑 Super Adminlar: ").append(superAdminCount).append(" ta\n");
+            
+            if (isSuperAdmin) {
+                message.append("\n⬇️ Quyidagi tugmani bosib, admin qo'shishingiz mumkin:");
+                telegramBot.execute(new SendMessage(chatId, message.toString())
+                        .parseMode(ParseMode.HTML)
+                        .replyMarkup(buttonService.createSetAdminButton()));
+            } else {
+                telegramBot.execute(new SendMessage(chatId, message.toString())
+                        .parseMode(ParseMode.HTML));
+            }
+            SendMessage cancelMessage = new SendMessage(chatId, " ")
+                    .replyMarkup(buttonService.createAdminCancelReplyKeyboard());
+            telegramBot.execute(cancelMessage);
+        } catch (Exception e) {
+            log.error("❌ Exception while sending users statistics to chatId: {}", chatId, e);
+        }
+    }
+
+    @Override
+    public void sendPhoneNumberPrompt(Long chatId) {
+        telegramBot.execute(new SendMessage(chatId,
+                "📱 Foydalanuvchi telefon raqamini kiriting (masalan: +998901234567):")
+                .parseMode(ParseMode.HTML)
+        );
+    }
+
+    @Override
+    public void sendUserNotFound(Long chatId) {
+        telegramBot.execute(new SendMessage(chatId,
+                "❌ Foydalanuvchi topilmadi!")
+                .parseMode(ParseMode.HTML)
+        );
+        sendAdminMenuWithCancel(chatId);
+    }
+
+    @Override
+    public void sendUserInfo(Long chatId, User user, boolean canSetAdmin, boolean canSetSuperAdmin) {
+        try {
+            StringBuilder message = new StringBuilder();
+            message.append("👤 <b>Foydalanuvchi ma'lumotlari</b>\n\n");
+            message.append("🆔 ID: ").append(user.getId()).append("\n");
+            message.append("👤 Ism: ").append(user.getFirstName() != null ? user.getFirstName() : "N/A");
+            if (user.getLastName() != null) {
+                message.append(" ").append(user.getLastName());
+            }
+            message.append("\n");
+            message.append("📱 Telefon: ").append(user.getPhone() != null ? user.getPhone() : "N/A").append("\n");
+            message.append("🔖 Username: ").append(user.getTgUsername() != null ? "@" + user.getTgUsername() : "N/A").append("\n");
+            
+            if (user.getRoles() != null && !user.getRoles().isEmpty()) {
+                message.append("👥 Rollar: ");
+                for (int i = 0; i < user.getRoles().size(); i++) {
+                    Role role = user.getRoles().get(i);
+                    if (i > 0) message.append(", ");
+                    message.append(role.getName() != null ? role.getName() : "N/A");
+                }
+                message.append("\n");
+            }
+            
+            telegramBot.execute(new SendMessage(chatId, message.toString())
+                    .parseMode(ParseMode.HTML)
+                    .replyMarkup(buttonService.createUserRoleButtons(canSetAdmin, canSetSuperAdmin, user.getId())));
+        } catch (Exception e) {
+            log.error("❌ Exception while sending user info to chatId: {}", chatId, e);
+        }
+    }
+
+    @Override
+    public void sendRoleAddedSuccess(Long chatId, String roleName) {
+        telegramBot.execute(new SendMessage(chatId,
+                "✅ " + roleName + " role muvaffaqiyatli qo'shildi!")
                 .parseMode(ParseMode.HTML)
         );
     }

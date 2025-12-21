@@ -2,6 +2,7 @@ package org.exp.primeapp.repository;
 
 import org.exp.primeapp.models.entities.Category;
 import org.exp.primeapp.models.entities.Product;
+import org.exp.primeapp.models.enums.ProductStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -62,6 +63,15 @@ public interface ProductRepository extends JpaRepository<Product, Long>, JpaSpec
 
     Page<Product> findAllByActive(boolean active, Pageable pageable);
     Page<Product> findAllByCategory_IdAndActive(Long categoryId, boolean active, Pageable pageable);
+
+    // Status ga qarab filter qilish
+    Page<Product> findAllByStatusOrderByIdDesc(ProductStatus status, Pageable pageable);
+    
+    List<Product> findByStatus(ProductStatus status);
+    
+    List<Product> findByCategoryIdAndStatus(Long categoryId, ProductStatus status);
+    
+    Page<Product> findAllByCategoryIdAndStatus(Long categoryId, ProductStatus status, Pageable pageable);
 
     long countByCategory(Category category);
 

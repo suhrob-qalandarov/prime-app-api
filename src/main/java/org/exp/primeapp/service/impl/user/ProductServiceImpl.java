@@ -12,6 +12,7 @@ import org.exp.primeapp.models.dto.responce.user.page.PageRes;
 import org.exp.primeapp.models.entities.Attachment;
 import org.exp.primeapp.models.entities.Product;
 import org.exp.primeapp.models.entities.ProductSize;
+import org.exp.primeapp.models.enums.ProductStatus;
 import org.exp.primeapp.models.enums.ProductTag;
 import org.exp.primeapp.models.enums.Size;
 import org.exp.primeapp.repository.AttachmentRepository;
@@ -65,7 +66,7 @@ public class ProductServiceImpl implements ProductService {
 
     @Override
     public PageRes<ProductPageRes> getActiveProducts(Pageable pageable) {
-        Page<ProductPageRes> productRes = productRepository.findAllByActive(true, pageable)
+        Page<ProductPageRes> productRes = productRepository.findAllByStatusOrderByIdDesc(ProductStatus.ON_SALE, pageable)
                 .map(this::convertToProductPageRes);
         return toPageRes(productRes);
     }
@@ -98,7 +99,7 @@ public class ProductServiceImpl implements ProductService {
         
         if (!hasFilters) {
             // Filterlar yo'q - oddiy query (tezroq va ishonchli)
-            Page<ProductPageRes> productRes = productRepository.findAllByActive(true, sortedPageable)
+            Page<ProductPageRes> productRes = productRepository.findAllByStatusOrderByIdDesc(ProductStatus.ON_SALE, sortedPageable)
                     .map(this::convertToProductPageRes);
             return toPageRes(productRes);
         }
@@ -122,8 +123,8 @@ public class ProductServiceImpl implements ProductService {
         return (root, query, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
             
-            // Active filter
-            predicates.add(cb.equal(root.get("active"), true));
+            // Status filter - only ON_SALE products
+            predicates.add(cb.equal(root.get("status"), ProductStatus.ON_SALE));
             
             // Spotlight name filter
             if (spotlightName != null && !spotlightName.isBlank()) {
@@ -206,7 +207,7 @@ public class ProductServiceImpl implements ProductService {
 
     @Override
     public List<ProductRes> getActiveProductsByCategoryId(Long categoryId) {
-        return productRepository.findByActiveAndCategoryId(categoryId, true)
+        return productRepository.findByCategoryIdAndStatus(categoryId, ProductStatus.ON_SALE)
                 .stream()
                 .map(this::convertToProductRes)
                 .collect(toList());
