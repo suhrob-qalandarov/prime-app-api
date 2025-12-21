@@ -43,4 +43,6 @@ public interface ButtonService {
     InlineKeyboardMarkup createUserRoleButtons(boolean canSetAdmin, boolean canSetSuperAdmin, Long userId);
     
     InlineKeyboardMarkup createNextStepButton();
+    
+    InlineKeyboardMarkup createSkipAdditionalImagesButton();
 }

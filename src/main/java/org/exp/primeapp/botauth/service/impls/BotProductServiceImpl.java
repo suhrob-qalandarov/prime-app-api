@@ -99,14 +99,16 @@ public class BotProductServiceImpl implements BotProductService {
             return;
         }
         state.setBrand(brand);
-        state.setCurrentStep(ProductCreationState.Step.WAITING_IMAGES);
+        state.setCurrentStep(ProductCreationState.Step.WAITING_MAIN_IMAGE);
     }
 
     @Override
     @Transactional
     public void handleProductImage(Long userId, String fileId) {
         ProductCreationState state = getProductCreationState(userId);
-        if (state == null || state.getCurrentStep() != ProductCreationState.Step.WAITING_IMAGES) {
+        if (state == null || 
+            (state.getCurrentStep() != ProductCreationState.Step.WAITING_MAIN_IMAGE && 
+             state.getCurrentStep() != ProductCreationState.Step.WAITING_ADDITIONAL_IMAGES)) {
             return;
         }
 
@@ -135,7 +137,10 @@ public class BotProductServiceImpl implements BotProductService {
             state.addImageFileId(fileId);
             state.addAttachmentUrl(savedUrl);
 
-            // If we have at least 1 image, we can proceed (user can add more or continue)
+            // If main image is uploaded, move to additional images step
+            if (state.getCurrentStep() == ProductCreationState.Step.WAITING_MAIN_IMAGE) {
+                state.setCurrentStep(ProductCreationState.Step.WAITING_ADDITIONAL_IMAGES);
+            }
         } catch (Exception e) {
             log.error("Error handling product image: {}", e.getMessage(), e);
         }

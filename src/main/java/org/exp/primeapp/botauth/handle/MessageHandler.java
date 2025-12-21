@@ -197,7 +197,8 @@ public class MessageHandler implements Consumer<Message> {
 
         // Handle photo messages
         if (message.photo() != null && message.photo().length > 0) {
-            if (state.getCurrentStep() == ProductCreationState.Step.WAITING_IMAGES) {
+            if (state.getCurrentStep() == ProductCreationState.Step.WAITING_MAIN_IMAGE || 
+                state.getCurrentStep() == ProductCreationState.Step.WAITING_ADDITIONAL_IMAGES) {
                 // Get the largest photo
                 PhotoSize[] photos = message.photo();
                 PhotoSize largestPhoto = photos[photos.length - 1];
@@ -206,20 +207,23 @@ public class MessageHandler implements Consumer<Message> {
                 botProductService.handleProductImage(userId, fileId);
                 
                 int currentCount = state.getAttachmentUrls() != null ? state.getAttachmentUrls().size() : 0;
-                int remaining = 3 - currentCount;
                 
-                if (currentCount >= 3) {
-                    // Max 3 images reached
-                    messageService.sendImagesCompleted(chatId, currentCount);
-                    state.setCurrentStep(ProductCreationState.Step.WAITING_SPOTLIGHT_NAME);
-                    // Send spotlight name prompt in separate message
-                    messageService.sendSpotlightNamePromptForProduct(chatId);
-                } else if (state.hasMinimumImages()) {
-                    // At least 1 image, can add more
-                    messageService.sendImageSavedSuccess(chatId, currentCount, remaining);
-                } else {
-                    // Still need minimum images
-                    messageService.sendImageSavedSuccess(chatId, currentCount, remaining);
+                if (state.getCurrentStep() == ProductCreationState.Step.WAITING_MAIN_IMAGE) {
+                    // Main image uploaded, move to additional images step
+                    // Note: handleProductImage already changed step to WAITING_ADDITIONAL_IMAGES
+                    messageService.sendAdditionalImagesPrompt(chatId, currentCount);
+                } else if (state.getCurrentStep() == ProductCreationState.Step.WAITING_ADDITIONAL_IMAGES) {
+                    // Additional image uploaded
+                    int remaining = 3 - currentCount; // Max 3 total, calculate remaining
+                    if (currentCount >= 3) {
+                        // Max 3 images reached
+                        messageService.sendImagesCompleted(chatId, currentCount);
+                        state.setCurrentStep(ProductCreationState.Step.WAITING_SPOTLIGHT_NAME);
+                        messageService.sendSpotlightNamePromptForProduct(chatId);
+                    } else {
+                        // Can add more additional images (max 2 additional = 3 total)
+                        messageService.sendImageSavedSuccess(chatId, currentCount, remaining);
+                    }
                 }
             }
             return;
@@ -249,8 +253,9 @@ public class MessageHandler implements Consumer<Message> {
                     // Empty brand - set to empty string
                     botProductService.handleProductBrand(userId, "");
                 }
-                state.setCurrentStep(ProductCreationState.Step.WAITING_IMAGES);
-                messageService.sendProductImagePrompt(chatId, 0);
+                // After brand, move to main image step
+                state.setCurrentStep(ProductCreationState.Step.WAITING_MAIN_IMAGE);
+                messageService.sendMainImagePrompt(chatId);
                 break;
 
             case WAITING_QUANTITIES:

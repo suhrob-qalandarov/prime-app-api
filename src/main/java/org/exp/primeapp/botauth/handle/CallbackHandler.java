@@ -344,8 +344,8 @@ public class CallbackHandler implements Consumer<CallbackQuery> {
                 }
                 
                 botProductService.handleProductBrand(userId, ""); // Empty brand
-                state.setCurrentStep(ProductCreationState.Step.WAITING_IMAGES);
-                messageService.sendProductImagePrompt(chatId, 0);
+                state.setCurrentStep(ProductCreationState.Step.WAITING_MAIN_IMAGE);
+                messageService.sendMainImagePrompt(chatId);
                 telegramBot.execute(new AnswerCallbackQuery(callbackId).text("Keyingi qadamga o'tildi"));
             }
             return;
@@ -409,11 +409,38 @@ public class CallbackHandler implements Consumer<CallbackQuery> {
             // This will be handled when user sends a number message
             telegramBot.execute(new AnswerCallbackQuery(callbackId).text("Miqdorni raqam sifatida yuboring"));
 
+        } else if (data.equals("skip_additional_images")) {
+            // Skip additional images - move to next step
+            if (state != null && state.getCurrentStep() == ProductCreationState.Step.WAITING_ADDITIONAL_IMAGES) {
+                // Edit the message to show skipped status and remove inline keyboard
+                com.pengrad.telegrambot.model.Message callbackMessage = callbackQuery.message();
+                Integer messageId = callbackMessage != null ? callbackMessage.messageId() : null;
+                
+                if (messageId != null) {
+                    // Edit message to show skipped status
+                    telegramBot.execute(new EditMessageText(chatId, messageId,
+                            "📷 <b>4/9</b> Mahsulotning qo'shimcha rasmlarini yuboring: (O'tkazib yuborildi)")
+                            .parseMode(ParseMode.HTML)
+                    );
+                    // Remove inline keyboard
+                    telegramBot.execute(new EditMessageReplyMarkup(chatId, messageId)
+                            .replyMarkup(new InlineKeyboardMarkup(new InlineKeyboardButton[0][]))
+                    );
+                }
+                
+                int totalCount = state.getAttachmentUrls() != null ? state.getAttachmentUrls().size() : 0;
+                messageService.sendImagesCompleted(chatId, totalCount);
+                
+                state.setCurrentStep(ProductCreationState.Step.WAITING_SPOTLIGHT_NAME);
+                messageService.sendSpotlightNamePromptForProduct(chatId);
+                telegramBot.execute(new AnswerCallbackQuery(callbackId).text("Keyingi qadamga o'tildi"));
+            }
+            return;
         } else if (data.equals("add_more_image")) {
             if (state.canAddMoreImages()) {
-                state.setCurrentStep(ProductCreationState.Step.WAITING_IMAGES);
+                state.setCurrentStep(ProductCreationState.Step.WAITING_ADDITIONAL_IMAGES);
                 int currentCount = state.getAttachmentUrls() != null ? state.getAttachmentUrls().size() : 0;
-                messageService.sendProductImagePrompt(chatId, currentCount);
+                messageService.sendAdditionalImagesPrompt(chatId, currentCount);
             } else {
                 telegramBot.execute(new AnswerCallbackQuery(callbackId)
                         .text("Maksimum 3 ta rasm yuklash mumkin")

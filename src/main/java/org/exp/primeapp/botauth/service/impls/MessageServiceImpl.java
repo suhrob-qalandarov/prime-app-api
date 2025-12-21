@@ -331,6 +331,26 @@ public class MessageServiceImpl implements MessageService {
     }
 
     @Override
+    public void sendMainImagePrompt(Long chatId) {
+        telegramBot.execute(new SendMessage(chatId,
+                "📷 <b>4/9</b> Mahsulotning asosiy rasmlarini yuboring:")
+                .parseMode(ParseMode.HTML)
+        );
+    }
+
+    @Override
+    public void sendAdditionalImagesPrompt(Long chatId, int currentCount) {
+        String message = "📷 <b>4/9</b> Mahsulotning qo'shimcha rasmlarini yuboring:\n\n";
+        message += "• Maksimum: 2 ta qo'shimcha rasm\n";
+        message += "• Hozirgi: " + currentCount + " ta";
+        
+        telegramBot.execute(new SendMessage(chatId, message)
+                .parseMode(ParseMode.HTML)
+                .replyMarkup(buttonService.createSkipAdditionalImagesButton())
+        );
+    }
+
+    @Override
     public void sendImageSavedSuccess(Long chatId, int currentCount, int remaining) {
         String message = "✅ Rasm muvaffaqiyatli saqlandi!\n";
         message += "Qo'shish mumkin yana " + remaining + " ta rasm!";

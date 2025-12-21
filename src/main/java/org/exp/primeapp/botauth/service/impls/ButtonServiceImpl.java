@@ -231,4 +231,13 @@ public class ButtonServiceImpl implements ButtonService {
                 }
         );
     }
+
+    @Override
+    public InlineKeyboardMarkup createSkipAdditionalImagesButton() {
+        return new InlineKeyboardMarkup(
+                new InlineKeyboardButton[]{
+                        new InlineKeyboardButton("➡️ Keyingi qadam").callbackData("skip_additional_images")
+                }
+        );
+    }
 }
