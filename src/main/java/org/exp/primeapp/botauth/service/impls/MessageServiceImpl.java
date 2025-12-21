@@ -376,7 +376,7 @@ public class MessageServiceImpl implements MessageService {
         telegramBot.execute(new SendMessage(chatId,
                 "📂 <b>5/9</b> Toifani tanlang:")
                 .parseMode(ParseMode.HTML)
-                .replyMarkup(buttonService.createSpotlightNameButtons())
+                .replyMarkup(buttonService.createSpotlightNameButtonsWithBack())
         );
     }
 

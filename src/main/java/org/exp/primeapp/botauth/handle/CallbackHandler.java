@@ -157,6 +157,32 @@ public class CallbackHandler implements Consumer<CallbackQuery> {
             return;
         }
 
+        if (data.equals("back_to_additional_images")) {
+            // Go back to additional images step
+            ProductCreationState productState = botProductService.getProductCreationState(userId);
+            if (productState != null && productState.getCurrentStep() == ProductCreationState.Step.WAITING_SPOTLIGHT_NAME) {
+                // Edit the message to show we're going back
+                com.pengrad.telegrambot.model.Message callbackMessage = callbackQuery.message();
+                Integer messageId = callbackMessage != null ? callbackMessage.messageId() : null;
+                
+                if (messageId != null) {
+                    // Edit message to show we're going back
+                    telegramBot.execute(new EditMessageText(chatId, messageId,
+                            "📂 <b>5/9</b> Toifani tanlang: (5-chi qadamga qaytildi)")
+                            .parseMode(ParseMode.HTML)
+                            .replyMarkup(new InlineKeyboardMarkup(new InlineKeyboardButton[0][]))
+                    );
+                }
+                
+                // Move back to additional images step
+                productState.setCurrentStep(ProductCreationState.Step.WAITING_ADDITIONAL_IMAGES);
+                int currentCount = productState.getAttachmentUrls() != null ? productState.getAttachmentUrls().size() : 0;
+                messageService.sendAdditionalImagesPrompt(chatId, currentCount);
+                telegramBot.execute(new AnswerCallbackQuery(callbackId).text("5-chi qadamga qaytildi"));
+            }
+            return;
+        }
+
         if (data.startsWith("spotlight_")) {
             String spotlightName = data.replace("spotlight_", "");
             // Map callback data to actual spotlight name

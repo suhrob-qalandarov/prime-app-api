@@ -186,6 +186,27 @@ public class ButtonServiceImpl implements ButtonService {
     }
 
     @Override
+    public InlineKeyboardMarkup createSpotlightNameButtonsWithBack() {
+        return new InlineKeyboardMarkup(
+                new InlineKeyboardButton[]{
+                        new InlineKeyboardButton("👕 Tepa kiyimlar").callbackData("spotlight_tepa_kiyimlar")
+                },
+                new InlineKeyboardButton[]{
+                        new InlineKeyboardButton("👖 Shimlar").callbackData("spotlight_shimlar")
+                },
+                new InlineKeyboardButton[]{
+                        new InlineKeyboardButton("👟 Oyoq kiyimlar").callbackData("spotlight_oyoq_kiyimlar")
+                },
+                new InlineKeyboardButton[]{
+                        new InlineKeyboardButton("💼 Aksessuarlar").callbackData("spotlight_aksessuarlar")
+                },
+                new InlineKeyboardButton[]{
+                        new InlineKeyboardButton("⬅️ 5-chi qadamga qaytish").callbackData("back_to_additional_images")
+                }
+        );
+    }
+
+    @Override
     public InlineKeyboardMarkup createCategoryConfirmationButtons() {
         return new InlineKeyboardMarkup(
                 new InlineKeyboardButton[]{

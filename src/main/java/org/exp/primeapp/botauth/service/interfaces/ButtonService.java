@@ -45,4 +45,6 @@ public interface ButtonService {
     InlineKeyboardMarkup createNextStepButton();
     
     InlineKeyboardMarkup createSkipAdditionalImagesButton();
+    
+    InlineKeyboardMarkup createSpotlightNameButtonsWithBack();
 }
