@@ -227,18 +227,23 @@ public class BotProductServiceImpl implements BotProductService {
         try {
             // Validate state
             if (state.getName() == null || state.getDescription() == null || 
-                state.getBrand() == null || state.getCategory() == null ||
+                state.getCategory() == null ||
                 state.getAttachmentUrls() == null || state.getAttachmentUrls().isEmpty() ||
                 state.getSelectedSizes() == null || state.getSelectedSizes().isEmpty() ||
                 state.getPrice() == null) {
                 throw new RuntimeException("Product data is incomplete");
             }
 
+            // Brand is optional - use empty string if not provided
+            String brand = (state.getBrand() != null && !state.getBrand().trim().isEmpty()) 
+                    ? state.getBrand() 
+                    : "N/A";
+
             // Create ProductReq
             ProductReq productReq = ProductReq.builder()
                     .name(state.getName())
                     .description(state.getDescription())
-                    .brand(state.getBrand())
+                    .brand(brand)
                     .colorName("Default") // You might want to add this to the flow
                     .colorHex("#000000") // You might want to add this to the flow
                     .price(state.getPrice())

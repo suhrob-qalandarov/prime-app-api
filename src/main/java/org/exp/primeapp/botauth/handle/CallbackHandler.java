@@ -321,6 +321,17 @@ public class CallbackHandler implements Consumer<CallbackQuery> {
             return;
         }
 
+        if (data.equals("skip_brand")) {
+            // Skip brand step - set brand to empty and move to next step
+            if (state != null && state.getCurrentStep() == ProductCreationState.Step.WAITING_BRAND) {
+                botProductService.handleProductBrand(userId, ""); // Empty brand
+                state.setCurrentStep(ProductCreationState.Step.WAITING_IMAGES);
+                messageService.sendProductImagePrompt(chatId, 0);
+                telegramBot.execute(new AnswerCallbackQuery(callbackId).text("Keyingi qadamga o'tildi"));
+            }
+            return;
+        }
+
         if (data.startsWith("select_category_")) {
             Long categoryId = Long.parseLong(data.replace("select_category_", ""));
             botProductService.handleCategorySelection(userId, categoryId);

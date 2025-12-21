@@ -242,7 +242,13 @@ public class MessageHandler implements Consumer<Message> {
                 break;
 
             case WAITING_BRAND:
-                botProductService.handleProductBrand(userId, text);
+                // Brand is optional - if empty, skip to next step
+                if (text != null && !text.trim().isEmpty()) {
+                    botProductService.handleProductBrand(userId, text);
+                } else {
+                    // Empty brand - set to empty string
+                    botProductService.handleProductBrand(userId, "");
+                }
                 state.setCurrentStep(ProductCreationState.Step.WAITING_IMAGES);
                 messageService.sendProductImagePrompt(chatId, 0);
                 break;

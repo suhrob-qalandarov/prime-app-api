@@ -222,4 +222,13 @@ public class ButtonServiceImpl implements ButtonService {
         
         return new InlineKeyboardMarkup(buttons.toArray(new InlineKeyboardButton[0][]));
     }
+
+    @Override
+    public InlineKeyboardMarkup createNextStepButton() {
+        return new InlineKeyboardMarkup(
+                new InlineKeyboardButton[]{
+                        new InlineKeyboardButton("➡️ Keyingi qadam").callbackData("skip_brand")
+                }
+        );
+    }
 }

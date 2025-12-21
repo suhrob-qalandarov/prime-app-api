@@ -314,6 +314,7 @@ public class MessageServiceImpl implements MessageService {
         telegramBot.execute(new SendMessage(chatId,
                 "🏷️ <b>3/9</b> Brend nomini kiriting:")
                 .parseMode(ParseMode.HTML)
+                .replyMarkup(buttonService.createNextStepButton())
         );
     }
 
