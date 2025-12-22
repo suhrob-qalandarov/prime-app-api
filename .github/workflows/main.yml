@@ -67,6 +67,72 @@ jobs:
           fi
           ls -la app.jar
 
+      - name: Install Docker and Docker Compose (if not installed)
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ vars.HOST_IP }}
+          username: ${{ vars.HOST_USER }}
+          key: ${{ vars.HOST_SSH_KEY }}
+          port: ${{ vars.HOST_PORT }}
+          script: |
+            # Check if Docker is installed
+            if ! command -v docker &> /dev/null; then
+              echo "Docker is not installed. Installing Docker..."
+              
+              # Update package index
+              sudo apt-get update
+              
+              # Install prerequisites
+              sudo apt-get install -y \
+                ca-certificates \
+                curl \
+                gnupg \
+                lsb-release
+              
+              # Add Docker's official GPG key
+              sudo mkdir -p /etc/apt/keyrings
+              curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+              
+              # Set up Docker repository
+              echo \
+                "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \
+                $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+              
+              # Install Docker Engine
+              sudo apt-get update
+              sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+              
+              # Add user to docker group (if not already added)
+              sudo usermod -aG docker ${{ vars.HOST_USER }} || true
+              
+              echo "Docker installed successfully"
+            else
+              echo "Docker is already installed: $(docker --version)"
+            fi
+            
+            # Check if Docker Compose is installed (standalone or plugin)
+            if ! command -v docker-compose &> /dev/null && ! sudo docker compose version &> /dev/null; then
+              echo "Docker Compose is not installed. Installing Docker Compose..."
+              
+              # Install Docker Compose plugin (part of Docker)
+              sudo apt-get update
+              sudo apt-get install -y docker-compose-plugin
+              
+              echo "Docker Compose installed successfully"
+            else
+              if command -v docker-compose &> /dev/null; then
+                echo "Docker Compose (standalone) is already installed: $(docker-compose --version)"
+              elif sudo docker compose version &> /dev/null; then
+                echo "Docker Compose (plugin) is already installed: $(sudo docker compose version)"
+              fi
+            fi
+            
+            # Verify installations
+            echo "Docker version:"
+            sudo docker --version || docker --version || echo "Docker check failed"
+            echo "Docker Compose version:"
+            sudo docker compose version 2>/dev/null || docker compose version 2>/dev/null || sudo docker-compose --version 2>/dev/null || docker-compose --version 2>/dev/null || echo "Docker Compose check failed"
+
       - name: Setup deployment directory
         uses: appleboy/ssh-action@v1.0.3
         with:
@@ -166,8 +232,9 @@ jobs:
           script: |
             cd /home/${{ vars.HOST_USER }}/${{ vars.APP_NAME }}
             # Ensure network exists
-            docker network create app-network 2>/dev/null || echo "Network app-network already exists"
-            docker compose up -d db || true
+            sudo docker network create app-network 2>/dev/null || echo "Network app-network already exists"
+            # Try docker compose (plugin) first, then docker-compose (standalone)
+            sudo docker compose up -d db 2>/dev/null || sudo docker-compose up -d db 2>/dev/null || echo "Database start failed or already running"
 
       - name: Deploy using blue-green script
         uses: appleboy/ssh-action@v1.0.3
@@ -190,7 +257,7 @@ jobs:
           port: ${{ vars.HOST_PORT }}
           script: |
             sleep 5
-            docker ps -a
+            sudo docker ps -a || docker ps -a
             ACTIVE_ENV=$(cat /home/${{ vars.HOST_USER }}/${{ vars.APP_NAME }}/.active_env 2>/dev/null || echo "unknown")
             echo "Active environment: $ACTIVE_ENV"
             if [ "$ACTIVE_ENV" == "blue" ]; then
