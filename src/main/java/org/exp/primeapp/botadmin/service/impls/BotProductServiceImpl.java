@@ -46,10 +46,10 @@ public class BotProductServiceImpl implements BotProductService {
     private final ProductRepository productRepository;
     private final AdminProductService adminProductService;
 
-    @Value("${app.attachment.base.url:${app.api.url:https://api.howdy.uz}}")
+    @Value("${app.attachment.base.url}")
     private String attachmentBaseUrl;
 
-    @Value("${app.attachment.folder.path:uploads}")
+    @Value("${app.attachment.folder.path}")
     private String attachmentFolderPath;
 
     @Value("${telegram.bot.admin.token:}")

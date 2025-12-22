@@ -40,16 +40,16 @@ public class FilterChainConfig {
 
     private final CustomUserDetailsService customUserDetailsService;
 
-    @Value("${swagger.ui.username:admin}")
+    @Value("${swagger.ui.username}")
     private String swaggerUsername;
 
-    @Value("${swagger.ui.password:admin123}")
+    @Value("${swagger.ui.password}")
     private String swaggerPassword;
 
-    @Value("${app.main.url:https://gourmet.uz}")
+    @Value("${app.main.url}")
     private String mainUrl;
 
-    @Value("${app.api.url:https://api.gourmet.uz}")
+    @Value("${app.api.url}")
     private String apiUrl;
 
     @Value("${app.local.urls}")
