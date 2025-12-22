@@ -1,5 +1,7 @@
 package org.exp.primeapp.models.enums;
 
+import com.fasterxml.jackson.annotation.JsonValue;
+
 public enum Size {
     SMALL("KICHIK"), MEDIUM("O'RTACHA"), BIG("KATTA"),
     S("S"), M("M"), L("L"), XL("XL"), XXL("XXL"), XXXL("XXXL"),
@@ -13,6 +15,11 @@ public enum Size {
     }
 
     public String getLabel() {
+        return label;
+    }
+
+    @JsonValue
+    public String getValue() {
         return label;
     }
 
