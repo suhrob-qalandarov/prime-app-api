@@ -8,11 +8,11 @@ services:
     networks:
       - app-network
     environment:
-      POSTGRES_DB: ${POSTGRES_DB:-prime_db}
-      POSTGRES_USER: ${POSTGRES_USER:-postgres}
-      POSTGRES_PASSWORD: ${SPRING_DATASOURCE_PASSWORD}
+      POSTGRES_DB: ${DATASOURCE_DB}
+      POSTGRES_USER: ${DATASOURCE_USER}
+      POSTGRES_PASSWORD: ${DATASOURCE_PASS}
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-prime_db}"]
+      test: ["CMD-SHELL", "pg_isready -U ${DATASOURCE_USER} -d ${DATASOURCE_DB}"]
       interval: 10s
       timeout: 5s
       retries: 5
