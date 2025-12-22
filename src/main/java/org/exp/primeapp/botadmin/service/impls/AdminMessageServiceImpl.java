@@ -527,4 +527,13 @@ public class AdminMessageServiceImpl implements AdminMessageService {
                 .parseMode(ParseMode.HTML)
         );
     }
+
+    @Override
+    public void sendNoCategoriesMessage(Long chatId) {
+        telegramBot.execute(new SendMessage(chatId,
+                "⚠️ <b>Kategoriya mavjud emas!</b>\n\n" +
+                "Birorta ham kategoriya mavjud emas. Avval kategoriya qo'shing!")
+                .parseMode(ParseMode.HTML)
+        );
+    }
 }
