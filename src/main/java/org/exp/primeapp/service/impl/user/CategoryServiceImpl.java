@@ -7,6 +7,7 @@ import org.exp.primeapp.models.dto.responce.user.CategoryRes;
 import org.exp.primeapp.models.dto.responce.admin.AdminCategoryRes;
 import org.exp.primeapp.models.entities.Category;
 import org.exp.primeapp.models.entities.Product;
+import org.exp.primeapp.models.enums.CategoryStatus;
 import org.exp.primeapp.repository.CategoryRepository;
 import org.exp.primeapp.repository.ProductRepository;
 import org.exp.primeapp.service.face.user.CategoryService;
@@ -34,7 +35,7 @@ public class CategoryServiceImpl implements CategoryService {
 
     @Override
     public List<CategoryRes> getResCategoriesBySpotlightName(String spotlightName) {
-        return categoryRepository.findBySpotlightNameAndActive(spotlightName, true)
+        return categoryRepository.findBySpotlightNameAndStatusOrderByOrderNumberAsc(spotlightName, CategoryStatus.VISIBLE)
                 .stream()
                 .map(category -> new CategoryRes(
                         category.getId(),
@@ -45,7 +46,8 @@ public class CategoryServiceImpl implements CategoryService {
     }
 
     public List<CategoryRes> getResCategories() {
-        return categoryRepository.findByActive(true).stream()
+        return categoryRepository.findByStatusOrderByOrderNumberAsc(CategoryStatus.VISIBLE)
+                .stream()
                 .map(category -> new CategoryRes(
                         category.getId(),
                         category.getName(),
