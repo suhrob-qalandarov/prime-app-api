@@ -209,7 +209,7 @@ BEGIN
         session_id VARCHAR(100) PRIMARY KEY,
         user_id BIGINT,
         ip VARCHAR(45) NOT NULL,
-        browser_infos TEXT,
+        browser_info TEXT,
         access_token VARCHAR(1000),
         is_active BOOLEAN NOT NULL DEFAULT true,
         is_deleted BOOLEAN NOT NULL DEFAULT false,
