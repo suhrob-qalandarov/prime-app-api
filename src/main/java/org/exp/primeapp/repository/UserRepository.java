@@ -22,7 +22,8 @@ public interface UserRepository extends JpaRepository<User, Long>, JpaSpecificat
 
     Optional<User> findByPhoneAndVerifyCode(String phone, Integer verifyCode);
 
-    User findByTelegramId(Long telegramId);
+    @Query(value = "SELECT * FROM app_users WHERE telegram_id = :telegramId ORDER BY id ASC LIMIT 1", nativeQuery = true)
+    Optional<User> findByTelegramId(@Param("telegramId") Long telegramId);
 
     User findByTgUsername(String tgUsername);
 

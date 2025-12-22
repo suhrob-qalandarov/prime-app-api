@@ -108,7 +108,7 @@ public class AdminMessageHandler implements Consumer<Message> {
                 
                 // Admin bot - check user by telegram ID and verify role
                 Long telegramId = message.from().id();
-                User adminUser = userRepository.findByTelegramId(telegramId);
+                User adminUser = userRepository.findByTelegramId(telegramId).orElse(null);
                 
                 if (adminUser == null) {
                     log.warn("User with telegramId {} not found in database", telegramId);
