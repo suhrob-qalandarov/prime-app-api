@@ -2,12 +2,12 @@ package org.exp.primeapp.botadmin.handle;
 
 import com.pengrad.telegrambot.TelegramBot;
 import com.pengrad.telegrambot.model.CallbackQuery;
+import com.pengrad.telegrambot.model.request.InlineKeyboardMarkup;
 import com.pengrad.telegrambot.model.request.ParseMode;
 import com.pengrad.telegrambot.request.AnswerCallbackQuery;
 import com.pengrad.telegrambot.request.EditMessageText;
 import com.pengrad.telegrambot.request.GetMe;
 import com.pengrad.telegrambot.request.SendMessage;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.exp.primeapp.botadmin.models.CategoryCreationState;
 import org.exp.primeapp.botadmin.models.ProductCreationState;
@@ -23,7 +23,6 @@ import org.exp.primeapp.models.enums.Size;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
 
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.function.Consumer;
 
@@ -349,6 +348,71 @@ public class AdminCallbackHandler implements Consumer<CallbackQuery> {
                         .text("Mahsulot qo'shish jarayoni topilmadi. /add_product bilan boshlang.")
                         .showAlert(true));
             }
+            return;
+        }
+
+        // Handle color selection callbacks
+        if (data.startsWith("select_color_")) {
+            // Parse color name and hex from callback data
+            // Format: "select_color_ColorName_#HexCode"
+            String colorData = data.replace("select_color_", "");
+            // Split by last underscore to separate name and hex
+            int lastUnderscoreIndex = colorData.lastIndexOf("_");
+            if (lastUnderscoreIndex > 0 && lastUnderscoreIndex < colorData.length() - 1) {
+                String colorName = colorData.substring(0, lastUnderscoreIndex);
+                String colorHex = colorData.substring(lastUnderscoreIndex + 1);
+                
+                log.debug("Parsed color selection - name: {}, hex: {}", colorName, colorHex);
+                
+                botProductService.handleProductColor(userId, colorName, colorHex);
+                
+                // Edit message to show selected color
+                com.pengrad.telegrambot.model.Message callbackMessage = callbackQuery.message();
+                Integer messageId = callbackMessage != null ? callbackMessage.messageId() : null;
+                if (messageId != null) {
+                    telegramBot.execute(new EditMessageText(chatId, messageId,
+                            "🎨 <b>4/9</b> Rang tanlandi: " + colorName + "\n\n" +
+                            "📷 Keyingi qadam: Mahsulotning asosiy rasmlarini yuboring")
+                            .parseMode(ParseMode.HTML)
+                            .replyMarkup(new InlineKeyboardMarkup(new com.pengrad.telegrambot.model.request.InlineKeyboardButton[0][]))
+                    );
+                }
+                
+                // Move to main image step
+                state.setCurrentStep(ProductCreationState.Step.WAITING_MAIN_IMAGE);
+                messageService.sendMainImagePrompt(chatId);
+                
+                telegramBot.execute(new AnswerCallbackQuery(callbackId).text("Rang tanlandi"));
+            } else {
+                log.error("Failed to parse color data: {}", colorData);
+                telegramBot.execute(new AnswerCallbackQuery(callbackId)
+                        .text("Xatolik: Rang ma'lumotlarini parse qilishda muammo")
+                        .showAlert(true));
+            }
+            return;
+        }
+
+        if (data.equals("skip_color")) {
+            // Skip color selection - set default values
+            botProductService.handleProductColor(userId, "N/A", "#000000");
+            
+            // Edit message to show skipped
+            com.pengrad.telegrambot.model.Message callbackMessage = callbackQuery.message();
+            Integer messageId = callbackMessage != null ? callbackMessage.messageId() : null;
+            if (messageId != null) {
+                telegramBot.execute(new EditMessageText(chatId, messageId,
+                        "🎨 <b>4/9</b> Rang tanlash: (O'tkazib yuborildi)\n\n" +
+                        "📷 Keyingi qadam: Mahsulotning asosiy rasmlarini yuboring")
+                        .parseMode(ParseMode.HTML)
+                        .replyMarkup(new InlineKeyboardMarkup(new com.pengrad.telegrambot.model.request.InlineKeyboardButton[0][]))
+                );
+            }
+            
+            // Move to main image step
+            state.setCurrentStep(ProductCreationState.Step.WAITING_MAIN_IMAGE);
+            messageService.sendMainImagePrompt(chatId);
+            
+            telegramBot.execute(new AnswerCallbackQuery(callbackId).text("Rang tanlash o'tkazib yuborildi"));
             return;
         }
 
