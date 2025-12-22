@@ -33,9 +33,13 @@ public class MessageHandler implements Consumer<Message> {
 
             if (message.contact() != null) {
                 Contact contact = message.contact();
+                log.info("Received contact from chatId: {}, phone: {}", chatId, contact.phoneNumber());
                 messageService.removeKeyboardAndSendMsg(chatId);
                 userService.updateUserPhoneById(chatId, contact.phoneNumber());
-                messageService.sendCode(user);
+                // User obyektini yangilash - telefon raqami yangilanganidan keyin
+                User updatedUser = userService.getOrCreateUser(message.from());
+                log.info("User phone updated, sending code to chatId: {}", chatId);
+                messageService.sendCode(updatedUser);
 
             } else if (text != null && text.trim().startsWith("/start")) {
                 log.info("Processing /start command from chatId: {}", chatId);
@@ -63,13 +67,8 @@ public class MessageHandler implements Consumer<Message> {
             }
         } catch (Exception e) {
             log.error("Error processing message from chatId: {}", message.chat().id(), e);
-            try {
-                // Try to send error message to user
-                Long chatId = message.chat().id();
-                messageService.sendStartMsg(chatId, "Foydalanuvchi");
-            } catch (Exception ex) {
-                log.error("Failed to send error message to chatId: {}", message.chat().id(), ex);
-            }
+            // Don't send start message on error - it might confuse users
+            // Just log the error and let the user try again
         }
     }
 }
