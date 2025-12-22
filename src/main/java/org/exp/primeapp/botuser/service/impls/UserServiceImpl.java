@@ -68,7 +68,29 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public void updateUserPhoneById(Long userId, String phoneNumber) {
-        userRepository.updatePhoneByUserId(userId, phoneNumber);
+        // Telefon raqamidan + ni olib tashlash
+        String formattedPhone = formatPhoneNumber(phoneNumber);
+        userRepository.updatePhoneByUserId(userId, formattedPhone);
+    }
+    
+    /**
+     * Telefon raqamini format qilish: + ni olib tashlash
+     * @param phoneNumber Telefon raqami
+     * @return Formatlangan telefon raqami (+ siz)
+     */
+    private String formatPhoneNumber(String phoneNumber) {
+        if (phoneNumber == null || phoneNumber.trim().isEmpty()) {
+            return phoneNumber;
+        }
+        
+        String trimmed = phoneNumber.trim();
+        
+        // Agar + bilan boshlansa, uni olib tashlash
+        if (trimmed.startsWith("+")) {
+            return trimmed.substring(1);
+        }
+        
+        return trimmed;
     }
 
     @Override

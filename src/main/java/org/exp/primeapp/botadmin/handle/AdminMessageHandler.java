@@ -80,18 +80,68 @@ public class AdminMessageHandler implements Consumer<Message> {
             log.debug("Received admin message from chatId: {}, text: {}", message.chat().id(), message.text());
             
             String text = message.text();
-            User user = userService.getOrCreateUser(message.from());
-            Long userId = user.getId();
-            Long chatId = user.getTelegramId();
+            Long telegramId = message.from().id();
+            Long chatId = message.chat().id();
             
-            // Check if user is admin - if not, send access denied message
-            if (!isAdmin(user)) {
-                log.warn("Non-admin user {} tried to access admin bot", userId);
+            // Admin bot - faqat database'dan tekshirish, user yaratmaslik
+            User user = userRepository.findByTelegramId(telegramId).orElse(null);
+            
+            // /start buyrug'i uchun alohida tekshirish
+            if (text != null && text.trim().startsWith("/start")) {
+                log.info("Processing /start command from admin bot, chatId: {}", chatId);
+                
+                if (user == null) {
+                    log.warn("User with telegramId {} not found in database", telegramId);
+                    String userBotUsername = getUserBotUsername();
+                    messageService.sendAccessDeniedMessage(chatId, userBotUsername);
+                    return;
+                }
+                
+                // Check if user is admin or super admin
+                boolean isAdminUser = user.getRoles() != null && user.getRoles().stream()
+                        .anyMatch(role -> role.getName() != null && 
+                                (role.getName().equals("ROLE_ADMIN") || 
+                                 role.getName().equals("ROLE_SUPER_ADMIN")));
+                
+                if (!isAdminUser) {
+                    log.warn("User with telegramId {} is not an admin", telegramId);
+                    String userBotUsername = getUserBotUsername();
+                    messageService.sendAccessDeniedMessage(chatId, userBotUsername);
+                    return;
+                }
+                
+                // User is admin - send admin menu
+                String firstName = user.getFirstName() != null ? user.getFirstName() : "Admin";
+                boolean hasPhone = user.getPhone() != null && !user.getPhone().trim().isEmpty();
+                
+                if (hasPhone) {
+                    log.info("Admin {} already has phone, sending admin menu", user.getId());
+                    messageService.sendAdminMenu(chatId, firstName);
+                } else {
+                    log.info("Admin {} has no phone, asking for contact", user.getId());
+                    messageService.sendStartMsgForAdmin(chatId, firstName);
+                }
+                log.info("Start message sent to chatId: {}", chatId);
+                return;
+            }
+            
+            // Boshqa message'lar uchun - user mavjudligini tekshirish
+            if (user == null) {
+                log.warn("User with telegramId {} not found in database", telegramId);
                 String userBotUsername = getUserBotUsername();
                 messageService.sendAccessDeniedMessage(chatId, userBotUsername);
                 return;
             }
             
+            // Check if user is admin - if not, send access denied message
+            if (!isAdmin(user)) {
+                log.warn("Non-admin user {} tried to access admin bot", user.getId());
+                String userBotUsername = getUserBotUsername();
+                messageService.sendAccessDeniedMessage(chatId, userBotUsername);
+                return;
+            }
+            
+            Long userId = user.getId();
             log.debug("Processing admin message for user: {} (chatId: {}), text: {}", userId, chatId, text);
 
             if (message.contact() != null) {
@@ -102,44 +152,6 @@ public class AdminMessageHandler implements Consumer<Message> {
                 // Admin - send admin menu
                 String firstName = user.getFirstName() != null ? user.getFirstName() : "Admin";
                 messageService.sendAdminMenu(chatId, firstName);
-
-            } else if (text != null && text.trim().startsWith("/start")) {
-                log.info("Processing /start command from admin bot, chatId: {}", chatId);
-                
-                // Admin bot - check user by telegram ID and verify role
-                Long telegramId = message.from().id();
-                User adminUser = userRepository.findByTelegramId(telegramId).orElse(null);
-                
-                if (adminUser == null) {
-                    log.warn("User with telegramId {} not found in database", telegramId);
-                    messageService.sendStartMsgForAdmin(chatId, "Foydalanuvchi");
-                    return;
-                }
-                
-                // Check if user is admin or super admin
-                boolean isAdmin = adminUser.getRoles() != null && adminUser.getRoles().stream()
-                        .anyMatch(role -> role.getName() != null && 
-                                (role.getName().equals("ROLE_ADMIN") || 
-                                 role.getName().equals("ROLE_SUPER_ADMIN")));
-                
-                if (!isAdmin) {
-                    log.warn("User with telegramId {} is not an admin", telegramId);
-                    messageService.sendStartMsgForAdmin(chatId, adminUser.getFirstName() != null ? adminUser.getFirstName() : "Foydalanuvchi");
-                    return;
-                }
-                
-                // User is admin - send admin menu
-                String firstName = adminUser.getFirstName() != null ? adminUser.getFirstName() : "Admin";
-                boolean hasPhone = adminUser.getPhone() != null && !adminUser.getPhone().trim().isEmpty();
-                
-                if (hasPhone) {
-                    log.info("Admin {} already has phone, sending admin menu", adminUser.getId());
-                    messageService.sendAdminMenu(chatId, firstName);
-                } else {
-                    log.info("Admin {} has no phone, asking for contact", adminUser.getId());
-                    messageService.sendStartMsgForAdmin(chatId, firstName);
-                }
-                log.info("Start message sent to chatId: {}", chatId);
 
             } else if (text != null && text.trim().equals("/add_product")) {
                 log.info("Processing /add_product command from chatId: {}", chatId);
