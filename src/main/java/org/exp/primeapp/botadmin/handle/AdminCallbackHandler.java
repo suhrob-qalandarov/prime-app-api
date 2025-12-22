@@ -207,6 +207,20 @@ public class AdminCallbackHandler implements Consumer<CallbackQuery> {
                 // Product creation flow
                 botProductService.handleSpotlightNameSelection(userId, actualSpotlightName);
                 List<Category> categories = botProductService.getCategoriesBySpotlightName(actualSpotlightName);
+                
+                // Check if categories exist
+                if (categories == null || categories.isEmpty()) {
+                    // No categories found - cancel product creation and return to main menu
+                    botProductService.cancelProductCreation(userId);
+                    messageService.sendNoCategoriesMessage(chatId);
+                    String firstName = user.getFirstName() != null ? user.getFirstName() : "Admin";
+                    messageService.sendAdminMenu(chatId, firstName);
+                    telegramBot.execute(new AnswerCallbackQuery(callbackId)
+                            .text("Kategoriya mavjud emas")
+                            .showAlert(true));
+                    return;
+                }
+                
                 messageService.sendCategorySelection(chatId);
                 telegramBot.execute(new SendMessage(chatId, "📂 Kategoriyani tanlang:")
                         .parseMode(ParseMode.HTML)

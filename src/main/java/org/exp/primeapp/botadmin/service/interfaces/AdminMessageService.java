@@ -71,5 +71,7 @@ public interface AdminMessageService {
     void sendUserInfo(Long chatId, User user, boolean canSetAdmin, boolean canSetSuperAdmin);
     
     void sendRoleAddedSuccess(Long chatId, String roleName);
+    
+    void sendNoCategoriesMessage(Long chatId);
 }
 
