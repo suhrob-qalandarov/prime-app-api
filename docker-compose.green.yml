@@ -7,7 +7,10 @@ services:
     env_file:
       - .env
     environment:
-      SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/${POSTGRES_DB:-prime_db}
+      DATASOURCE_URL: jdbc:postgresql://db:5432/${DATASOURCE_DB}
+      DATASOURCE_USER: ${DATASOURCE_USER}
+      DATASOURCE_PASS: ${DATASOURCE_PASS}
+      DATASOURCE_DRIVER: ${DATASOURCE_DRIVER}
       SERVER_PORT: 8081
     ports:
       - "8081:8081"

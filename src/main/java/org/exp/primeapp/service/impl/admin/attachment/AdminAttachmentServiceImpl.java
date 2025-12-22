@@ -30,7 +30,7 @@ public class AdminAttachmentServiceImpl implements AdminAttachmentService {
     private final AttachmentRepository attachmentRepository;
     private final AttachmentService attachmentService;
 
-    @Value("${app.attachment.base.url:${app.api.url:https://api.howdy.uz}}")
+    @Value("${app.attachment.base.url}")
     private String attachmentBaseUrl;
 
     @Value("${app.attachment.folder.path:uploads}")
