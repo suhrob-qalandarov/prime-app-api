@@ -12,6 +12,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.security.SecureRandom;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 @Service("botUserService")
 @RequiredArgsConstructor
@@ -24,10 +25,10 @@ public class UserServiceImpl implements UserService {
     @Override
     public User getOrCreateUser(com.pengrad.telegrambot.model.User tgUser) {
         Long id = tgUser.id();
-        User user = userRepository.findByTelegramId(id);
+        Optional<User> userOptional = userRepository.findByTelegramId(id);
 
-        if (user != null) {
-            return user;
+        if (userOptional.isPresent()) {
+            return userOptional.get();
         }
 
         List<Role> roleUser = roleRepository.findALlByNameIn(List.of("ROLE_USER"));
