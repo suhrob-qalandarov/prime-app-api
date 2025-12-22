@@ -11,17 +11,19 @@ import org.exp.primeapp.botadmin.service.interfaces.AdminMessageService;
 import org.exp.primeapp.botadmin.service.interfaces.BotCategoryService;
 import org.exp.primeapp.botadmin.service.interfaces.BotProductService;
 import org.exp.primeapp.botadmin.service.interfaces.BotUserService;
+import com.pengrad.telegrambot.TelegramBot;
+import com.pengrad.telegrambot.request.GetMe;
 import org.exp.primeapp.botuser.service.interfaces.UserService;
 import org.exp.primeapp.models.entities.User;
 import org.exp.primeapp.models.enums.Size;
 import org.exp.primeapp.repository.UserRepository;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
 
 import java.util.function.Consumer;
 
 @Slf4j
 @Component
-@RequiredArgsConstructor
 public class AdminMessageHandler implements Consumer<Message> {
 
     private final AdminMessageService messageService;
@@ -30,6 +32,47 @@ public class AdminMessageHandler implements Consumer<Message> {
     private final BotCategoryService botCategoryService;
     private final BotUserService botUserService;
     private final UserRepository userRepository;
+    private final TelegramBot userBot;
+
+    public AdminMessageHandler(AdminMessageService messageService,
+                               UserService userService,
+                               BotProductService botProductService,
+                               BotCategoryService botCategoryService,
+                               BotUserService botUserService,
+                               UserRepository userRepository,
+                               @Qualifier("userBot") TelegramBot userBot) {
+        this.messageService = messageService;
+        this.userService = userService;
+        this.botProductService = botProductService;
+        this.botCategoryService = botCategoryService;
+        this.botUserService = botUserService;
+        this.userRepository = userRepository;
+        this.userBot = userBot;
+    }
+
+    private String getUserBotUsername() {
+        try {
+            if (userBot != null) {
+                var me = userBot.execute(new GetMe());
+                if (me.isOk() && me.user() != null) {
+                    return me.user().username();
+                }
+            }
+        } catch (Exception e) {
+            log.error("Error getting user bot username: {}", e.getMessage());
+        }
+        return "prime77Robot"; // Default fallback
+    }
+
+    private boolean isAdmin(User user) {
+        if (user == null || user.getRoles() == null) {
+            return false;
+        }
+        return user.getRoles().stream()
+                .anyMatch(role -> role.getName() != null && 
+                        (role.getName().equals("ROLE_ADMIN") || 
+                         role.getName().equals("ROLE_SUPER_ADMIN")));
+    }
 
     @Override
     public void accept(Message message) {
@@ -40,6 +83,14 @@ public class AdminMessageHandler implements Consumer<Message> {
             User user = userService.getOrCreateUser(message.from());
             Long userId = user.getId();
             Long chatId = user.getTelegramId();
+            
+            // Check if user is admin - if not, send access denied message
+            if (!isAdmin(user)) {
+                log.warn("Non-admin user {} tried to access admin bot", userId);
+                String userBotUsername = getUserBotUsername();
+                messageService.sendAccessDeniedMessage(chatId, userBotUsername);
+                return;
+            }
             
             log.debug("Processing admin message for user: {} (chatId: {}), text: {}", userId, chatId, text);
 

@@ -5,6 +5,7 @@ import com.pengrad.telegrambot.model.CallbackQuery;
 import com.pengrad.telegrambot.model.request.ParseMode;
 import com.pengrad.telegrambot.request.AnswerCallbackQuery;
 import com.pengrad.telegrambot.request.EditMessageText;
+import com.pengrad.telegrambot.request.GetMe;
 import com.pengrad.telegrambot.request.SendMessage;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -37,6 +38,7 @@ public class AdminCallbackHandler implements Consumer<CallbackQuery> {
     private final BotUserService botUserService;
     private final AdminButtonService buttonService;
     private final TelegramBot telegramBot;
+    private final TelegramBot userBot;
 
     public AdminCallbackHandler(UserService userService,
                                  AdminMessageService messageService,
@@ -44,7 +46,8 @@ public class AdminCallbackHandler implements Consumer<CallbackQuery> {
                                  BotCategoryService botCategoryService,
                                  BotUserService botUserService,
                                  AdminButtonService buttonService,
-                                 @Qualifier("adminBot") TelegramBot telegramBot) {
+                                 @Qualifier("adminBot") TelegramBot telegramBot,
+                                 @Qualifier("userBot") TelegramBot userBot) {
         this.userService = userService;
         this.messageService = messageService;
         this.botProductService = botProductService;
@@ -52,6 +55,31 @@ public class AdminCallbackHandler implements Consumer<CallbackQuery> {
         this.botUserService = botUserService;
         this.buttonService = buttonService;
         this.telegramBot = telegramBot;
+        this.userBot = userBot;
+    }
+
+    private boolean isAdmin(User user) {
+        if (user == null || user.getRoles() == null) {
+            return false;
+        }
+        return user.getRoles().stream()
+                .anyMatch(role -> role.getName() != null && 
+                        (role.getName().equals("ROLE_ADMIN") || 
+                         role.getName().equals("ROLE_SUPER_ADMIN")));
+    }
+
+    private String getUserBotUsername() {
+        try {
+            if (userBot != null) {
+                var me = userBot.execute(new GetMe());
+                if (me.isOk() && me.user() != null) {
+                    return me.user().username();
+                }
+            }
+        } catch (Exception e) {
+            log.error("Error getting user bot username: {}", e.getMessage());
+        }
+        return "prime77Robot"; // Default fallback
     }
 
     @Override
@@ -61,6 +89,15 @@ public class AdminCallbackHandler implements Consumer<CallbackQuery> {
         User user = userService.getOrCreateUser(callbackQuery.from());
         Long userId = user.getId();
         Long chatId = user.getTelegramId();
+
+        // Check if user is admin - if not, send access denied message
+        if (!isAdmin(user)) {
+            log.warn("Non-admin user {} tried to access admin bot via callback", userId);
+            String userBotUsername = getUserBotUsername();
+            messageService.sendAccessDeniedMessage(chatId, userBotUsername);
+            telegramBot.execute(new AnswerCallbackQuery(callbackId).text("Kirish mumkin emas!").showAlert(true));
+            return;
+        }
 
         // Handle admin menu callbacks
         if (data.equals("admin_menu_product")) {

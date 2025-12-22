@@ -6,6 +6,7 @@ import com.pengrad.telegrambot.model.request.ParseMode;
 import com.pengrad.telegrambot.model.request.ReplyKeyboardRemove;
 import com.pengrad.telegrambot.request.DeleteMessage;
 import com.pengrad.telegrambot.request.EditMessageText;
+import com.pengrad.telegrambot.request.GetMe;
 import com.pengrad.telegrambot.request.SendMessage;
 import com.pengrad.telegrambot.response.SendResponse;
 import lombok.extern.slf4j.Slf4j;
@@ -29,15 +30,36 @@ public class AdminMessageServiceImpl implements AdminMessageService {
     private final AdminButtonService buttonService;
     private final org.exp.primeapp.botuser.service.impls.UserServiceImpl botUserService;
     private final UserRepository userRepository;
+    private final TelegramBot userBot;
 
     public AdminMessageServiceImpl(@Qualifier("adminBot") TelegramBot telegramBot,
                                    AdminButtonService buttonService,
                                    org.exp.primeapp.botuser.service.impls.UserServiceImpl botUserService,
-                                   UserRepository userRepository) {
+                                   UserRepository userRepository,
+                                   @Qualifier("userBot") TelegramBot userBot) {
         this.telegramBot = telegramBot;
         this.buttonService = buttonService;
         this.botUserService = botUserService;
         this.userRepository = userRepository;
+        this.userBot = userBot;
+    }
+
+    @Override
+    public void sendAccessDeniedMessage(Long chatId, String userBotUsername) {
+        try {
+            if (telegramBot == null) {
+                log.error("❌ Telegram bot is null! Cannot send access denied message to chatId: {}", chatId);
+                return;
+            }
+            
+            String message = "❌ Kirish mumkin emas!\n\n" +
+                    "Bu bot faqat adminlar uchun.\n" +
+                    "Foydalanuvchilar uchun bot: @" + userBotUsername;
+            
+            telegramBot.execute(new SendMessage(chatId, message));
+        } catch (Exception e) {
+            log.error("Error sending access denied message to chatId: {}", chatId, e);
+        }
     }
 
     @Override

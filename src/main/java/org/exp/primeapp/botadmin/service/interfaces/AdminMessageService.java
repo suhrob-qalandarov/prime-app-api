@@ -6,6 +6,8 @@ public interface AdminMessageService {
 
     void sendStartMsgForAdmin(Long chatId, String firstName);
     
+    void sendAccessDeniedMessage(Long chatId, String userBotUsername);
+    
     void sendAdminMenu(Long chatId, String firstName);
     
     void sendAdminMenuWithCancel(Long chatId);
