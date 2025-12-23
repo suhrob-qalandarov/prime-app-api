@@ -106,6 +106,12 @@ public class FilterChainConfig {
                                 API + V1 + PRODUCTS + BY_CATEGORY + "/*"
                         ).permitAll()
 
+                        // Public cart endpoint
+                        .requestMatchers(
+                                HttpMethod.POST,
+                                API + V1 + PRODUCT + "/cart"
+                        ).permitAll()
+
                         // Public category endpoints
                         .requestMatchers(
                                 HttpMethod.GET,

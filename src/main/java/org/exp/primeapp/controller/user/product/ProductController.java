@@ -6,6 +6,8 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.exp.primeapp.models.dto.request.CartItemReq;
+import org.exp.primeapp.models.dto.responce.user.ProductCartRes;
 import org.exp.primeapp.models.dto.responce.user.ProductPageRes;
 import org.exp.primeapp.models.dto.responce.user.ProductRes;
 import org.exp.primeapp.models.dto.responce.user.page.PageRes;
@@ -15,6 +17,8 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 import static org.exp.primeapp.utils.Const.*;
 
@@ -72,6 +76,17 @@ public class ProductController {
             PageRes<ProductPageRes> pageableProducts = productService.getActiveProducts(
                     spotlightName, categoryName, colorName, sizeName, brandName, tag, sortBy, pageable);
             return ResponseEntity.ok(pageableProducts);
+        });
+    }
+
+    @PostMapping("/cart")
+    public ResponseEntity<?> getCartProducts(
+            @RequestBody List<CartItemReq> cartItems,
+            HttpServletRequest request,
+            HttpServletResponse response) {
+        return sessionTokenUtil.handleSessionTokenRequest("cart", request, response, () -> {
+            List<ProductCartRes> cartProducts = productService.getCartProducts(cartItems);
+            return ResponseEntity.ok(cartProducts);
         });
     }
 }

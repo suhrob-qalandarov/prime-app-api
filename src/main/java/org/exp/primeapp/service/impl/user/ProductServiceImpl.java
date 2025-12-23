@@ -4,7 +4,9 @@ import jakarta.persistence.criteria.Join;
 import jakarta.persistence.criteria.Predicate;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import org.exp.primeapp.models.dto.request.CartItemReq;
 import org.exp.primeapp.models.dto.responce.user.FeaturedProductRes;
+import org.exp.primeapp.models.dto.responce.user.ProductCartRes;
 import org.exp.primeapp.models.dto.responce.user.ProductPageRes;
 import org.exp.primeapp.models.dto.responce.user.ProductRes;
 import org.exp.primeapp.models.dto.responce.user.ProductSizeRes;
@@ -17,6 +19,7 @@ import org.exp.primeapp.models.enums.ProductTag;
 import org.exp.primeapp.models.enums.Size;
 import org.exp.primeapp.repository.AttachmentRepository;
 import org.exp.primeapp.repository.ProductRepository;
+import org.exp.primeapp.repository.ProductSizeRepository;
 import org.exp.primeapp.service.face.user.ProductService;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -37,6 +40,7 @@ public class ProductServiceImpl implements ProductService {
 
     private final ProductRepository productRepository;
     private final AttachmentRepository attachmentRepository;
+    private final ProductSizeRepository productSizeRepository;
 
     @Override
     public List<ProductRes> getAllProducts() {
@@ -312,6 +316,110 @@ public class ProductServiceImpl implements ProductService {
                 discountPrice,
                 discount,
                 mainImage
+        );
+    }
+
+    @Override
+    @Transactional
+    public List<ProductCartRes> getCartProducts(List<CartItemReq> cartItems) {
+        return cartItems.stream()
+                .map(this::convertToProductCartRes)
+                .collect(toList());
+    }
+
+    private ProductCartRes convertToProductCartRes(CartItemReq cartItem) {
+        // Product'ni database'dan olish
+        Product product = productRepository.findById(cartItem.productId())
+                .orElse(null);
+        
+        if (product == null) {
+            // Product topilmasa, hasEnough = false bilan bo'sh ma'lumotlar qaytarish
+            return new ProductCartRes(
+                    cartItem.productId(),
+                    null,
+                    null,
+                    null,
+                    null,
+                    cartItem.productSize(),
+                    null,
+                    null,
+                    null,
+                    false
+            );
+        }
+        
+        // Size'ni parse qilish - enum name yoki label orqali
+        Size size = parseSize(cartItem.productSize());
+        
+        if (size == null) {
+            // Size topilmasa, hasEnough = false
+            return buildProductCartRes(product, cartItem.productSize(), null, false);
+        }
+        
+        // ProductSize'ni topish
+        ProductSize productSize = productSizeRepository.findByProductAndSize(product, size)
+                .orElse(null);
+        
+        if (productSize == null) {
+            // ProductSize topilmasa, hasEnough = false
+            return buildProductCartRes(product, size.getLabel(), null, false);
+        }
+        
+        // Quantity'ni tekshirish
+        boolean hasEnough = productSize.getAmount() >= cartItem.productQuantity();
+        
+        return buildProductCartRes(product, size.getLabel(), productSize, hasEnough);
+    }
+
+    private Size parseSize(String sizeString) {
+        if (sizeString == null || sizeString.isBlank()) {
+            return null;
+        }
+        
+        // Avval enum name orqali tekshirish (masalan "L", "SIZE_41")
+        try {
+            return Size.valueOf(sizeString.toUpperCase());
+        } catch (IllegalArgumentException e) {
+            // Enum name bo'lmasa, label orqali qidirish
+            for (Size size : Size.values()) {
+                if (size.getLabel().equalsIgnoreCase(sizeString)) {
+                    return size;
+                }
+            }
+            return null;
+        }
+    }
+
+    private ProductCartRes buildProductCartRes(Product product, String chosenSize, ProductSize productSize, boolean hasEnough) {
+        // Main image'ni olish
+        String mainImage = attachmentRepository.findByProductId(product.getId())
+                .stream()
+                .findFirst()
+                .map(Attachment::getUrl)
+                .orElse(null);
+        
+        // Discount'ni hisoblab discountPrice'ni set qilish
+        BigDecimal price = product.getPrice();
+        Integer discount = product.getDiscount() != null ? product.getDiscount() : 0;
+        BigDecimal discountPrice = price;
+        
+        if (discount > 0 && discount <= 100 && product.getTag() == ProductTag.SALE) {
+            BigDecimal discountAmount = price.multiply(BigDecimal.valueOf(discount))
+                    .divide(BigDecimal.valueOf(100), 2, java.math.RoundingMode.HALF_UP);
+            discountPrice = price.subtract(discountAmount);
+        }
+        
+        return new ProductCartRes(
+                product.getId(),
+                product.getName(),
+                product.getBrand(),
+                product.getColorName(),
+                product.getColorHex(),
+                chosenSize,
+                price,
+                discountPrice,
+                mainImage,
+                hasEnough
         );
     }
 }
