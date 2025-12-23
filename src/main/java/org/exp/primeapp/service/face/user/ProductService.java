@@ -1,6 +1,8 @@
 package org.exp.primeapp.service.face.user;
 
+import org.exp.primeapp.models.dto.request.CartItemReq;
 import org.exp.primeapp.models.dto.responce.user.FeaturedProductRes;
+import org.exp.primeapp.models.dto.responce.user.ProductCartRes;
 import org.exp.primeapp.models.dto.responce.user.ProductPageRes;
 import org.exp.primeapp.models.dto.responce.user.ProductRes;
 import org.exp.primeapp.models.dto.responce.user.page.PageRes;
@@ -33,4 +35,6 @@ public interface ProductService {
     List<ProductRes> getAllProducts();
 
     FeaturedProductRes getFeaturedRandomProducts();
+    
+    List<ProductCartRes> getCartProducts(List<CartItemReq> cartItems);
 }
