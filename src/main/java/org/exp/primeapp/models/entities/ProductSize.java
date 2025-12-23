@@ -23,9 +23,6 @@ public class ProductSize extends BaseEntity {
     @Column(nullable = false)
     private Integer amount;
 
-    @Column(unique = true, nullable = false, length = 50)
-    private String sku;
-
     @Column(nullable = false)
     @Enumerated(EnumType.STRING)
     private Size size;
@@ -41,17 +38,4 @@ public class ProductSize extends BaseEntity {
     @Builder.Default
     @Version
     private Integer version = 0;
-
-    @PostLoad
-    @PrePersist
-    @PreUpdate
-    private void generateSku() {
-        if (this.product != null && this.size != null) {
-            String brand = this.product.getBrand().trim().toUpperCase().replace(" ", "");
-            String name = this.product.getName().trim().toUpperCase().replace(" ", "");
-            String sizeCode = this.size.name();
-
-            this.sku = brand + "-" + name + "-" + sizeCode;
-        }
-    }
 }
