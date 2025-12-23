@@ -346,7 +346,8 @@ public class ProductServiceImpl implements ProductService {
                     null,
                     false,
                     null,
-                    cartItem.productQuantity()  // frontend dan kelgan quantity
+                    cartItem.productQuantity(),
+                    null
             );
         }
         
@@ -414,6 +415,14 @@ public class ProductServiceImpl implements ProductService {
         // available - tanlangan product'ning tanlangan size'ining omborda mavjud raqami
         Integer available = productSize != null ? productSize.getAmount() : null;
         
+        // totalPrice - umumiy summa: quantity * (discountPrice yoki price)
+        // Agar discount bo'lsa discountPrice, aks holda price
+        BigDecimal totalPrice = null;
+        if (quantity != null && quantity > 0) {
+            BigDecimal priceToUse = discountPrice.compareTo(price) < 0 ? discountPrice : price;
+            totalPrice = priceToUse.multiply(BigDecimal.valueOf(quantity));
+        }
+        
         return new ProductCartRes(
                 product.getId(),
                 product.getName(),
@@ -426,7 +435,8 @@ public class ProductServiceImpl implements ProductService {
                 mainImage,
                 hasEnough,
                 available,
-                quantity  // frontend dan kelgan quantity
+                quantity,
+                totalPrice
         );
     }
 }

@@ -14,7 +14,8 @@ public record ProductCartRes(
         String mainImage,
         Boolean hasEnough,
         Integer available,
-        Integer quantity  // frontend dan kelgan quantity (so'ralgan miqdor)
+        Integer quantity,
+        BigDecimal totalPrice
 ) {
 }
 
