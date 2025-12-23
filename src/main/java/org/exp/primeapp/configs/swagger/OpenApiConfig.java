@@ -74,7 +74,8 @@ public class OpenApiConfig {
                         "/api/v1/categories/**",
                         "/api/v1/order/**",
                         "/api/v1/orders/**",
-                        "/api/v1/attachment/**"
+                        "/api/v1/attachment/**",
+                        "/api/v1/cart/**"
                 )
                 .build();
     }

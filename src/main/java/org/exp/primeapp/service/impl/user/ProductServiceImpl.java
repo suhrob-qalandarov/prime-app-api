@@ -344,7 +344,10 @@ public class ProductServiceImpl implements ProductService {
                     null,
                     null,
                     null,
-                    false
+                    false,
+                    null,
+                    cartItem.productQuantity(),
+                    null
             );
         }
         
@@ -353,7 +356,7 @@ public class ProductServiceImpl implements ProductService {
         
         if (size == null) {
             // Size topilmasa, hasEnough = false
-            return buildProductCartRes(product, cartItem.productSize(), null, false);
+            return buildProductCartRes(product, cartItem.productSize(), null, false, cartItem.productQuantity());
         }
         
         // ProductSize'ni topish
@@ -361,14 +364,14 @@ public class ProductServiceImpl implements ProductService {
                 .orElse(null);
         
         if (productSize == null) {
-            // ProductSize topilmasa, hasEnough = false
-            return buildProductCartRes(product, size.getLabel(), null, false);
+            // ProductSize topilmasa, hasEnough = false, available = null
+            return buildProductCartRes(product, size.getLabel(), null, false, cartItem.productQuantity());
         }
         
         // Quantity'ni tekshirish
         boolean hasEnough = productSize.getAmount() >= cartItem.productQuantity();
         
-        return buildProductCartRes(product, size.getLabel(), productSize, hasEnough);
+        return buildProductCartRes(product, size.getLabel(), productSize, hasEnough, cartItem.productQuantity());
     }
 
     private Size parseSize(String sizeString) {
@@ -390,7 +393,7 @@ public class ProductServiceImpl implements ProductService {
         }
     }
 
-    private ProductCartRes buildProductCartRes(Product product, String chosenSize, ProductSize productSize, boolean hasEnough) {
+    private ProductCartRes buildProductCartRes(Product product, String chosenSize, ProductSize productSize, boolean hasEnough, Integer quantity) {
         // Main image'ni olish
         String mainImage = attachmentRepository.findByProductId(product.getId())
                 .stream()
@@ -402,11 +405,23 @@ public class ProductServiceImpl implements ProductService {
         BigDecimal price = product.getPrice();
         Integer discount = product.getDiscount() != null ? product.getDiscount() : 0;
         BigDecimal discountPrice = price;
+        boolean hasDiscount = false;
         
         if (discount > 0 && discount <= 100 && product.getTag() == ProductTag.SALE) {
             BigDecimal discountAmount = price.multiply(BigDecimal.valueOf(discount))
                     .divide(BigDecimal.valueOf(100), 2, java.math.RoundingMode.HALF_UP);
             discountPrice = price.subtract(discountAmount);
+            hasDiscount = true;
+        }
+        
+        // available - tanlangan product'ning tanlangan size'ining omborda mavjud raqami
+        Integer available = productSize != null ? productSize.getAmount() : null;
+        
+        // totalPrice - umumiy summa: quantity * (discountPrice agar discount bo'lsa, aks holda price)
+        BigDecimal totalPrice = null;
+        if (quantity != null && quantity > 0) {
+            BigDecimal priceToUse = hasDiscount ? discountPrice : price;
+            totalPrice = priceToUse.multiply(BigDecimal.valueOf(quantity));
         }
         
         return new ProductCartRes(
@@ -419,7 +434,10 @@ public class ProductServiceImpl implements ProductService {
                 price,
                 discountPrice,
                 mainImage,
-                hasEnough
+                hasEnough,
+                available,
+                quantity,
+                totalPrice
         );
     }
 }

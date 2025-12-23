@@ -12,7 +12,10 @@ public record ProductCartRes(
         BigDecimal price,
         BigDecimal discountPrice,
         String mainImage,
-        Boolean hasEnough  // agar quantity yetarli bo'lsa true, aks holda false
+        Boolean hasEnough,
+        Integer available,
+        Integer quantity,
+        BigDecimal totalPrice
 ) {
 }
 
