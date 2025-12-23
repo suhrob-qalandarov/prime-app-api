@@ -58,6 +58,8 @@ public class SessionTokenUtil {
             count = jwtCookieService.getCategoryCount(token);
         } else if (countType.equals("attachment")) {
             count = jwtCookieService.getAttachmentCount(token);
+        } else if (countType.equals("cart")) {
+            count = jwtCookieService.getCartCount(token);
         } else {
             throw new IllegalArgumentException("Unsupported count type: " + countType);
         }
