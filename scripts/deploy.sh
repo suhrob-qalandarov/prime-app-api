@@ -97,21 +97,33 @@ fi
 
 # Update nginx configuration to point to target environment
 echo "Updating nginx configuration to $TARGET_ENV environment (port $TARGET_PORT)..."
-if [ -f "/etc/nginx/sites-available/api.gourmet.uz" ]; then
-    # Update proxy_pass port in nginx config
-    sudo sed -i "s/proxy_pass http:\/\/localhost:[0-9]*;/proxy_pass http:\/\/localhost:$TARGET_PORT;/" /etc/nginx/sites-available/api.gourmet.uz
+NGINX_CONFIG="/etc/nginx/conf.d/app.conf"
+
+if [ -f "$NGINX_CONFIG" ]; then
+    # Update upstream server port in nginx config
+    # Replace server localhost:8080 or server localhost:8081 with target port
+    sudo sed -i "s/server localhost:[0-9]*;/server localhost:$TARGET_PORT;/" "$NGINX_CONFIG"
+    
+    # Also update if using container names (for Docker network)
+    if [ "$TARGET_ENV" == "blue" ]; then
+        sudo sed -i "s/server prime_app_green:[0-9]*;/server prime_app_blue:8080;/" "$NGINX_CONFIG"
+    else
+        sudo sed -i "s/server prime_app_blue:[0-9]*;/server prime_app_green:8081;/" "$NGINX_CONFIG"
+    fi
     
     # Test nginx config
     if sudo nginx -t > /dev/null 2>&1; then
         # Reload nginx
         sudo systemctl reload nginx
         echo "Nginx configuration updated and reloaded successfully"
+        echo "Nginx now points to $TARGET_ENV environment on port $TARGET_PORT"
     else
         echo "ERROR: Nginx configuration test failed. Please check manually."
         sudo nginx -t
+        exit 1
     fi
 else
-    echo "WARNING: Nginx config file not found at /etc/nginx/sites-available/api.gourmet.uz"
+    echo "WARNING: Nginx config file not found at $NGINX_CONFIG"
     echo "Please manually update nginx to point to port $TARGET_PORT"
 fi
 
