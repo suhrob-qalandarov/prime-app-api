@@ -197,6 +197,12 @@ public class FilterChainConfig {
                                 "/actuator/health"
                         ).permitAll()
 
+                        // Cart endpoint - SessionTokenUtil o'zi token yaratadi va tekshiradi
+                        .requestMatchers(
+                                HttpMethod.POST,
+                                API + V1 + "/cart"
+                        ).permitAll()
+
                         // All other requests require authentication
                         .anyRequest().authenticated()
         );

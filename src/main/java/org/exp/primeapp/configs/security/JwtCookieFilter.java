@@ -137,6 +137,14 @@ public class JwtCookieFilter extends OncePerRequestFilter {
             }
         }
 
+        // Cart endpoint - SessionTokenUtil o'zi token yaratadi, shuning uchun token bo'lmasa ham o'tkazib yuborish
+        boolean isCartEndpoint = requestPath.equals("/api/v1/cart") && "POST".equals(request.getMethod());
+        if (isCartEndpoint && token == null) {
+            log.debug("Cart endpoint without token - allowing request (SessionTokenUtil will create token): {}", requestPath);
+            filterChain.doFilter(request, response);
+            return;
+        }
+
         // Public endpoint'lar uchun token bo'lmasa ham o'tkazib yuborish
         if (token == null && isPublicEndpoint) {
             log.debug("Public endpoint without token - allowing request: {}", requestPath);
