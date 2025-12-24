@@ -382,6 +382,64 @@ public class AdminCallbackHandler implements Consumer<CallbackQuery> {
             return;
         }
 
+        // Handle back button callbacks
+        if (data.startsWith("back_to_")) {
+            String stepName = data.replace("back_to_", "");
+            ProductCreationState.Step targetStep = null;
+            
+            try {
+                targetStep = ProductCreationState.Step.valueOf(stepName);
+            } catch (IllegalArgumentException e) {
+                log.error("Invalid step name: {}", stepName);
+                telegramBot.execute(new AnswerCallbackQuery(callbackId)
+                        .text("Xatolik: Noto'g'ri qadam")
+                        .showAlert(true));
+                return;
+            }
+            
+            // Edit current message to remove inline buttons
+            com.pengrad.telegrambot.model.Message callbackMessage = callbackQuery.message();
+            Integer messageId = callbackMessage != null ? callbackMessage.messageId() : null;
+            if (messageId != null) {
+                // Get current message text
+                String currentText = callbackMessage.text();
+                if (currentText != null) {
+                    // Edit message to remove inline buttons
+                    telegramBot.execute(new EditMessageText(chatId, messageId, currentText)
+                            .parseMode(ParseMode.HTML)
+                            .replyMarkup(new InlineKeyboardMarkup(new com.pengrad.telegrambot.model.request.InlineKeyboardButton[0][]))
+                    );
+                }
+            }
+            
+            // Set the state to target step directly
+            if (state != null) {
+                state.setCurrentStep(targetStep);
+            }
+            
+            // Send appropriate prompt based on the step we're going back to
+            switch (targetStep) {
+                case WAITING_NAME:
+                    messageService.sendProductNamePrompt(chatId);
+                    break;
+                case WAITING_DESCRIPTION:
+                    messageService.sendProductDescriptionPrompt(chatId);
+                    break;
+                case WAITING_BRAND:
+                    messageService.sendProductBrandPrompt(chatId);
+                    break;
+                case WAITING_COLOR:
+                    messageService.sendProductColorPrompt(chatId);
+                    break;
+                default:
+                    log.warn("No handler for back to step: {}", targetStep);
+                    break;
+            }
+            
+            telegramBot.execute(new AnswerCallbackQuery(callbackId).text("Orqaga qaytildi"));
+            return;
+        }
+
         // Handle skip brand callback
         if (data.equals("skip_brand")) {
             // Skip brand - set empty brand
