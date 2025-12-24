@@ -199,6 +199,7 @@ public class AdminMessageServiceImpl implements AdminMessageService {
                 "🛍️ <b>Yangi mahsulot qo'shish</b>\n\n" +
                 "Mahsulot qo'shish jarayonini boshlaymiz. Quyidagi ma'lumotlarni ketma-ket kiriting:")
                 .parseMode(ParseMode.HTML)
+                .replyMarkup(buttonService.createProductCreationCancelReplyKeyboard())
         );
     }
 

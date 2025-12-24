@@ -199,6 +199,34 @@ public class AdminMessageHandler implements Consumer<Message> {
                     // Outcome functionality - to be implemented later
                     messageService.sendSimpleMessage(chatId, "⚠️ <b>Outcome</b> funksiyasi keyinroq qo'shiladi");
                     return;
+                } else if (text.equals("❌ Yangi mahsulotni bekor qilish")) {
+                    // Check if product creation is active
+                    ProductCreationState productState = botProductService.getProductCreationState(userId);
+                    if (productState != null) {
+                        // Cancel product creation
+                        botProductService.cancelProductCreation(userId);
+                        messageService.sendProductCreationCancelled(chatId);
+                        
+                        // Return to products menu
+                        messageService.sendAdminSectionMessage(chatId, "Mahsulotlar");
+                        return;
+                    }
+                } else if (text.equals("❌ Bekor qilish")) {
+                    // Check if category creation is active
+                    CategoryCreationState categoryState = botCategoryService.getCategoryCreationState(userId);
+                    if (categoryState != null) {
+                        // Cancel category creation
+                        botCategoryService.cancelCategoryCreation(userId);
+                        messageService.sendCategoryCreationCancelled(chatId);
+                        
+                        // Return to categories menu
+                        messageService.sendAdminSectionMessage(chatId, "Kategoriyalar");
+                        return;
+                    }
+                    
+                    // If no active creation, return to products menu
+                    messageService.sendAdminSectionMessage(chatId, "Mahsulotlar");
+                    return;
                 } else if (text.equals("🏠 Asosiy menyu")) {
                     // Cancel all active states
                     botUserService.setUserSearchState(userId, false);
