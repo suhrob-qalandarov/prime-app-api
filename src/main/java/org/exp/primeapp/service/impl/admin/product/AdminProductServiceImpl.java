@@ -153,11 +153,11 @@ public class AdminProductServiceImpl implements AdminProductService {
 
     private Product createProductFromReq(ProductReq req, Category category) {
         return Product.builder()
-                .name(req.name())
-                .brand(req.brand())
+                .name(formatName(req.name()))
+                .brand(formatBrand(req.brand()))
                 .colorName(req.colorName())
                 .colorHex(req.colorHex())
-                .description(req.description())
+                .description(formatDescription(req.description()))
                 .price(req.price())
                 .active(false)
                 .status(ProductStatus.PENDING_INCOME)
@@ -196,11 +196,11 @@ public class AdminProductServiceImpl implements AdminProductService {
         }*/
 
         if (hasText(req.name())) {
-            product.setName(req.name());
+            product.setName(formatName(req.name()));
         }
 
         if (hasText(req.brand())) {
-            product.setBrand(req.brand());
+            product.setBrand(formatBrand(req.brand()));
         }
 
         if (hasText(req.colorName())) {
@@ -212,7 +212,7 @@ public class AdminProductServiceImpl implements AdminProductService {
         }
 
         if (hasText(req.description())) {
-            product.setDescription(req.description());
+            product.setDescription(formatDescription(req.description()));
         }
 
         if (req.price() != null) {
@@ -241,5 +241,46 @@ public class AdminProductServiceImpl implements AdminProductService {
 
     private boolean hasText(String str) {
         return str != null && !str.isBlank();
+    }
+    
+    /**
+     * Format name: birinchi harfni katta, qolganlarini kichik
+     * Example: "JOHN DOE" -> "John doe"
+     */
+    private String formatName(String name) {
+        if (name == null || name.isBlank()) {
+            return name;
+        }
+        String trimmed = name.trim();
+        if (trimmed.isEmpty()) {
+            return trimmed;
+        }
+        return trimmed.substring(0, 1).toUpperCase() + trimmed.substring(1).toLowerCase();
+    }
+    
+    /**
+     * Format description: faqat birinchi harfni katta
+     * Example: "this is a description" -> "This is a description"
+     */
+    private String formatDescription(String description) {
+        if (description == null || description.isBlank()) {
+            return description;
+        }
+        String trimmed = description.trim();
+        if (trimmed.isEmpty()) {
+            return trimmed;
+        }
+        return trimmed.substring(0, 1).toUpperCase() + trimmed.substring(1);
+    }
+    
+    /**
+     * Format brand: barcha harflarni katta
+     * Example: "nike" -> "NIKE"
+     */
+    private String formatBrand(String brand) {
+        if (brand == null || brand.isBlank()) {
+            return brand;
+        }
+        return brand.trim().toUpperCase();
     }
 }
