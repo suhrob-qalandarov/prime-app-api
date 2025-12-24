@@ -313,7 +313,22 @@ public class ProductCallbackHandler {
         Long categoryId = Long.parseLong(data.replace("select_category_", ""));
         botProductService.handleCategorySelection(userId, categoryId);
         
-        state.setCurrentStep(ProductCreationState.Step.WAITING_SIZES);
+        // Get category name for editing message (after handleCategorySelection sets it)
+        org.exp.primeapp.models.entities.Category category = state.getCategory();
+        String categoryName = category != null ? category.getName() : "Kategoriya";
+        
+        // Edit category message to remove buttons
+        com.pengrad.telegrambot.model.Message callbackMessage = callbackQuery.message();
+        Integer messageId = callbackMessage != null ? callbackMessage.messageId() : null;
+        if (messageId != null) {
+            String categoryText = "📂 <b>7/9</b> Kategoriyani tanlang: " + categoryName;
+            telegramBot.execute(new EditMessageText(chatId, messageId, categoryText)
+                    .parseMode(ParseMode.HTML)
+                    .replyMarkup(new InlineKeyboardMarkup(new com.pengrad.telegrambot.model.request.InlineKeyboardButton[0][]))
+            );
+        }
+        
+        // State is already set to WAITING_SIZES in handleCategorySelection
         messageService.sendSizeSelection(chatId);
         List<Size> allSizes = List.of(Size.values());
         telegramBot.execute(new SendMessage(chatId, "📏 O'lchamlarni tanlang (bir nechtasini tanlash mumkin):")
