@@ -140,21 +140,35 @@ public class BotProductServiceImpl implements BotProductService {
 
         try {
             // Download file from Telegram
-            File file = telegramBot.execute(new GetFile(fileId)).file();
+            com.pengrad.telegrambot.response.GetFileResponse getFileResponse = telegramBot.execute(new GetFile(fileId));
+            if (!getFileResponse.isOk()) {
+                log.error("Failed to get file from Telegram for fileId: {}, error: {}", fileId, getFileResponse.description());
+                return;
+            }
+            
+            File file = getFileResponse.file();
             if (file == null) {
                 log.error("File not found for fileId: {}", fileId);
                 return;
             }
 
             String filePath = file.filePath();
+            if (filePath == null || filePath.isEmpty()) {
+                log.error("File path is null or empty for fileId: {}", fileId);
+                return;
+            }
+            
+            log.info("Downloading file from Telegram: fileId={}, filePath={}", fileId, filePath);
             String fileUrl = "https://api.telegram.org/file/bot" + botToken + "/" + filePath;
 
             // Download and save file
             String savedUrl = downloadAndSaveFile(fileUrl, filePath);
+            log.info("File saved successfully: savedUrl={}", savedUrl);
             
             // Create attachment
             Attachment attachment = createAttachment(fileUrl, savedUrl, filePath);
             attachmentRepository.save(attachment);
+            log.info("Attachment saved to database: id={}, url={}", attachment.getId(), attachment.getUrl());
 
             state.addImageFileId(fileId);
             state.addAttachmentUrl(savedUrl);
@@ -164,7 +178,7 @@ public class BotProductServiceImpl implements BotProductService {
                 state.setCurrentStep(ProductCreationState.Step.WAITING_ADDITIONAL_IMAGES);
             }
         } catch (Exception e) {
-            log.error("Error handling product image: {}", e.getMessage(), e);
+            log.error("Error handling product image for fileId: {}", fileId, e);
         }
     }
 
@@ -404,12 +418,20 @@ public class BotProductServiceImpl implements BotProductService {
             URI uri = new URI(fileUrl);
             try (InputStream in = uri.toURL().openStream()) {
                 Path filePath = uploadDir.resolve(uniqueFilename);
-                Files.copy(in, filePath, StandardCopyOption.REPLACE_EXISTING);
-                log.info("File saved successfully: {}", filePath.toAbsolutePath());
+                long bytesCopied = Files.copy(in, filePath, StandardCopyOption.REPLACE_EXISTING);
+                log.info("File saved successfully: {} ({} bytes)", filePath.toAbsolutePath(), bytesCopied);
+                
+                // Verify file was saved
+                if (!Files.exists(filePath) || Files.size(filePath) == 0) {
+                    throw new IOException("File was not saved correctly or is empty");
+                }
             }
         } catch (URISyntaxException e) {
             log.error("Invalid URI: {}", fileUrl, e);
             throw new RuntimeException("Invalid file URL", e);
+        } catch (IOException e) {
+            log.error("Error downloading file from URL: {}", fileUrl, e);
+            throw new IOException("Failed to download file from Telegram", e);
         }
 
         // Generate URL

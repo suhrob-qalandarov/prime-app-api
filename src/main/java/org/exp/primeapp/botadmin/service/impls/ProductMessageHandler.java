@@ -51,6 +51,16 @@ public class ProductMessageHandler {
             return true;
         }
         
+        // Handle document messages (compressed images)
+        if (message.document() != null) {
+            com.pengrad.telegrambot.model.Document document = message.document();
+            // Check if it's an image
+            if (document.mimeType() != null && document.mimeType().startsWith("image/")) {
+                handleProductImage(message, user, state);
+                return true;
+            }
+        }
+        
         // Handle text messages
         if (text == null || text.trim().isEmpty()) {
             return false;
@@ -105,10 +115,26 @@ public class ProductMessageHandler {
             ProductCreationState.Step currentStep = state.getCurrentStep();
             Integer currentMessageId = state.getStepMessageId(currentStep);
             
-            // Get the largest photo
-            PhotoSize[] photos = message.photo();
-            PhotoSize largestPhoto = photos[photos.length - 1];
-            String fileId = largestPhoto.fileId();
+            String fileId = null;
+            
+            // Try to get fileId from photo first
+            if (message.photo() != null && message.photo().length > 0) {
+                PhotoSize[] photos = message.photo();
+                PhotoSize largestPhoto = photos[photos.length - 1];
+                fileId = largestPhoto.fileId();
+            } 
+            // If no photo, try to get from document
+            else if (message.document() != null) {
+                com.pengrad.telegrambot.model.Document document = message.document();
+                if (document.mimeType() != null && document.mimeType().startsWith("image/")) {
+                    fileId = document.fileId();
+                }
+            }
+            
+            if (fileId == null) {
+                log.warn("No fileId found in message for step: {}", currentStep);
+                return;
+            }
             
             botProductService.handleProductImage(userId, fileId);
             
