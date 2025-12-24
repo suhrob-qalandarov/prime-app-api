@@ -329,11 +329,11 @@ public class ProductCallbackHandler {
         }
         
         // State is already set to WAITING_SIZES in handleCategorySelection
-        messageService.sendSizeSelection(chatId);
+        // Send size selection message with buttons (don't use sendSizeSelection to avoid duplicate)
         List<Size> allSizes = List.of(Size.values());
-        telegramBot.execute(new SendMessage(chatId, "📏 O'lchamlarni tanlang (bir nechtasini tanlash mumkin):")
+        telegramBot.execute(new SendMessage(chatId, "📏 <b>8/9</b> O'lchamlarni tanlang (bir nechtasini tanlash mumkin):")
                 .parseMode(ParseMode.HTML)
-                .replyMarkup(buttonService.createSizeButtons(allSizes, state.getSelectedSizes()))
+                .replyMarkup(buttonService.addBackButton(buttonService.createSizeButtons(allSizes, state.getSelectedSizes()), "WAITING_CATEGORY"))
         );
         
         telegramBot.execute(new AnswerCallbackQuery(callbackId).text("Kategoriya tanlandi"));
@@ -366,6 +366,26 @@ public class ProductCallbackHandler {
                     .text("Kamida bitta o'lcham tanlang")
                     .showAlert(true));
             return;
+        }
+        
+        // Build selected sizes text
+        StringBuilder selectedSizesText = new StringBuilder();
+        for (Size size : state.getSelectedSizes()) {
+            if (!selectedSizesText.isEmpty()) {
+                selectedSizesText.append(", ");
+            }
+            selectedSizesText.append(size.getLabel());
+        }
+        
+        // Edit size message to remove buttons
+        com.pengrad.telegrambot.model.Message callbackMessage = callbackQuery.message();
+        Integer messageId = callbackMessage != null ? callbackMessage.messageId() : null;
+        if (messageId != null) {
+            String sizeText = "📏 <b>8/9</b> O'lchamlar: " + selectedSizesText;
+            telegramBot.execute(new EditMessageText(chatId, messageId, sizeText)
+                    .parseMode(ParseMode.HTML)
+                    .replyMarkup(new InlineKeyboardMarkup(new com.pengrad.telegrambot.model.request.InlineKeyboardButton[0][]))
+            );
         }
         
         state.setCurrentStep(ProductCreationState.Step.WAITING_QUANTITIES);
