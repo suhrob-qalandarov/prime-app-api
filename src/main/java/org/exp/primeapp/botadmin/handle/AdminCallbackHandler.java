@@ -164,6 +164,16 @@ public class AdminCallbackHandler implements Consumer<CallbackQuery> {
                         .replyMarkup(buttonService.createAdminMainMenuButtons())
                 );
             }
+            
+            // Cancel category creation if active
+            CategoryCreationState categoryState = botCategoryService.getCategoryCreationState(userId);
+            if (categoryState != null) {
+                botCategoryService.cancelCategoryCreation(userId);
+            }
+            
+            // Return to main menu
+            String firstName = user.getFirstName() != null ? user.getFirstName() : "Admin";
+            messageService.sendAdminMenu(chatId, firstName);
             telegramBot.execute(new AnswerCallbackQuery(callbackId).text("Asosiy menyu"));
             return;
         }
@@ -178,6 +188,13 @@ public class AdminCallbackHandler implements Consumer<CallbackQuery> {
         if (data.equals("admin_product_add_income")) {
             telegramBot.execute(new AnswerCallbackQuery(callbackId)
                     .text("Product income qo'shish funksiyasi keyinroq qo'shiladi")
+                    .showAlert(true));
+            return;
+        }
+
+        if (data.equals("admin_product_add_outcome")) {
+            telegramBot.execute(new AnswerCallbackQuery(callbackId)
+                    .text("Product outcome qo'shish funksiyasi keyinroq qo'shiladi")
                     .showAlert(true));
             return;
         }

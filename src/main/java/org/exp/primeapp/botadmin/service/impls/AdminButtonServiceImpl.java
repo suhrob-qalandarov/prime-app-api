@@ -44,6 +44,23 @@ public class AdminButtonServiceImpl implements AdminButtonService {
         ).resizeKeyboard(true);
     }
 
+    @Override
+    public Keyboard createProductReplyKeyboard() {
+        return new ReplyKeyboardMarkup(
+                new KeyboardButton[]{
+                        new KeyboardButton("➕ Yangi mahsulot"),
+                        new KeyboardButton("✏️ Mahsulot o'zgartirish")
+                },
+                new KeyboardButton[]{
+                        new KeyboardButton("📥 Income"),
+                        new KeyboardButton("📤 Outcome")
+                },
+                new KeyboardButton[]{
+                        new KeyboardButton("🏠 Asosiy menyu")
+                }
+        ).resizeKeyboard(true);
+    }
+
 
     @Override
     public InlineKeyboardMarkup createCategoryButtons(List<Category> categories) {

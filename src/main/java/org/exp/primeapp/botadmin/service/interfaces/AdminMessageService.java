@@ -73,5 +73,7 @@ public interface AdminMessageService {
     void sendRoleAddedSuccess(Long chatId, String roleName);
     
     void sendNoCategoriesMessage(Long chatId);
+    
+    void sendSimpleMessage(Long chatId, String message);
 }
 

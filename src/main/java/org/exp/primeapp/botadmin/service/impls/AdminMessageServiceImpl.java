@@ -157,19 +157,12 @@ public class AdminMessageServiceImpl implements AdminMessageService {
             SendMessage sendMessage;
             
             if (sectionName.equals("Mahsulotlar")) {
-                // First, remove old keyboard and set new cancel button
-                SendMessage cancelMessage = new SendMessage(chatId,
+                // Send message with reply keyboard
+                SendMessage productMessage = new SendMessage(chatId,
                         "🛍️ <b>Mahsulotlar bo'limi</b>\n\nQuyidagi amallardan birini tanlang:")
                         .parseMode(ParseMode.HTML)
-                        .replyMarkup(buttonService.createAdminCancelReplyKeyboard());
-                telegramBot.execute(cancelMessage);
-                
-                // Then send inline keyboard message
-                SendMessage inlineMessage = new SendMessage(chatId,
-                        "⬇️ Quyidagi tugmalardan birini tanlang:")
-                        .parseMode(ParseMode.HTML)
-                        .replyMarkup(buttonService.createProductMenuButtons());
-                telegramBot.execute(inlineMessage);
+                        .replyMarkup(buttonService.createProductReplyKeyboard());
+                telegramBot.execute(productMessage);
                 return;
             } else if (sectionName.equals("Kategoriyalar")) {
                 // First, remove old keyboard and set new cancel button
@@ -533,6 +526,13 @@ public class AdminMessageServiceImpl implements AdminMessageService {
         telegramBot.execute(new SendMessage(chatId,
                 "⚠️ <b>Kategoriya mavjud emas!</b>\n\n" +
                 "Birorta ham kategoriya mavjud emas. Avval kategoriya qo'shing!")
+                .parseMode(ParseMode.HTML)
+        );
+    }
+
+    @Override
+    public void sendSimpleMessage(Long chatId, String message) {
+        telegramBot.execute(new SendMessage(chatId, message)
                 .parseMode(ParseMode.HTML)
         );
     }

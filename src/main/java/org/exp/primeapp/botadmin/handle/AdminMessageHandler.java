@@ -182,7 +182,24 @@ public class AdminMessageHandler implements Consumer<Message> {
                     long[] counts = botUserService.getUserCounts();
                     messageService.sendUsersStatistics(chatId, counts[0], counts[1], counts[2], isSuperAdmin);
                     return;
-                } else if (text.equals("❌ Bekor qilish")) {
+                } else if (text.equals("➕ Yangi mahsulot")) {
+                    botProductService.startProductCreation(userId);
+                    messageService.sendProductCreationStart(chatId);
+                    messageService.sendProductNamePrompt(chatId);
+                    return;
+                } else if (text.equals("✏️ Mahsulot o'zgartirish")) {
+                    // Product edit functionality - to be implemented later
+                    messageService.sendSimpleMessage(chatId, "⚠️ <b>Mahsulot o'zgartirish</b> funksiyasi keyinroq qo'shiladi");
+                    return;
+                } else if (text.equals("📥 Income")) {
+                    // Income functionality - to be implemented later
+                    messageService.sendSimpleMessage(chatId, "⚠️ <b>Income</b> funksiyasi keyinroq qo'shiladi");
+                    return;
+                } else if (text.equals("📤 Outcome")) {
+                    // Outcome functionality - to be implemented later
+                    messageService.sendSimpleMessage(chatId, "⚠️ <b>Outcome</b> funksiyasi keyinroq qo'shiladi");
+                    return;
+                } else if (text.equals("🏠 Asosiy menyu")) {
                     // Cancel all active states
                     botUserService.setUserSearchState(userId, false);
                     
