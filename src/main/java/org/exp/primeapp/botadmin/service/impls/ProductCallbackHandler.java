@@ -375,9 +375,6 @@ public class ProductCallbackHandler {
             return;
         }
         
-        int totalCount = state.getAttachmentUrls() != null ? state.getAttachmentUrls().size() : 0;
-        messageService.sendImagesCompleted(chatId, totalCount);
-        
         state.setCurrentStep(ProductCreationState.Step.WAITING_SPOTLIGHT_NAME);
         messageService.sendSpotlightNamePromptForProduct(chatId);
         

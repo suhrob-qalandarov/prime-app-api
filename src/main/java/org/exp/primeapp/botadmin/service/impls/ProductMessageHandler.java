@@ -168,8 +168,6 @@ public class ProductMessageHandler {
                 // Additional image uploaded
                 int remaining = 3 - currentCount;
                 if (currentCount >= 3) {
-                    // Max 3 images reached
-                    messageService.sendImagesCompleted(chatId, currentCount);
                     state.setCurrentStep(ProductCreationState.Step.WAITING_SPOTLIGHT_NAME);
                     messageService.sendSpotlightNamePromptForProduct(chatId);
                 } else {

@@ -308,16 +308,6 @@ public class AdminMessageServiceImpl implements AdminMessageService {
     }
 
     @Override
-    public void sendImagesCompleted(Long chatId, int totalCount) {
-        String message = "✅ Mahsulot rasmlari muvaffaqiyatli saqlandi!\n";
-        message += "Hozirgi: " + totalCount + " ta";
-        
-        telegramBot.execute(new SendMessage(chatId, message)
-                .parseMode(ParseMode.HTML)
-        );
-    }
-
-    @Override
     public void sendSpotlightNamePromptForProduct(Long chatId) {
         telegramBot.execute(new SendMessage(chatId,
                 "📂 <b>6/9</b> Toifani tanlang:")
