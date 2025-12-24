@@ -374,7 +374,10 @@ public class ProductMessageHandler {
                         if (allSizesHaveQuantities) {
                             // All quantities set, ask for price
                             state.setCurrentStep(ProductCreationState.Step.WAITING_PRICE);
-                            messageService.sendProductPricePrompt(user.getTelegramId());
+                            Integer priceMessageId = messageService.sendProductPricePrompt(user.getTelegramId());
+                            if (priceMessageId != null) {
+                                state.setStepMessageId(ProductCreationState.Step.WAITING_PRICE, priceMessageId);
+                            }
                         } else {
                             // Not all quantities set, ask for remaining
                             messageService.sendProductSizeQuantityPrompt(user.getTelegramId(), state);
@@ -415,7 +418,10 @@ public class ProductMessageHandler {
                             if (allSizesHaveQuantities) {
                                 // All quantities set, ask for price
                                 state.setCurrentStep(ProductCreationState.Step.WAITING_PRICE);
-                                messageService.sendProductPricePrompt(user.getTelegramId());
+                                Integer priceMessageId = messageService.sendProductPricePrompt(user.getTelegramId());
+                                if (priceMessageId != null) {
+                                    state.setStepMessageId(ProductCreationState.Step.WAITING_PRICE, priceMessageId);
+                                }
                             } else {
                                 // Ask for next size quantity
                                 messageService.sendProductSizeQuantityPrompt(user.getTelegramId(), state);
@@ -423,7 +429,10 @@ public class ProductMessageHandler {
                         } else {
                             // All quantities set, ask for price
                             state.setCurrentStep(ProductCreationState.Step.WAITING_PRICE);
-                            messageService.sendProductPricePrompt(user.getTelegramId());
+                            Integer priceMessageId = messageService.sendProductPricePrompt(user.getTelegramId());
+                            if (priceMessageId != null) {
+                                state.setStepMessageId(ProductCreationState.Step.WAITING_PRICE, priceMessageId);
+                            }
                         }
                     }
                 } catch (NumberFormatException e) {
@@ -435,20 +444,11 @@ public class ProductMessageHandler {
                 // Save messageId before step changes
                 Integer currentPriceMessageId = state.getStepMessageId(ProductCreationState.Step.WAITING_PRICE);
                 
-                try {
-                    botProductService.handleProductPrice(userId, text);
-                    String productInfo = buildProductInfo(state);
-                    messageService.sendProductConfirmation(chatId, productInfo);
-                } catch (RuntimeException e) {
-                    // Invalid price format
-                    messageService.sendProductPricePrompt(user.getTelegramId());
-                }
-                
-                // Edit current step message to remove inline buttons (Orqaga btn) AFTER processing
+                // Edit current step message to remove inline buttons BEFORE processing
                 if (currentPriceMessageId != null) {
                     try {
-                        telegramBot.execute(new EditMessageText(chatId, currentPriceMessageId,
-                                "💰 <b>9/9</b> Mahsulot narxini kiriting (so'm):")
+                        String priceText = "💰 <b>9/9</b> Mahsulot narxini kiriting (so'm):";
+                        telegramBot.execute(new EditMessageText(chatId, currentPriceMessageId, priceText)
                                 .parseMode(ParseMode.HTML)
                                 .replyMarkup(new InlineKeyboardMarkup(new com.pengrad.telegrambot.model.request.InlineKeyboardButton[0][]))
                         );
@@ -458,6 +458,18 @@ public class ProductMessageHandler {
                     }
                 } else {
                     log.warn("WAITING_PRICE messageId is null, cannot edit message");
+                }
+                
+                try {
+                    botProductService.handleProductPrice(userId, text);
+                    String productInfo = buildProductInfo(state);
+                    messageService.sendProductConfirmation(chatId, productInfo);
+                } catch (RuntimeException e) {
+                    // Invalid price format - resend prompt
+                    Integer priceMessageId = messageService.sendProductPricePrompt(user.getTelegramId());
+                    if (priceMessageId != null) {
+                        state.setStepMessageId(ProductCreationState.Step.WAITING_PRICE, priceMessageId);
+                    }
                 }
                 break;
                 
