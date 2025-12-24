@@ -18,6 +18,8 @@ import org.exp.primeapp.models.enums.Size;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 
 @Slf4j
@@ -389,10 +391,24 @@ public class ProductCallbackHandler {
         }
         
         state.setCurrentStep(ProductCreationState.Step.WAITING_QUANTITIES);
-        StringBuilder quantityPrompt = new StringBuilder("📊 Har bir o'lcham uchun miqdorni kiriting:\n\n");
-        for (Size size : state.getSelectedSizes()) {
-            quantityPrompt.append(size.getLabel()).append(": /qty_").append(size.name()).append("\n");
+        
+        // Sort sizes by label for display
+        List<Size> sortedSizes = new ArrayList<>(state.getSelectedSizes());
+        sortedSizes.sort(Comparator.comparing(Size::getLabel));
+        
+        // Build sorted sizes text with comma separation
+        StringBuilder sortedSizesText = new StringBuilder();
+        for (Size size : sortedSizes) {
+            if (!sortedSizesText.isEmpty()) {
+                sortedSizesText.append(", ");
+            }
+            sortedSizesText.append(size.getLabel());
         }
+        
+        // Build quantity prompt message
+        StringBuilder quantityPrompt = new StringBuilder("📊 Har bir o'lcham uchun miqdorni kiriting:\n\n");
+        quantityPrompt.append("O'lchamlar: ").append(sortedSizesText).append("\n\n");
+        quantityPrompt.append("Miqdorni raqam sifatida kiriting (masalan: 2, 4, 5):");
         
         telegramBot.execute(new SendMessage(chatId, quantityPrompt.toString())
                 .parseMode(ParseMode.HTML)
