@@ -382,6 +382,30 @@ public class AdminCallbackHandler implements Consumer<CallbackQuery> {
             return;
         }
 
+        // Handle skip brand callback
+        if (data.equals("skip_brand")) {
+            // Skip brand - set empty brand
+            botProductService.handleProductBrand(userId, "");
+            
+            // Edit message to show skipped
+            com.pengrad.telegrambot.model.Message callbackMessage = callbackQuery.message();
+            Integer messageId = callbackMessage != null ? callbackMessage.messageId() : null;
+            if (messageId != null) {
+                telegramBot.execute(new EditMessageText(chatId, messageId,
+                        "🏷️ <b>3/9</b> Brend nomi: (O'tkazib yuborildi)")
+                        .parseMode(ParseMode.HTML)
+                        .replyMarkup(new InlineKeyboardMarkup(new com.pengrad.telegrambot.model.request.InlineKeyboardButton[0][]))
+                );
+            }
+            
+            // Move to color selection step
+            state.setCurrentStep(ProductCreationState.Step.WAITING_COLOR);
+            messageService.sendProductColorPrompt(chatId);
+            
+            telegramBot.execute(new AnswerCallbackQuery(callbackId).text("Brend o'tkazib yuborildi"));
+            return;
+        }
+
         // Handle color selection callbacks
         if (data.startsWith("select_color_")) {
             // Parse color name and hex from callback data
