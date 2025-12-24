@@ -426,8 +426,7 @@ public class AdminCallbackHandler implements Consumer<CallbackQuery> {
                 Integer messageId = callbackMessage != null ? callbackMessage.messageId() : null;
                 if (messageId != null) {
                     telegramBot.execute(new EditMessageText(chatId, messageId,
-                            "🎨 <b>4/9</b> Rang tanlandi: " + colorName + "\n\n" +
-                            "📷 Keyingi qadam: Mahsulotning asosiy rasmlarini yuboring")
+                            "🎨 <b>4/9</b> Rang tanlandi: " + colorName)
                             .parseMode(ParseMode.HTML)
                             .replyMarkup(new InlineKeyboardMarkup(new com.pengrad.telegrambot.model.request.InlineKeyboardButton[0][]))
                     );
@@ -456,8 +455,7 @@ public class AdminCallbackHandler implements Consumer<CallbackQuery> {
             Integer messageId = callbackMessage != null ? callbackMessage.messageId() : null;
             if (messageId != null) {
                 telegramBot.execute(new EditMessageText(chatId, messageId,
-                        "🎨 <b>4/9</b> Rang tanlash: (O'tkazib yuborildi)\n\n" +
-                        "📷 Keyingi qadam: Mahsulotning asosiy rasmlarini yuboring")
+                        "🎨 <b>4/9</b> Rang tanlash: (O'tkazib yuborildi)")
                         .parseMode(ParseMode.HTML)
                         .replyMarkup(new InlineKeyboardMarkup(new com.pengrad.telegrambot.model.request.InlineKeyboardButton[0][]))
                 );
