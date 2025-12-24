@@ -7,6 +7,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.exp.primeapp.botadmin.models.CategoryCreationState;
 import org.exp.primeapp.botadmin.models.ProductCreationState;
+import org.exp.primeapp.botadmin.service.impls.ProductMessageHandler;
 import org.exp.primeapp.botadmin.service.interfaces.AdminMessageService;
 import org.exp.primeapp.botadmin.service.interfaces.BotCategoryService;
 import org.exp.primeapp.botadmin.service.interfaces.BotProductService;
@@ -33,6 +34,7 @@ public class AdminMessageHandler implements Consumer<Message> {
     private final BotUserService botUserService;
     private final UserRepository userRepository;
     private final TelegramBot userBot;
+    private final ProductMessageHandler productMessageHandler;
 
     public AdminMessageHandler(AdminMessageService messageService,
                                UserService userService,
@@ -40,7 +42,8 @@ public class AdminMessageHandler implements Consumer<Message> {
                                BotCategoryService botCategoryService,
                                BotUserService botUserService,
                                UserRepository userRepository,
-                               @Qualifier("userBot") TelegramBot userBot) {
+                               @Qualifier("userBot") TelegramBot userBot,
+                               ProductMessageHandler productMessageHandler) {
         this.messageService = messageService;
         this.userService = userService;
         this.botProductService = botProductService;
@@ -48,6 +51,7 @@ public class AdminMessageHandler implements Consumer<Message> {
         this.botUserService = botUserService;
         this.userRepository = userRepository;
         this.userBot = userBot;
+        this.productMessageHandler = productMessageHandler;
     }
 
     private String getUserBotUsername() {
@@ -264,6 +268,13 @@ public class AdminMessageHandler implements Consumer<Message> {
                 // Check if user is in product creation flow
                 ProductCreationState state = botProductService.getProductCreationState(userId);
                 if (state != null) {
+                    // Try ProductMessageHandler first
+                    boolean handled = productMessageHandler.handleMessage(message, user);
+                    if (handled) {
+                        log.debug("ProductMessageHandler handled message from chatId: {}, text: {}", chatId, text);
+                        return;
+                    }
+                    // Fallback to old handler if ProductMessageHandler didn't handle it
                     handleProductCreationMessage(message, user, state);
                 } else {
                     log.debug("No handler for message from chatId: {}, text: {}", chatId, text);

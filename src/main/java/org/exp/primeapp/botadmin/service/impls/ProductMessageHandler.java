@@ -6,6 +6,7 @@ import com.pengrad.telegrambot.model.PhotoSize;
 import com.pengrad.telegrambot.model.request.InlineKeyboardMarkup;
 import com.pengrad.telegrambot.model.request.ParseMode;
 import com.pengrad.telegrambot.request.DeleteMessage;
+import com.pengrad.telegrambot.request.EditMessageText;
 import com.pengrad.telegrambot.request.SendMessage;
 import com.pengrad.telegrambot.response.SendResponse;
 import lombok.extern.slf4j.Slf4j;
@@ -132,59 +133,106 @@ public class ProductMessageHandler {
         Long chatId = user.getTelegramId();
         Long userId = user.getId();
         
-        switch (state.getCurrentStep()) {
+        // Get current step before any changes
+        ProductCreationState.Step currentStep = state.getCurrentStep();
+        log.info("Handling product creation message for step: {}", currentStep);
+        
+        switch (currentStep) {
             case WAITING_NAME:
-                // Delete current step message
+                // Save messageId before step changes
                 Integer currentNameMessageId = state.getStepMessageId(ProductCreationState.Step.WAITING_NAME);
+                log.info("WAITING_NAME messageId before edit: {}", currentNameMessageId);
+                
+                // Edit current step message to remove inline buttons BEFORE processing
                 if (currentNameMessageId != null) {
                     try {
-                        telegramBot.execute(new DeleteMessage(chatId, currentNameMessageId));
+                        com.pengrad.telegrambot.response.BaseResponse response = telegramBot.execute(new EditMessageText(chatId, currentNameMessageId,
+                                "📝 <b>1/9</b> Mahsulot nomini kiriting:")
+                                .parseMode(ParseMode.HTML)
+                                .replyMarkup(new InlineKeyboardMarkup(new com.pengrad.telegrambot.model.request.InlineKeyboardButton[0][]))
+                        );
+                        log.info("Edit WAITING_NAME response: {}", response.isOk());
+                        if (!response.isOk()) {
+                            log.error("Edit WAITING_NAME failed: {}", response.description());
+                        }
                     } catch (Exception e) {
-                        log.error("Error deleting WAITING_NAME message: {}", e.getMessage());
+                        log.error("Error editing WAITING_NAME message: {}", e.getMessage(), e);
                     }
+                } else {
+                    log.warn("WAITING_NAME messageId is null, cannot edit message");
                 }
                 
+                // Process the input
                 botProductService.handleProductName(userId, text);
+                
+                // Get state again after step change
+                state = botProductService.getProductCreationState(userId);
+                
                 Integer descMessageId = messageService.sendProductDescriptionPrompt(chatId);
-                if (descMessageId != null) {
+                if (descMessageId != null && state != null) {
                     state.setStepMessageId(ProductCreationState.Step.WAITING_DESCRIPTION, descMessageId);
                 }
                 break;
                 
             case WAITING_DESCRIPTION:
-                // Delete current step message
+                // Save messageId before step changes
                 Integer currentDescMessageId = state.getStepMessageId(ProductCreationState.Step.WAITING_DESCRIPTION);
+                log.info("WAITING_DESCRIPTION messageId before edit: {}", currentDescMessageId);
+                
+                // Edit current step message to remove inline buttons (Orqaga btn) BEFORE processing
                 if (currentDescMessageId != null) {
                     try {
-                        telegramBot.execute(new DeleteMessage(chatId, currentDescMessageId));
+                        com.pengrad.telegrambot.response.BaseResponse response = telegramBot.execute(new EditMessageText(chatId, currentDescMessageId,
+                                "📝 <b>2/9</b> Mahsulot tavsifini kiriting:")
+                                .parseMode(ParseMode.HTML)
+                                .replyMarkup(new InlineKeyboardMarkup(new com.pengrad.telegrambot.model.request.InlineKeyboardButton[0][]))
+                        );
+                        log.info("Edit WAITING_DESCRIPTION response: {}", response.isOk());
+                        if (!response.isOk()) {
+                            log.error("Edit WAITING_DESCRIPTION failed: {}", response.description());
+                        }
                     } catch (Exception e) {
-                        log.error("Error deleting WAITING_DESCRIPTION message: {}", e.getMessage());
+                        log.error("Error editing WAITING_DESCRIPTION message: {}", e.getMessage(), e);
                     }
+                } else {
+                    log.warn("WAITING_DESCRIPTION messageId is null, cannot edit message");
                 }
                 
-                // Resend previous step (WAITING_NAME) message without inline buttons
-                resendPreviousStepMessage(chatId, state, ProductCreationState.Step.WAITING_DESCRIPTION);
-                
+                // Process the input
                 botProductService.handleProductDescription(userId, text);
+                
+                // Get state again after step change
+                state = botProductService.getProductCreationState(userId);
+                
                 Integer brandMessageId = messageService.sendProductBrandPrompt(chatId);
-                if (brandMessageId != null) {
+                if (brandMessageId != null && state != null) {
                     state.setStepMessageId(ProductCreationState.Step.WAITING_BRAND, brandMessageId);
                 }
                 break;
                 
             case WAITING_BRAND:
-                // Delete current step message
+                // Save messageId before step changes
                 Integer currentBrandMessageId = state.getStepMessageId(ProductCreationState.Step.WAITING_BRAND);
+                log.info("WAITING_BRAND messageId before edit: {}", currentBrandMessageId);
+                
+                // Edit current step message to remove inline buttons (Orqaga btn) BEFORE processing
                 if (currentBrandMessageId != null) {
                     try {
-                        telegramBot.execute(new DeleteMessage(chatId, currentBrandMessageId));
+                        com.pengrad.telegrambot.response.BaseResponse response = telegramBot.execute(new EditMessageText(chatId, currentBrandMessageId,
+                                "🏷️ <b>3/9</b> Brend nomini kiriting:")
+                                .parseMode(ParseMode.HTML)
+                                .replyMarkup(new InlineKeyboardMarkup(new com.pengrad.telegrambot.model.request.InlineKeyboardButton[0][]))
+                        );
+                        log.info("Edit WAITING_BRAND response: {}", response.isOk());
+                        if (!response.isOk()) {
+                            log.error("Edit WAITING_BRAND failed: {}", response.description());
+                        }
                     } catch (Exception e) {
-                        log.error("Error deleting WAITING_BRAND message: {}", e.getMessage());
+                        log.error("Error editing WAITING_BRAND message: {}", e.getMessage(), e);
                     }
+                } else {
+                    log.warn("WAITING_BRAND messageId is null, cannot edit message");
                 }
-                
-                // Resend previous step (WAITING_DESCRIPTION) message without inline buttons
-                resendPreviousStepMessage(chatId, state, ProductCreationState.Step.WAITING_BRAND);
                 
                 // Brand is optional - if empty, skip to next step
                 if (text != null && !text.trim().isEmpty()) {
@@ -192,28 +240,38 @@ public class ProductMessageHandler {
                 } else {
                     botProductService.handleProductBrand(userId, "");
                 }
+                
+                // Get state again after step change
+                state = botProductService.getProductCreationState(userId);
+                
                 // After brand, move to color selection step
-                state.setCurrentStep(ProductCreationState.Step.WAITING_COLOR);
+                if (state != null) {
+                    state.setCurrentStep(ProductCreationState.Step.WAITING_COLOR);
+                }
                 messageService.sendProductColorPrompt(chatId);
                 break;
                 
             case WAITING_QUANTITIES:
-                // Delete current step message and resend previous step message (only on first quantity input)
+                // Edit current step message to remove inline buttons (only on first quantity input)
                 // Check if this is the first quantity being entered
                 boolean isFirstQuantity = state.getSizeQuantities().values().stream()
                         .allMatch(qty -> qty == null || qty == 0);
                 if (isFirstQuantity) {
-                    // Delete current step message if exists
+                    // Edit current step message to remove inline buttons if exists
                     Integer currentQuantitiesMessageId = state.getStepMessageId(ProductCreationState.Step.WAITING_QUANTITIES);
                     if (currentQuantitiesMessageId != null) {
                         try {
-                            telegramBot.execute(new DeleteMessage(chatId, currentQuantitiesMessageId));
+                            String quantitiesText = getStepMessageText(ProductCreationState.Step.WAITING_QUANTITIES);
+                            if (quantitiesText != null) {
+                                telegramBot.execute(new EditMessageText(chatId, currentQuantitiesMessageId, quantitiesText)
+                                        .parseMode(ParseMode.HTML)
+                                        .replyMarkup(new InlineKeyboardMarkup(new com.pengrad.telegrambot.model.request.InlineKeyboardButton[0][]))
+                                );
+                            }
                         } catch (Exception e) {
-                            log.error("Error deleting WAITING_QUANTITIES message: {}", e.getMessage());
+                            log.error("Error editing WAITING_QUANTITIES message: {}", e.getMessage());
                         }
                     }
-                    // Resend previous step message without inline buttons
-                    resendPreviousStepMessage(chatId, state, ProductCreationState.Step.WAITING_QUANTITIES);
                 }
                 
                 // Handle quantity input for sizes
@@ -268,18 +326,8 @@ public class ProductMessageHandler {
                 break;
                 
             case WAITING_PRICE:
-                // Delete current step message
+                // Save messageId before step changes
                 Integer currentPriceMessageId = state.getStepMessageId(ProductCreationState.Step.WAITING_PRICE);
-                if (currentPriceMessageId != null) {
-                    try {
-                        telegramBot.execute(new DeleteMessage(chatId, currentPriceMessageId));
-                    } catch (Exception e) {
-                        log.error("Error deleting WAITING_PRICE message: {}", e.getMessage());
-                    }
-                }
-                
-                // Resend previous step message without inline buttons
-                resendPreviousStepMessage(chatId, state, ProductCreationState.Step.WAITING_PRICE);
                 
                 try {
                     botProductService.handleProductPrice(userId, text);
@@ -288,6 +336,22 @@ public class ProductMessageHandler {
                 } catch (RuntimeException e) {
                     // Invalid price format
                     messageService.sendProductPricePrompt(user.getTelegramId());
+                }
+                
+                // Edit current step message to remove inline buttons (Orqaga btn) AFTER processing
+                if (currentPriceMessageId != null) {
+                    try {
+                        telegramBot.execute(new EditMessageText(chatId, currentPriceMessageId,
+                                "💰 <b>9/9</b> Mahsulot narxini kiriting (so'm):")
+                                .parseMode(ParseMode.HTML)
+                                .replyMarkup(new InlineKeyboardMarkup(new com.pengrad.telegrambot.model.request.InlineKeyboardButton[0][]))
+                        );
+                        log.debug("Edited WAITING_PRICE message: {}", currentPriceMessageId);
+                    } catch (Exception e) {
+                        log.error("Error editing WAITING_PRICE message: {}", e.getMessage(), e);
+                    }
+                } else {
+                    log.warn("WAITING_PRICE messageId is null, cannot edit message");
                 }
                 break;
                 
