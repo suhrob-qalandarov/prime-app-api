@@ -355,11 +355,7 @@ public class AdminMessageServiceImpl implements AdminMessageService {
     }
 
     @Override
-    public void sendProductConfirmation(Long chatId, String productInfo, org.exp.primeapp.botadmin.models.ProductCreationState state) {
-        // Prepare caption with product info
-        String caption = "✅ <b>9/9</b> Mahsulot ma'lumotlari:\n\n" + productInfo +
-                "\n\nMahsulotni qo'shishni tasdiqlaysizmi?";
-        
+    public void sendProductConfirmation(Long chatId, String caption, org.exp.primeapp.botadmin.models.ProductCreationState state) {
         // Send images as media group if available
         if (state != null && state.getAttachmentUrls() != null && !state.getAttachmentUrls().isEmpty()) {
             List<InputMediaPhoto> mediaList = new ArrayList<>();

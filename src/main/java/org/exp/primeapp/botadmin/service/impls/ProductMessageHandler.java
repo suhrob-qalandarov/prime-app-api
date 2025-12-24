@@ -489,7 +489,6 @@ public class ProductMessageHandler {
         if (state.getPrice() != null) {
             info.append("<b>Narx:</b> ").append(state.getPrice()).append(" so'm\n");
         }
-        info.append("<b>Rasmlar:</b> ").append(state.getAttachmentUrls() != null ? state.getAttachmentUrls().size() : 0).append(" ta\n");
         if (state.getSelectedSizes() != null && !state.getSelectedSizes().isEmpty()) {
             info.append("<b>O'lchamlar:</b>\n");
             for (org.exp.primeapp.models.enums.Size size : state.getSelectedSizes()) {
