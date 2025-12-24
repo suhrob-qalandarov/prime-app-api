@@ -18,6 +18,10 @@ import org.exp.primeapp.models.entities.User;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
+
 @Slf4j
 @Service
 public class ProductMessageHandler {
@@ -327,27 +331,34 @@ public class ProductMessageHandler {
                     }
                 }
                 
-                // Handle quantity input for sizes
+                // Handle quantity input for sizes (comma-separated or single number)
                 try {
-                    Integer quantity = Integer.parseInt(text.trim());
-                    if (quantity <= 0) {
-                        messageService.sendProductSizeQuantityPrompt(user.getTelegramId(), state);
-                        return;
-                    }
-                    
-                    // Find the first size without quantity
-                    org.exp.primeapp.models.enums.Size sizeToSet = null;
-                    for (org.exp.primeapp.models.enums.Size size : state.getSelectedSizes()) {
-                        if (!state.getSizeQuantities().containsKey(size) || 
-                            state.getSizeQuantities().get(size) == null || 
-                            state.getSizeQuantities().get(size) == 0) {
-                            sizeToSet = size;
-                            break;
+                    // Check if input contains comma (multiple quantities)
+                    if (text.contains(",")) {
+                        // Parse comma-separated quantities
+                        String[] quantityStrings = text.split(",");
+                        List<Integer> quantities = new ArrayList<>();
+                        for (String qtyStr : quantityStrings) {
+                            try {
+                                Integer qty = Integer.parseInt(qtyStr.trim());
+                                if (qty > 0) {
+                                    quantities.add(qty);
+                                }
+                            } catch (NumberFormatException e) {
+                                // Skip invalid numbers
+                            }
                         }
-                    }
-                    
-                    if (sizeToSet != null) {
-                        botProductService.handleSizeQuantity(userId, sizeToSet.name(), quantity);
+                        
+                        // Get sorted sizes (same order as displayed)
+                        List<org.exp.primeapp.models.enums.Size> sortedSizes = new ArrayList<>(state.getSelectedSizes());
+                        sortedSizes.sort(Comparator.comparing(org.exp.primeapp.models.enums.Size::getLabel));
+                        
+                        // Assign quantities to sizes
+                        for (int i = 0; i < sortedSizes.size() && i < quantities.size(); i++) {
+                            org.exp.primeapp.models.enums.Size size = sortedSizes.get(i);
+                            Integer quantity = quantities.get(i);
+                            botProductService.handleSizeQuantity(userId, size.name(), quantity);
+                        }
                         
                         // Check if all sizes have quantities
                         boolean allSizesHaveQuantities = true;
@@ -363,15 +374,66 @@ public class ProductMessageHandler {
                         if (allSizesHaveQuantities) {
                             // All quantities set, ask for price
                             state.setCurrentStep(ProductCreationState.Step.WAITING_PRICE);
-                            messageService.sendProductPricePrompt(user.getTelegramId());
+                            Integer priceMessageId = messageService.sendProductPricePrompt(user.getTelegramId());
+                            if (priceMessageId != null) {
+                                state.setStepMessageId(ProductCreationState.Step.WAITING_PRICE, priceMessageId);
+                            }
                         } else {
-                            // Ask for next size quantity
+                            // Not all quantities set, ask for remaining
                             messageService.sendProductSizeQuantityPrompt(user.getTelegramId(), state);
                         }
                     } else {
-                        // All quantities set, ask for price
-                        state.setCurrentStep(ProductCreationState.Step.WAITING_PRICE);
-                        messageService.sendProductPricePrompt(user.getTelegramId());
+                        // Single quantity input (old behavior for backward compatibility)
+                        Integer quantity = Integer.parseInt(text.trim());
+                        if (quantity <= 0) {
+                            messageService.sendProductSizeQuantityPrompt(user.getTelegramId(), state);
+                            return;
+                        }
+                        
+                        // Find the first size without quantity
+                        org.exp.primeapp.models.enums.Size sizeToSet = null;
+                        for (org.exp.primeapp.models.enums.Size size : state.getSelectedSizes()) {
+                            if (!state.getSizeQuantities().containsKey(size) || 
+                                state.getSizeQuantities().get(size) == null || 
+                                state.getSizeQuantities().get(size) == 0) {
+                                sizeToSet = size;
+                                break;
+                            }
+                        }
+                        
+                        if (sizeToSet != null) {
+                            botProductService.handleSizeQuantity(userId, sizeToSet.name(), quantity);
+                            
+                            // Check if all sizes have quantities
+                            boolean allSizesHaveQuantities = true;
+                            for (org.exp.primeapp.models.enums.Size size : state.getSelectedSizes()) {
+                                if (!state.getSizeQuantities().containsKey(size) || 
+                                    state.getSizeQuantities().get(size) == null || 
+                                    state.getSizeQuantities().get(size) == 0) {
+                                    allSizesHaveQuantities = false;
+                                    break;
+                                }
+                            }
+                            
+                            if (allSizesHaveQuantities) {
+                                // All quantities set, ask for price
+                                state.setCurrentStep(ProductCreationState.Step.WAITING_PRICE);
+                                Integer priceMessageId = messageService.sendProductPricePrompt(user.getTelegramId());
+                                if (priceMessageId != null) {
+                                    state.setStepMessageId(ProductCreationState.Step.WAITING_PRICE, priceMessageId);
+                                }
+                            } else {
+                                // Ask for next size quantity
+                                messageService.sendProductSizeQuantityPrompt(user.getTelegramId(), state);
+                            }
+                        } else {
+                            // All quantities set, ask for price
+                            state.setCurrentStep(ProductCreationState.Step.WAITING_PRICE);
+                            Integer priceMessageId = messageService.sendProductPricePrompt(user.getTelegramId());
+                            if (priceMessageId != null) {
+                                state.setStepMessageId(ProductCreationState.Step.WAITING_PRICE, priceMessageId);
+                            }
+                        }
                     }
                 } catch (NumberFormatException e) {
                     messageService.sendProductSizeQuantityPrompt(user.getTelegramId(), state);
@@ -382,20 +444,11 @@ public class ProductMessageHandler {
                 // Save messageId before step changes
                 Integer currentPriceMessageId = state.getStepMessageId(ProductCreationState.Step.WAITING_PRICE);
                 
-                try {
-                    botProductService.handleProductPrice(userId, text);
-                    String productInfo = buildProductInfo(state);
-                    messageService.sendProductConfirmation(chatId, productInfo);
-                } catch (RuntimeException e) {
-                    // Invalid price format
-                    messageService.sendProductPricePrompt(user.getTelegramId());
-                }
-                
-                // Edit current step message to remove inline buttons (Orqaga btn) AFTER processing
+                // Edit current step message to remove inline buttons BEFORE processing
                 if (currentPriceMessageId != null) {
                     try {
-                        telegramBot.execute(new EditMessageText(chatId, currentPriceMessageId,
-                                "💰 <b>9/9</b> Mahsulot narxini kiriting (so'm):")
+                        String priceText = "💰 <b>9/9</b> Mahsulot narxini kiriting (so'm):";
+                        telegramBot.execute(new EditMessageText(chatId, currentPriceMessageId, priceText)
                                 .parseMode(ParseMode.HTML)
                                 .replyMarkup(new InlineKeyboardMarkup(new com.pengrad.telegrambot.model.request.InlineKeyboardButton[0][]))
                         );
@@ -405,6 +458,18 @@ public class ProductMessageHandler {
                     }
                 } else {
                     log.warn("WAITING_PRICE messageId is null, cannot edit message");
+                }
+                
+                try {
+                    botProductService.handleProductPrice(userId, text);
+                    String productInfo = buildProductInfo(state);
+                    messageService.sendProductConfirmation(chatId, productInfo, state);
+                } catch (RuntimeException e) {
+                    // Invalid price format - resend prompt
+                    Integer priceMessageId = messageService.sendProductPricePrompt(user.getTelegramId());
+                    if (priceMessageId != null) {
+                        state.setStepMessageId(ProductCreationState.Step.WAITING_PRICE, priceMessageId);
+                    }
                 }
                 break;
                 
@@ -424,7 +489,6 @@ public class ProductMessageHandler {
         if (state.getPrice() != null) {
             info.append("<b>Narx:</b> ").append(state.getPrice()).append(" so'm\n");
         }
-        info.append("<b>Rasmlar:</b> ").append(state.getAttachmentUrls() != null ? state.getAttachmentUrls().size() : 0).append(" ta\n");
         if (state.getSelectedSizes() != null && !state.getSelectedSizes().isEmpty()) {
             info.append("<b>O'lchamlar:</b>\n");
             for (org.exp.primeapp.models.enums.Size size : state.getSelectedSizes()) {

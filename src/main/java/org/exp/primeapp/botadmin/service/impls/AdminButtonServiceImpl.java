@@ -68,6 +68,16 @@ public class AdminButtonServiceImpl implements AdminButtonService {
         ).resizeKeyboard(true);
     }
 
+    @Override
+    public Keyboard createProductConfirmationReplyKeyboard() {
+        return new ReplyKeyboardMarkup(
+                new KeyboardButton[]{
+                        new KeyboardButton("✅ Yangi mahsulotni tasdiqlash"),
+                        new KeyboardButton("❌ Yangi mahsulotni bekor qilish")
+                }
+        ).resizeKeyboard(true);
+    }
+
 
     @Override
     public InlineKeyboardMarkup createCategoryButtons(List<Category> categories) {

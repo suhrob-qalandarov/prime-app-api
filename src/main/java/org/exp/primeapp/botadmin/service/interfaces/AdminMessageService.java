@@ -40,7 +40,7 @@ public interface AdminMessageService {
     
     Integer sendProductPricePrompt(Long chatId);
     
-    void sendProductConfirmation(Long chatId, String productInfo);
+    void sendProductConfirmation(Long chatId, String productInfo, org.exp.primeapp.botadmin.models.ProductCreationState state);
     
     void sendProductSavedSuccess(Long chatId);
     

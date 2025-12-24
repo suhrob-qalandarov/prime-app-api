@@ -9,19 +9,26 @@ import com.pengrad.telegrambot.request.DeleteMessage;
 import com.pengrad.telegrambot.request.EditMessageText;
 import com.pengrad.telegrambot.request.GetMe;
 import com.pengrad.telegrambot.request.SendMessage;
+import com.pengrad.telegrambot.request.SendPhoto;
+import com.pengrad.telegrambot.request.SendMediaGroup;
+import com.pengrad.telegrambot.model.request.InputMediaPhoto;
 import com.pengrad.telegrambot.response.SendResponse;
 import lombok.extern.slf4j.Slf4j;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.exp.primeapp.botadmin.service.interfaces.AdminButtonService;
 import org.exp.primeapp.botadmin.service.interfaces.AdminMessageService;
+import org.exp.primeapp.models.entities.Attachment;
 import org.exp.primeapp.models.entities.Role;
 import org.exp.primeapp.models.entities.User;
+import org.exp.primeapp.repository.AttachmentRepository;
 import org.exp.primeapp.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 @Slf4j
 @Service
@@ -32,17 +39,20 @@ public class AdminMessageServiceImpl implements AdminMessageService {
     private final org.exp.primeapp.botuser.service.impls.UserServiceImpl botUserService;
     private final UserRepository userRepository;
     private final TelegramBot userBot;
+    private final AttachmentRepository attachmentRepository;
 
     public AdminMessageServiceImpl(@Qualifier("adminBot") TelegramBot telegramBot,
                                    AdminButtonService buttonService,
                                    org.exp.primeapp.botuser.service.impls.UserServiceImpl botUserService,
                                    UserRepository userRepository,
-                                   @Qualifier("userBot") TelegramBot userBot) {
+                                   @Qualifier("userBot") TelegramBot userBot,
+                                   AttachmentRepository attachmentRepository) {
         this.telegramBot = telegramBot;
         this.buttonService = buttonService;
         this.botUserService = botUserService;
         this.userRepository = userRepository;
         this.userBot = userBot;
+        this.attachmentRepository = attachmentRepository;
     }
 
     @Override
@@ -345,13 +355,66 @@ public class AdminMessageServiceImpl implements AdminMessageService {
     }
 
     @Override
-    public void sendProductConfirmation(Long chatId, String productInfo) {
-        telegramBot.execute(new SendMessage(chatId,
-                "✅ <b>9/9</b> Mahsulot ma'lumotlari:\n\n" + productInfo +
-                "\n\nMahsulotni qo'shishni tasdiqlaysizmi?")
-                .parseMode(ParseMode.HTML)
-                .replyMarkup(buttonService.createConfirmationButtons())
-        );
+    public void sendProductConfirmation(Long chatId, String caption, org.exp.primeapp.botadmin.models.ProductCreationState state) {
+        // Send images as media group if available
+        if (state != null && state.getAttachmentUrls() != null && !state.getAttachmentUrls().isEmpty()) {
+            List<InputMediaPhoto> mediaList = new ArrayList<>();
+            
+            for (int i = 0; i < state.getAttachmentUrls().size(); i++) {
+                String attachmentUrl = state.getAttachmentUrls().get(i);
+                try {
+                    Attachment attachment = attachmentRepository.findByUrl(attachmentUrl);
+                    if (attachment != null && attachment.getFilePath() != null) {
+                        java.io.File photoFile = new java.io.File(attachment.getFilePath());
+                        if (photoFile.exists() && photoFile.isFile()) {
+                            // First photo gets the caption, others don't
+                            if (i == 0) {
+                                mediaList.add(new InputMediaPhoto(photoFile).caption(caption).parseMode(ParseMode.HTML));
+                            } else {
+                                mediaList.add(new InputMediaPhoto(photoFile));
+                            }
+                        } else {
+                            log.warn("Image file not found: {}", attachment.getFilePath());
+                        }
+                    }
+                } catch (Exception e) {
+                    log.error("Error preparing product image: {}", e.getMessage(), e);
+                }
+            }
+            
+            // Send media group if we have images
+            if (!mediaList.isEmpty()) {
+                // Telegram allows max 10 media in a group
+                if (mediaList.size() <= 10) {
+                    telegramBot.execute(new SendMediaGroup(chatId, mediaList.toArray(new InputMediaPhoto[0])));
+                } else {
+                    // If more than 10 images, send first 10 as group with caption
+                    telegramBot.execute(new SendMediaGroup(chatId, mediaList.subList(0, 10).toArray(new InputMediaPhoto[0])));
+                    // Send remaining images as separate group (without caption)
+                    List<InputMediaPhoto> remainingMedia = new ArrayList<>();
+                    for (int i = 10; i < mediaList.size(); i++) {
+                        remainingMedia.add(mediaList.get(i));
+                    }
+                    if (!remainingMedia.isEmpty()) {
+                        telegramBot.execute(new SendMediaGroup(chatId, remainingMedia.toArray(new InputMediaPhoto[0])));
+                    }
+                }
+                
+                // Send confirmation buttons as separate message
+                telegramBot.execute(new SendMessage(chatId, "Mahsulotni qo'shishni tasdiqlaysizmi?")
+                        .replyMarkup(buttonService.createProductConfirmationReplyKeyboard()));
+            } else {
+                // No images, send text message with buttons
+                telegramBot.execute(new SendMessage(chatId, caption)
+                        .parseMode(ParseMode.HTML)
+                        .replyMarkup(buttonService.createProductConfirmationReplyKeyboard()));
+            }
+        } else {
+            // No images, send text message with buttons
+            telegramBot.execute(new SendMessage(chatId, caption)
+                    .parseMode(ParseMode.HTML)
+                    .replyMarkup(buttonService.createProductConfirmationReplyKeyboard()));
+        }
     }
 
     @Override
