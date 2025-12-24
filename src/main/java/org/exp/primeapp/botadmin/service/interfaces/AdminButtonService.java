@@ -19,6 +19,8 @@ public interface AdminButtonService {
     
     Keyboard createProductCreationCancelReplyKeyboard();
     
+    Keyboard createProductConfirmationReplyKeyboard();
+    
     InlineKeyboardMarkup createAdminMainMenuButtons();
     
     InlineKeyboardMarkup createProductMenuButtons();

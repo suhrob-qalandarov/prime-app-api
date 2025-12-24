@@ -463,7 +463,7 @@ public class ProductMessageHandler {
                 try {
                     botProductService.handleProductPrice(userId, text);
                     String productInfo = buildProductInfo(state);
-                    messageService.sendProductConfirmation(chatId, productInfo);
+                    messageService.sendProductConfirmation(chatId, productInfo, state);
                 } catch (RuntimeException e) {
                     // Invalid price format - resend prompt
                     Integer priceMessageId = messageService.sendProductPricePrompt(user.getTelegramId());

@@ -203,6 +203,23 @@ public class AdminMessageHandler implements Consumer<Message> {
                     // Outcome functionality - to be implemented later
                     messageService.sendSimpleMessage(chatId, "⚠️ <b>Outcome</b> funksiyasi keyinroq qo'shiladi");
                     return;
+                } else if (text.equals("✅ Yangi mahsulotni tasdiqlash")) {
+                    // Check if product creation is in confirmation state
+                    ProductCreationState productState = botProductService.getProductCreationState(userId);
+                    if (productState != null && productState.getCurrentStep() == ProductCreationState.Step.CONFIRMATION) {
+                        try {
+                            botProductService.confirmAndSaveProduct(userId);
+                            messageService.sendProductSavedSuccess(chatId);
+                            // Return to product menu
+                            messageService.sendAdminSectionMessage(chatId, "Mahsulotlar");
+                        } catch (Exception e) {
+                            log.error("Error confirming product: {}", e.getMessage(), e);
+                            messageService.sendSimpleMessage(chatId, "Xatolik: " + e.getMessage());
+                        }
+                    } else {
+                        messageService.sendSimpleMessage(chatId, "Mahsulot tasdiqlash jarayoni topilmadi");
+                    }
+                    return;
                 } else if (text.equals("❌ Yangi mahsulotni bekor qilish")) {
                     // Check if product creation is active
                     ProductCreationState productState = botProductService.getProductCreationState(userId);
@@ -412,7 +429,7 @@ public class AdminMessageHandler implements Consumer<Message> {
                 try {
                     botProductService.handleProductPrice(userId, text);
                     String productInfo = buildProductInfo(state);
-                    messageService.sendProductConfirmation(chatId, productInfo);
+                    messageService.sendProductConfirmation(chatId, productInfo, state);
                 } catch (RuntimeException e) {
                     // Invalid price format
                     messageService.sendProductPricePrompt(user.getTelegramId());
