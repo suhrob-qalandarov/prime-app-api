@@ -1,23 +1,37 @@
 package org.exp.primeapp.botadmin.service.impls;
 
+import com.pengrad.telegrambot.TelegramBot;
 import com.pengrad.telegrambot.model.Message;
 import com.pengrad.telegrambot.model.PhotoSize;
-import lombok.RequiredArgsConstructor;
+import com.pengrad.telegrambot.model.request.InlineKeyboardMarkup;
+import com.pengrad.telegrambot.model.request.ParseMode;
+import com.pengrad.telegrambot.request.DeleteMessage;
+import com.pengrad.telegrambot.request.SendMessage;
+import com.pengrad.telegrambot.response.SendResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.exp.primeapp.botadmin.models.ProductCreationState;
 import org.exp.primeapp.botadmin.service.interfaces.AdminMessageService;
 import org.exp.primeapp.botadmin.service.interfaces.BotProductService;
 import org.exp.primeapp.botadmin.utils.AdminBotMsgConst;
 import org.exp.primeapp.models.entities.User;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 
 @Slf4j
 @Service
-@RequiredArgsConstructor
 public class ProductMessageHandler {
     
     private final BotProductService botProductService;
     private final AdminMessageService messageService;
+    private final TelegramBot telegramBot;
+    
+    public ProductMessageHandler(BotProductService botProductService,
+                                 AdminMessageService messageService,
+                                 @Qualifier("adminBot") TelegramBot telegramBot) {
+        this.botProductService = botProductService;
+        this.messageService = messageService;
+        this.telegramBot = telegramBot;
+    }
     
     public boolean handleMessage(Message message, User user) {
         String text = message.text();
@@ -45,7 +59,10 @@ public class ProductMessageHandler {
         if (text.equals(AdminBotMsgConst.BTN_NEW_PRODUCT)) {
             botProductService.startProductCreation(userId);
             messageService.sendProductCreationStart(chatId);
-            messageService.sendProductNamePrompt(chatId);
+            Integer nameMessageId = messageService.sendProductNamePrompt(chatId);
+            if (nameMessageId != null) {
+                state.setStepMessageId(ProductCreationState.Step.WAITING_NAME, nameMessageId);
+            }
             return true;
         }
         
@@ -117,16 +134,58 @@ public class ProductMessageHandler {
         
         switch (state.getCurrentStep()) {
             case WAITING_NAME:
+                // Delete current step message
+                Integer currentNameMessageId = state.getStepMessageId(ProductCreationState.Step.WAITING_NAME);
+                if (currentNameMessageId != null) {
+                    try {
+                        telegramBot.execute(new DeleteMessage(chatId, currentNameMessageId));
+                    } catch (Exception e) {
+                        log.error("Error deleting WAITING_NAME message: {}", e.getMessage());
+                    }
+                }
+                
                 botProductService.handleProductName(userId, text);
-                messageService.sendProductDescriptionPrompt(chatId);
+                Integer descMessageId = messageService.sendProductDescriptionPrompt(chatId);
+                if (descMessageId != null) {
+                    state.setStepMessageId(ProductCreationState.Step.WAITING_DESCRIPTION, descMessageId);
+                }
                 break;
                 
             case WAITING_DESCRIPTION:
+                // Delete current step message
+                Integer currentDescMessageId = state.getStepMessageId(ProductCreationState.Step.WAITING_DESCRIPTION);
+                if (currentDescMessageId != null) {
+                    try {
+                        telegramBot.execute(new DeleteMessage(chatId, currentDescMessageId));
+                    } catch (Exception e) {
+                        log.error("Error deleting WAITING_DESCRIPTION message: {}", e.getMessage());
+                    }
+                }
+                
+                // Resend previous step (WAITING_NAME) message without inline buttons
+                resendPreviousStepMessage(chatId, state, ProductCreationState.Step.WAITING_DESCRIPTION);
+                
                 botProductService.handleProductDescription(userId, text);
-                messageService.sendProductBrandPrompt(chatId);
+                Integer brandMessageId = messageService.sendProductBrandPrompt(chatId);
+                if (brandMessageId != null) {
+                    state.setStepMessageId(ProductCreationState.Step.WAITING_BRAND, brandMessageId);
+                }
                 break;
                 
             case WAITING_BRAND:
+                // Delete current step message
+                Integer currentBrandMessageId = state.getStepMessageId(ProductCreationState.Step.WAITING_BRAND);
+                if (currentBrandMessageId != null) {
+                    try {
+                        telegramBot.execute(new DeleteMessage(chatId, currentBrandMessageId));
+                    } catch (Exception e) {
+                        log.error("Error deleting WAITING_BRAND message: {}", e.getMessage());
+                    }
+                }
+                
+                // Resend previous step (WAITING_DESCRIPTION) message without inline buttons
+                resendPreviousStepMessage(chatId, state, ProductCreationState.Step.WAITING_BRAND);
+                
                 // Brand is optional - if empty, skip to next step
                 if (text != null && !text.trim().isEmpty()) {
                     botProductService.handleProductBrand(userId, text);
@@ -139,6 +198,24 @@ public class ProductMessageHandler {
                 break;
                 
             case WAITING_QUANTITIES:
+                // Delete current step message and resend previous step message (only on first quantity input)
+                // Check if this is the first quantity being entered
+                boolean isFirstQuantity = state.getSizeQuantities().values().stream()
+                        .allMatch(qty -> qty == null || qty == 0);
+                if (isFirstQuantity) {
+                    // Delete current step message if exists
+                    Integer currentQuantitiesMessageId = state.getStepMessageId(ProductCreationState.Step.WAITING_QUANTITIES);
+                    if (currentQuantitiesMessageId != null) {
+                        try {
+                            telegramBot.execute(new DeleteMessage(chatId, currentQuantitiesMessageId));
+                        } catch (Exception e) {
+                            log.error("Error deleting WAITING_QUANTITIES message: {}", e.getMessage());
+                        }
+                    }
+                    // Resend previous step message without inline buttons
+                    resendPreviousStepMessage(chatId, state, ProductCreationState.Step.WAITING_QUANTITIES);
+                }
+                
                 // Handle quantity input for sizes
                 try {
                     Integer quantity = Integer.parseInt(text.trim());
@@ -191,6 +268,19 @@ public class ProductMessageHandler {
                 break;
                 
             case WAITING_PRICE:
+                // Delete current step message
+                Integer currentPriceMessageId = state.getStepMessageId(ProductCreationState.Step.WAITING_PRICE);
+                if (currentPriceMessageId != null) {
+                    try {
+                        telegramBot.execute(new DeleteMessage(chatId, currentPriceMessageId));
+                    } catch (Exception e) {
+                        log.error("Error deleting WAITING_PRICE message: {}", e.getMessage());
+                    }
+                }
+                
+                // Resend previous step message without inline buttons
+                resendPreviousStepMessage(chatId, state, ProductCreationState.Step.WAITING_PRICE);
+                
                 try {
                     botProductService.handleProductPrice(userId, text);
                     String productInfo = buildProductInfo(state);
@@ -226,6 +316,79 @@ public class ProductMessageHandler {
             }
         }
         return info.toString();
+    }
+    
+    private void resendPreviousStepMessage(Long chatId, ProductCreationState state, ProductCreationState.Step currentStep) {
+        // Get previous step
+        ProductCreationState.Step previousStep = getPreviousStep(currentStep);
+        if (previousStep == null) {
+            return;
+        }
+        
+        // Get previous step message ID and delete it
+        Integer previousMessageId = state.getStepMessageId(previousStep);
+        if (previousMessageId != null) {
+            try {
+                telegramBot.execute(new DeleteMessage(chatId, previousMessageId));
+            } catch (Exception e) {
+                log.error("Error deleting previous step message: {}", e.getMessage());
+            }
+        }
+        
+        // Get message text for previous step
+        String previousStepText = getStepMessageText(previousStep);
+        if (previousStepText == null) {
+            return;
+        }
+        
+        // Resend previous step message without inline buttons
+        try {
+            SendResponse response = telegramBot.execute(new SendMessage(chatId, previousStepText)
+                    .parseMode(ParseMode.HTML)
+                    .replyMarkup(new InlineKeyboardMarkup(new com.pengrad.telegrambot.model.request.InlineKeyboardButton[0][]))
+            );
+            
+            // Save new message ID
+            if (response.message() != null && response.message().messageId() != null) {
+                state.setStepMessageId(previousStep, response.message().messageId());
+            }
+        } catch (Exception e) {
+            log.error("Error resending previous step message: {}", e.getMessage());
+        }
+    }
+    
+    private ProductCreationState.Step getPreviousStep(ProductCreationState.Step currentStep) {
+        return switch (currentStep) {
+            case WAITING_NAME -> null;
+            case WAITING_DESCRIPTION -> ProductCreationState.Step.WAITING_NAME;
+            case WAITING_BRAND -> ProductCreationState.Step.WAITING_DESCRIPTION;
+            case WAITING_COLOR -> ProductCreationState.Step.WAITING_BRAND;
+            case WAITING_MAIN_IMAGE -> ProductCreationState.Step.WAITING_COLOR;
+            case WAITING_ADDITIONAL_IMAGES -> ProductCreationState.Step.WAITING_MAIN_IMAGE;
+            case WAITING_SPOTLIGHT_NAME -> ProductCreationState.Step.WAITING_ADDITIONAL_IMAGES;
+            case WAITING_CATEGORY -> ProductCreationState.Step.WAITING_SPOTLIGHT_NAME;
+            case WAITING_SIZES -> ProductCreationState.Step.WAITING_CATEGORY;
+            case WAITING_QUANTITIES -> ProductCreationState.Step.WAITING_SIZES;
+            case WAITING_PRICE -> ProductCreationState.Step.WAITING_QUANTITIES;
+            default -> null;
+        };
+    }
+    
+    private String getStepMessageText(ProductCreationState.Step step) {
+        return switch (step) {
+            case WAITING_NAME -> "📝 <b>1/9</b> Mahsulot nomini kiriting:";
+            case WAITING_DESCRIPTION -> "📝 <b>2/9</b> Mahsulot tavsifini kiriting:";
+            case WAITING_BRAND -> "🏷️ <b>3/9</b> Brend nomini kiriting:";
+            case WAITING_COLOR -> "🎨 <b>4/9</b> Rangni tanlang:";
+            case WAITING_MAIN_IMAGE -> "📷 <b>5/9</b> Mahsulotning asosiy rasmlarini yuboring:";
+            case WAITING_ADDITIONAL_IMAGES -> "📷 <b>5/9</b> Mahsulotning qo'shimcha rasmlarini yuboring:";
+            case WAITING_SPOTLIGHT_NAME -> "📂 <b>6/9</b> Toifani tanlang:";
+            case WAITING_CATEGORY -> "📂 <b>7/9</b> Kategoriyani tanlang:";
+            case WAITING_SIZES -> "📏 <b>8/9</b> O'lchamlarni tanlang (bir nechtasini tanlash mumkin):";
+            case WAITING_QUANTITIES -> "📊 Har bir o'lcham uchun miqdorni kiriting:";
+            case WAITING_PRICE -> "💰 <b>9/9</b> Mahsulot narxini kiriting (so'm):";
+            default -> null;
+        };
     }
 }
 
