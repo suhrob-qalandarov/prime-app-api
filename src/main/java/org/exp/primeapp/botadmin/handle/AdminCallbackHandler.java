@@ -241,10 +241,21 @@ public class AdminCallbackHandler implements Consumer<CallbackQuery> {
                     return;
                 }
                 
-                messageService.sendCategorySelection(chatId);
-                telegramBot.execute(new SendMessage(chatId, "📂 Kategoriyani tanlang:")
+                // Edit toifa message to remove buttons
+                com.pengrad.telegrambot.model.Message callbackMessage = callbackQuery.message();
+                Integer messageId = callbackMessage != null ? callbackMessage.messageId() : null;
+                if (messageId != null) {
+                    String toifaText = "📂 <b>6/9</b> Toifani tanlang: " + actualSpotlightName;
+                    telegramBot.execute(new EditMessageText(chatId, messageId, toifaText)
+                            .parseMode(ParseMode.HTML)
+                            .replyMarkup(new InlineKeyboardMarkup(new com.pengrad.telegrambot.model.request.InlineKeyboardButton[0][]))
+                    );
+                }
+                
+                // Send category selection message with buttons
+                telegramBot.execute(new SendMessage(chatId, "📂 <b>7/9</b> Kategoriyani tanlang:")
                         .parseMode(ParseMode.HTML)
-                        .replyMarkup(buttonService.createCategoryButtons(categories))
+                        .replyMarkup(buttonService.addBackButton(buttonService.createCategoryButtons(categories), "WAITING_SPOTLIGHT_NAME"))
                 );
                 telegramBot.execute(new AnswerCallbackQuery(callbackId).text("Toifa tanlandi"));
             } else {
