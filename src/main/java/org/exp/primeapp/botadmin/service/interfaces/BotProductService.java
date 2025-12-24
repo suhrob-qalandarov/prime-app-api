@@ -36,6 +36,10 @@ public interface BotProductService {
     
     void cancelProductCreation(Long userId);
     
+    void clearMainImage(Long userId);
+    
+    void clearAdditionalImages(Long userId);
+    
     void goToPreviousStep(Long userId);
     
     List<org.exp.primeapp.models.entities.Category> getAllCategories();

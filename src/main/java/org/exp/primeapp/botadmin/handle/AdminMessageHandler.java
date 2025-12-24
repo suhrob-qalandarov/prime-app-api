@@ -7,6 +7,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.exp.primeapp.botadmin.models.CategoryCreationState;
 import org.exp.primeapp.botadmin.models.ProductCreationState;
+import org.exp.primeapp.botadmin.service.impls.ProductMessageHandler;
 import org.exp.primeapp.botadmin.service.interfaces.AdminMessageService;
 import org.exp.primeapp.botadmin.service.interfaces.BotCategoryService;
 import org.exp.primeapp.botadmin.service.interfaces.BotProductService;
@@ -33,6 +34,7 @@ public class AdminMessageHandler implements Consumer<Message> {
     private final BotUserService botUserService;
     private final UserRepository userRepository;
     private final TelegramBot userBot;
+    private final ProductMessageHandler productMessageHandler;
 
     public AdminMessageHandler(AdminMessageService messageService,
                                UserService userService,
@@ -40,7 +42,8 @@ public class AdminMessageHandler implements Consumer<Message> {
                                BotCategoryService botCategoryService,
                                BotUserService botUserService,
                                UserRepository userRepository,
-                               @Qualifier("userBot") TelegramBot userBot) {
+                               @Qualifier("userBot") TelegramBot userBot,
+                               ProductMessageHandler productMessageHandler) {
         this.messageService = messageService;
         this.userService = userService;
         this.botProductService = botProductService;
@@ -48,6 +51,7 @@ public class AdminMessageHandler implements Consumer<Message> {
         this.botUserService = botUserService;
         this.userRepository = userRepository;
         this.userBot = userBot;
+        this.productMessageHandler = productMessageHandler;
     }
 
     private String getUserBotUsername() {
@@ -182,7 +186,52 @@ public class AdminMessageHandler implements Consumer<Message> {
                     long[] counts = botUserService.getUserCounts();
                     messageService.sendUsersStatistics(chatId, counts[0], counts[1], counts[2], isSuperAdmin);
                     return;
+                } else if (text.equals("➕ Yangi mahsulot")) {
+                    botProductService.startProductCreation(userId);
+                    messageService.sendProductCreationStart(chatId);
+                    messageService.sendProductNamePrompt(chatId);
+                    return;
+                } else if (text.equals("✏️ Mahsulot o'zgartirish")) {
+                    // Product edit functionality - to be implemented later
+                    messageService.sendSimpleMessage(chatId, "⚠️ <b>Mahsulot o'zgartirish</b> funksiyasi keyinroq qo'shiladi");
+                    return;
+                } else if (text.equals("📥 Income")) {
+                    // Income functionality - to be implemented later
+                    messageService.sendSimpleMessage(chatId, "⚠️ <b>Income</b> funksiyasi keyinroq qo'shiladi");
+                    return;
+                } else if (text.equals("📤 Outcome")) {
+                    // Outcome functionality - to be implemented later
+                    messageService.sendSimpleMessage(chatId, "⚠️ <b>Outcome</b> funksiyasi keyinroq qo'shiladi");
+                    return;
+                } else if (text.equals("❌ Yangi mahsulotni bekor qilish")) {
+                    // Check if product creation is active
+                    ProductCreationState productState = botProductService.getProductCreationState(userId);
+                    if (productState != null) {
+                        // Cancel product creation
+                        botProductService.cancelProductCreation(userId);
+                        messageService.sendProductCreationCancelled(chatId);
+                        
+                        // Return to products menu
+                        messageService.sendAdminSectionMessage(chatId, "Mahsulotlar");
+                        return;
+                    }
                 } else if (text.equals("❌ Bekor qilish")) {
+                    // Check if category creation is active
+                    CategoryCreationState categoryState = botCategoryService.getCategoryCreationState(userId);
+                    if (categoryState != null) {
+                        // Cancel category creation
+                        botCategoryService.cancelCategoryCreation(userId);
+                        messageService.sendCategoryCreationCancelled(chatId);
+                        
+                        // Return to categories menu
+                        messageService.sendAdminSectionMessage(chatId, "Kategoriyalar");
+                        return;
+                    }
+                    
+                    // If no active creation, return to products menu
+                    messageService.sendAdminSectionMessage(chatId, "Mahsulotlar");
+                    return;
+                } else if (text.equals("🏠 Asosiy menyu")) {
                     // Cancel all active states
                     botUserService.setUserSearchState(userId, false);
                     
@@ -219,6 +268,13 @@ public class AdminMessageHandler implements Consumer<Message> {
                 // Check if user is in product creation flow
                 ProductCreationState state = botProductService.getProductCreationState(userId);
                 if (state != null) {
+                    // Try ProductMessageHandler first
+                    boolean handled = productMessageHandler.handleMessage(message, user);
+                    if (handled) {
+                        log.debug("ProductMessageHandler handled message from chatId: {}, text: {}", chatId, text);
+                        return;
+                    }
+                    // Fallback to old handler if ProductMessageHandler didn't handle it
                     handleProductCreationMessage(message, user, state);
                 } else {
                     log.debug("No handler for message from chatId: {}, text: {}", chatId, text);
@@ -261,8 +317,6 @@ public class AdminMessageHandler implements Consumer<Message> {
                     // Additional image uploaded
                     int remaining = 3 - currentCount;
                     if (currentCount >= 3) {
-                        // Max 3 images reached
-                        messageService.sendImagesCompleted(chatId, currentCount);
                         state.setCurrentStep(ProductCreationState.Step.WAITING_SPOTLIGHT_NAME);
                         messageService.sendSpotlightNamePromptForProduct(chatId);
                     } else {

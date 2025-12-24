@@ -134,27 +134,66 @@ public class BotProductServiceImpl implements BotProductService {
             return;
         }
 
+        // Clear old images when going back to image steps
+        if (state.getCurrentStep() == ProductCreationState.Step.WAITING_MAIN_IMAGE) {
+            // Clear main image if exists (user is replacing it)
+            clearMainImage(userId);
+        } else if (state.getCurrentStep() == ProductCreationState.Step.WAITING_ADDITIONAL_IMAGES) {
+            // Don't clear additional images automatically - user can add multiple
+            // Only clear if we're at max capacity and user wants to replace
+            if (!state.canAddMoreImages()) {
+                // At max capacity, clear last additional image to make room
+                if (state.getAttachmentUrls() != null && state.getAttachmentUrls().size() >= 3) {
+                    String lastImageUrl = state.getAttachmentUrls().get(state.getAttachmentUrls().size() - 1);
+                    Attachment attachment = attachmentRepository.findByUrl(lastImageUrl);
+                    if (attachment != null) {
+                        attachment.setActive(false);
+                        attachmentRepository.save(attachment);
+                        log.info("Last additional image attachment soft-deleted: {}", attachment.getId());
+                    }
+                    state.getAttachmentUrls().remove(state.getAttachmentUrls().size() - 1);
+                    if (state.getImageFileIds() != null && !state.getImageFileIds().isEmpty()) {
+                        state.getImageFileIds().remove(state.getImageFileIds().size() - 1);
+                    }
+                }
+            }
+        }
+
         if (!state.canAddMoreImages()) {
             return; // Already has 3 images
         }
 
         try {
             // Download file from Telegram
-            File file = telegramBot.execute(new GetFile(fileId)).file();
+            com.pengrad.telegrambot.response.GetFileResponse getFileResponse = telegramBot.execute(new GetFile(fileId));
+            if (!getFileResponse.isOk()) {
+                log.error("Failed to get file from Telegram for fileId: {}, error: {}", fileId, getFileResponse.description());
+                return;
+            }
+            
+            File file = getFileResponse.file();
             if (file == null) {
                 log.error("File not found for fileId: {}", fileId);
                 return;
             }
 
             String filePath = file.filePath();
+            if (filePath == null || filePath.isEmpty()) {
+                log.error("File path is null or empty for fileId: {}", fileId);
+                return;
+            }
+            
+            log.info("Downloading file from Telegram: fileId={}, filePath={}", fileId, filePath);
             String fileUrl = "https://api.telegram.org/file/bot" + botToken + "/" + filePath;
 
             // Download and save file
             String savedUrl = downloadAndSaveFile(fileUrl, filePath);
+            log.info("File saved successfully: savedUrl={}", savedUrl);
             
             // Create attachment
             Attachment attachment = createAttachment(fileUrl, savedUrl, filePath);
             attachmentRepository.save(attachment);
+            log.info("Attachment saved to database: id={}, url={}", attachment.getId(), attachment.getUrl());
 
             state.addImageFileId(fileId);
             state.addAttachmentUrl(savedUrl);
@@ -164,7 +203,7 @@ public class BotProductServiceImpl implements BotProductService {
                 state.setCurrentStep(ProductCreationState.Step.WAITING_ADDITIONAL_IMAGES);
             }
         } catch (Exception e) {
-            log.error("Error handling product image: {}", e.getMessage(), e);
+            log.error("Error handling product image for fileId: {}", fileId, e);
         }
     }
 
@@ -404,12 +443,20 @@ public class BotProductServiceImpl implements BotProductService {
             URI uri = new URI(fileUrl);
             try (InputStream in = uri.toURL().openStream()) {
                 Path filePath = uploadDir.resolve(uniqueFilename);
-                Files.copy(in, filePath, StandardCopyOption.REPLACE_EXISTING);
-                log.info("File saved successfully: {}", filePath.toAbsolutePath());
+                long bytesCopied = Files.copy(in, filePath, StandardCopyOption.REPLACE_EXISTING);
+                log.info("File saved successfully: {} ({} bytes)", filePath.toAbsolutePath(), bytesCopied);
+                
+                // Verify file was saved
+                if (!Files.exists(filePath) || Files.size(filePath) == 0) {
+                    throw new IOException("File was not saved correctly or is empty");
+                }
             }
         } catch (URISyntaxException e) {
             log.error("Invalid URI: {}", fileUrl, e);
             throw new RuntimeException("Invalid file URL", e);
+        } catch (IOException e) {
+            log.error("Error downloading file from URL: {}", fileUrl, e);
+            throw new IOException("Failed to download file from Telegram", e);
         }
 
         // Generate URL
@@ -453,6 +500,68 @@ public class BotProductServiceImpl implements BotProductService {
             case "webp" -> "image/webp";
             default -> "image/jpeg";
         };
+    }
+    
+    @Override
+    public void clearMainImage(Long userId) {
+        ProductCreationState state = getProductCreationState(userId);
+        if (state == null) {
+            return;
+        }
+        
+        // Remove first image (main image) if exists
+        if (state.getAttachmentUrls() != null && !state.getAttachmentUrls().isEmpty()) {
+            String mainImageUrl = state.getAttachmentUrls().get(0);
+            
+            // Find and soft-delete attachment
+            Attachment attachment = attachmentRepository.findByUrl(mainImageUrl);
+            if (attachment != null) {
+                attachment.setActive(false);
+                attachmentRepository.save(attachment);
+                log.info("Main image attachment soft-deleted: {}", attachment.getId());
+            }
+            
+            // Remove from state
+            state.getAttachmentUrls().remove(0);
+            if (state.getImageFileIds() != null && !state.getImageFileIds().isEmpty()) {
+                state.getImageFileIds().remove(0);
+            }
+            
+            log.info("Main image cleared from state for user: {}", userId);
+        }
+    }
+    
+    @Override
+    public void clearAdditionalImages(Long userId) {
+        ProductCreationState state = getProductCreationState(userId);
+        if (state == null) {
+            return;
+        }
+        
+        // Remove additional images (all except first/main image) if exists
+        if (state.getAttachmentUrls() != null && state.getAttachmentUrls().size() > 1) {
+            List<String> additionalImageUrls = new ArrayList<>(state.getAttachmentUrls().subList(1, state.getAttachmentUrls().size()));
+            
+            // Soft-delete all additional image attachments
+            for (String url : additionalImageUrls) {
+                Attachment attachment = attachmentRepository.findByUrl(url);
+                if (attachment != null) {
+                    attachment.setActive(false);
+                    attachmentRepository.save(attachment);
+                    log.info("Additional image attachment soft-deleted: {}", attachment.getId());
+                }
+            }
+            
+            // Remove from state (keep only first/main image)
+            if (state.getAttachmentUrls().size() > 1) {
+                state.getAttachmentUrls().subList(1, state.getAttachmentUrls().size()).clear();
+            }
+            if (state.getImageFileIds() != null && state.getImageFileIds().size() > 1) {
+                state.getImageFileIds().subList(1, state.getImageFileIds().size()).clear();
+            }
+            
+            log.info("Additional images cleared from state for user: {}, removed {} images", userId, additionalImageUrls.size());
+        }
     }
 }
 

@@ -38,6 +38,7 @@ public class AdminCallbackHandler implements Consumer<CallbackQuery> {
     private final AdminButtonService buttonService;
     private final TelegramBot telegramBot;
     private final TelegramBot userBot;
+    private final org.exp.primeapp.botadmin.service.impls.ProductCallbackHandler productCallbackHandler;
 
     public AdminCallbackHandler(UserService userService,
                                  AdminMessageService messageService,
@@ -46,7 +47,8 @@ public class AdminCallbackHandler implements Consumer<CallbackQuery> {
                                  BotUserService botUserService,
                                  AdminButtonService buttonService,
                                  @Qualifier("adminBot") TelegramBot telegramBot,
-                                 @Qualifier("userBot") TelegramBot userBot) {
+                                 @Qualifier("userBot") TelegramBot userBot,
+                                 org.exp.primeapp.botadmin.service.impls.ProductCallbackHandler productCallbackHandler) {
         this.userService = userService;
         this.messageService = messageService;
         this.botProductService = botProductService;
@@ -55,6 +57,7 @@ public class AdminCallbackHandler implements Consumer<CallbackQuery> {
         this.buttonService = buttonService;
         this.telegramBot = telegramBot;
         this.userBot = userBot;
+        this.productCallbackHandler = productCallbackHandler;
     }
 
     private boolean isAdmin(User user) {
@@ -164,6 +167,16 @@ public class AdminCallbackHandler implements Consumer<CallbackQuery> {
                         .replyMarkup(buttonService.createAdminMainMenuButtons())
                 );
             }
+            
+            // Cancel category creation if active
+            CategoryCreationState categoryState = botCategoryService.getCategoryCreationState(userId);
+            if (categoryState != null) {
+                botCategoryService.cancelCategoryCreation(userId);
+            }
+            
+            // Return to main menu
+            String firstName = user.getFirstName() != null ? user.getFirstName() : "Admin";
+            messageService.sendAdminMenu(chatId, firstName);
             telegramBot.execute(new AnswerCallbackQuery(callbackId).text("Asosiy menyu"));
             return;
         }
@@ -178,6 +191,13 @@ public class AdminCallbackHandler implements Consumer<CallbackQuery> {
         if (data.equals("admin_product_add_income")) {
             telegramBot.execute(new AnswerCallbackQuery(callbackId)
                     .text("Product income qo'shish funksiyasi keyinroq qo'shiladi")
+                    .showAlert(true));
+            return;
+        }
+
+        if (data.equals("admin_product_add_outcome")) {
+            telegramBot.execute(new AnswerCallbackQuery(callbackId)
+                    .text("Product outcome qo'shish funksiyasi keyinroq qo'shiladi")
                     .showAlert(true));
             return;
         }
@@ -221,10 +241,21 @@ public class AdminCallbackHandler implements Consumer<CallbackQuery> {
                     return;
                 }
                 
-                messageService.sendCategorySelection(chatId);
-                telegramBot.execute(new SendMessage(chatId, "📂 Kategoriyani tanlang:")
+                // Edit toifa message to remove buttons
+                com.pengrad.telegrambot.model.Message callbackMessage = callbackQuery.message();
+                Integer messageId = callbackMessage != null ? callbackMessage.messageId() : null;
+                if (messageId != null) {
+                    String toifaText = "📂 <b>6/9</b> Toifani tanlang: " + actualSpotlightName;
+                    telegramBot.execute(new EditMessageText(chatId, messageId, toifaText)
+                            .parseMode(ParseMode.HTML)
+                            .replyMarkup(new InlineKeyboardMarkup(new com.pengrad.telegrambot.model.request.InlineKeyboardButton[0][]))
+                    );
+                }
+                
+                // Send category selection message with buttons
+                telegramBot.execute(new SendMessage(chatId, "📂 <b>7/9</b> Kategoriyani tanlang:")
                         .parseMode(ParseMode.HTML)
-                        .replyMarkup(buttonService.createCategoryButtons(categories))
+                        .replyMarkup(buttonService.addBackButton(buttonService.createCategoryButtons(categories), "WAITING_SPOTLIGHT_NAME"))
                 );
                 telegramBot.execute(new AnswerCallbackQuery(callbackId).text("Toifa tanlandi"));
             } else {
@@ -281,11 +312,8 @@ public class AdminCallbackHandler implements Consumer<CallbackQuery> {
             return;
         }
 
-        if (data.equals("add_product")) {
-            botProductService.startProductCreation(userId);
-            messageService.sendProductCreationStart(chatId);
-            messageService.sendProductNamePrompt(chatId);
-            telegramBot.execute(new AnswerCallbackQuery(callbackId).text("Mahsulot qo'shish boshlandi"));
+        // Handle product callbacks
+        if (productCallbackHandler.handleCallback(callbackQuery, userId, chatId)) {
             return;
         }
         
@@ -353,202 +381,7 @@ public class AdminCallbackHandler implements Consumer<CallbackQuery> {
             return;
         }
 
-        // Handle product creation callbacks
-        ProductCreationState state = botProductService.getProductCreationState(userId);
-        if (state == null) {
-            // Don't show error for admin menu callbacks and user role callbacks
-            if (!data.startsWith("admin_") && !data.startsWith("set_")) {
-                telegramBot.execute(new AnswerCallbackQuery(callbackId)
-                        .text("Mahsulot qo'shish jarayoni topilmadi. /add_product bilan boshlang.")
-                        .showAlert(true));
-            }
-            return;
-        }
-
-        // Handle color selection callbacks
-        if (data.startsWith("select_color_")) {
-            // Parse color name and hex from callback data
-            // Format: "select_color_ColorName_#HexCode"
-            String colorData = data.replace("select_color_", "");
-            // Split by last underscore to separate name and hex
-            int lastUnderscoreIndex = colorData.lastIndexOf("_");
-            if (lastUnderscoreIndex > 0 && lastUnderscoreIndex < colorData.length() - 1) {
-                String colorName = colorData.substring(0, lastUnderscoreIndex);
-                String colorHex = colorData.substring(lastUnderscoreIndex + 1);
-                
-                log.debug("Parsed color selection - name: {}, hex: {}", colorName, colorHex);
-                
-                botProductService.handleProductColor(userId, colorName, colorHex);
-                
-                // Edit message to show selected color
-                com.pengrad.telegrambot.model.Message callbackMessage = callbackQuery.message();
-                Integer messageId = callbackMessage != null ? callbackMessage.messageId() : null;
-                if (messageId != null) {
-                    telegramBot.execute(new EditMessageText(chatId, messageId,
-                            "🎨 <b>4/9</b> Rang tanlandi: " + colorName + "\n\n" +
-                            "📷 Keyingi qadam: Mahsulotning asosiy rasmlarini yuboring")
-                            .parseMode(ParseMode.HTML)
-                            .replyMarkup(new InlineKeyboardMarkup(new com.pengrad.telegrambot.model.request.InlineKeyboardButton[0][]))
-                    );
-                }
-                
-                // Move to main image step
-                state.setCurrentStep(ProductCreationState.Step.WAITING_MAIN_IMAGE);
-                messageService.sendMainImagePrompt(chatId);
-                
-                telegramBot.execute(new AnswerCallbackQuery(callbackId).text("Rang tanlandi"));
-            } else {
-                log.error("Failed to parse color data: {}", colorData);
-                telegramBot.execute(new AnswerCallbackQuery(callbackId)
-                        .text("Xatolik: Rang ma'lumotlarini parse qilishda muammo")
-                        .showAlert(true));
-            }
-            return;
-        }
-
-        if (data.equals("skip_color")) {
-            // Skip color selection - set default values
-            botProductService.handleProductColor(userId, "N/A", "#000000");
-            
-            // Edit message to show skipped
-            com.pengrad.telegrambot.model.Message callbackMessage = callbackQuery.message();
-            Integer messageId = callbackMessage != null ? callbackMessage.messageId() : null;
-            if (messageId != null) {
-                telegramBot.execute(new EditMessageText(chatId, messageId,
-                        "🎨 <b>4/9</b> Rang tanlash: (O'tkazib yuborildi)\n\n" +
-                        "📷 Keyingi qadam: Mahsulotning asosiy rasmlarini yuboring")
-                        .parseMode(ParseMode.HTML)
-                        .replyMarkup(new InlineKeyboardMarkup(new com.pengrad.telegrambot.model.request.InlineKeyboardButton[0][]))
-                );
-            }
-            
-            // Move to main image step
-            state.setCurrentStep(ProductCreationState.Step.WAITING_MAIN_IMAGE);
-            messageService.sendMainImagePrompt(chatId);
-            
-            telegramBot.execute(new AnswerCallbackQuery(callbackId).text("Rang tanlash o'tkazib yuborildi"));
-            return;
-        }
-
-        if (data.startsWith("select_category_")) {
-            Long categoryId = Long.parseLong(data.replace("select_category_", ""));
-            botProductService.handleCategorySelection(userId, categoryId);
-            
-            // After category selected, show sizes
-            state.setCurrentStep(ProductCreationState.Step.WAITING_SIZES);
-            messageService.sendSizeSelection(chatId);
-            List<Size> allSizes = List.of(Size.values());
-            telegramBot.execute(new SendMessage(chatId, "📏 O'lchamlarni tanlang (bir nechtasini tanlash mumkin):")
-                    .parseMode(ParseMode.HTML)
-                    .replyMarkup(buttonService.createSizeButtons(allSizes, state.getSelectedSizes()))
-            );
-            
-            telegramBot.execute(new AnswerCallbackQuery(callbackId).text("Kategoriya tanlandi"));
-
-        } else if (data.startsWith("toggle_size_")) {
-            String sizeName = data.replace("toggle_size_", "");
-            botProductService.handleSizeSelection(userId, sizeName);
-            
-            // Update size buttons
-            List<Size> allSizes = List.of(Size.values());
-            com.pengrad.telegrambot.model.Message callbackMessage = callbackQuery.message();
-            Integer messageId = callbackMessage != null ? callbackMessage.messageId() : null;
-            if (messageId != null) {
-                telegramBot.execute(new EditMessageText(chatId, messageId,
-                    "📏 O'lchamlarni tanlang:")
-                    .parseMode(ParseMode.HTML)
-                    .replyMarkup(buttonService.createSizeButtons(allSizes, state.getSelectedSizes()))
-                );
-            }
-            
-            telegramBot.execute(new AnswerCallbackQuery(callbackId).text("O'lcham tanlandi"));
-
-        } else if (data.equals("continue_sizes")) {
-            if (state.getSelectedSizes().isEmpty()) {
-                telegramBot.execute(new AnswerCallbackQuery(callbackId)
-                        .text("Kamida bitta o'lcham tanlang")
-                        .showAlert(true));
-                return;
-            }
-            
-            // Move to quantity input step
-            state.setCurrentStep(ProductCreationState.Step.WAITING_QUANTITIES);
-            StringBuilder quantityPrompt = new StringBuilder("📊 Har bir o'lcham uchun miqdorni kiriting:\n\n");
-            for (Size size : state.getSelectedSizes()) {
-                quantityPrompt.append(size.getLabel()).append(": /qty_").append(size.name()).append("\n");
-            }
-            
-            telegramBot.execute(new SendMessage(chatId, quantityPrompt.toString())
-                    .parseMode(ParseMode.HTML)
-            );
-            
-            telegramBot.execute(new AnswerCallbackQuery(callbackId).text("O'lchamlar tanlandi"));
-
-        } else if (data.startsWith("qty_")) {
-            // This will be handled when user sends a number message
-            telegramBot.execute(new AnswerCallbackQuery(callbackId).text("Miqdorni raqam sifatida yuboring"));
-
-        } else if (data.equals("add_more_image")) {
-            if (state.canAddMoreImages()) {
-                state.setCurrentStep(ProductCreationState.Step.WAITING_ADDITIONAL_IMAGES);
-                int currentCount = state.getAttachmentUrls() != null ? state.getAttachmentUrls().size() : 0;
-                messageService.sendAdditionalImagesPrompt(chatId, currentCount);
-            } else {
-                telegramBot.execute(new AnswerCallbackQuery(callbackId)
-                        .text("Maksimum 3 ta rasm yuklash mumkin")
-                        .showAlert(true));
-            }
-
-        } else if (data.equals("continue_images")) {
-            if (!state.hasMinimumImages()) {
-                telegramBot.execute(new AnswerCallbackQuery(callbackId)
-                        .text("Kamida 1 ta rasm yuklashingiz kerak")
-                        .showAlert(true));
-                return;
-            }
-            
-            int totalCount = state.getAttachmentUrls() != null ? state.getAttachmentUrls().size() : 0;
-            messageService.sendImagesCompleted(chatId, totalCount);
-            
-            state.setCurrentStep(ProductCreationState.Step.WAITING_SPOTLIGHT_NAME);
-            // Send spotlight name prompt in separate message
-            messageService.sendSpotlightNamePromptForProduct(chatId);
-            
-            telegramBot.execute(new AnswerCallbackQuery(callbackId).text("Keyingi qadamga o'tildi"));
-
-        } else if (data.equals("confirm_product")) {
-            try {
-                // Build product info string
-                StringBuilder productInfo = new StringBuilder();
-                productInfo.append("<b>Nomi:</b> ").append(state.getName()).append("\n");
-                productInfo.append("<b>Brend:</b> ").append(state.getBrand()).append("\n");
-                productInfo.append("<b>Tavsif:</b> ").append(state.getDescription()).append("\n");
-                productInfo.append("<b>Kategoriya:</b> ").append(state.getCategory().getName()).append("\n");
-                productInfo.append("<b>Rasmlar:</b> ").append(state.getAttachmentUrls().size()).append(" ta\n");
-                productInfo.append("<b>O'lchamlar:</b>\n");
-                for (Size size : state.getSelectedSizes()) {
-                    Integer qty = state.getSizeQuantities().getOrDefault(size, 0);
-                    productInfo.append("  • ").append(size.getLabel()).append(": ").append(qty).append(" ta\n");
-                }
-                
-                // Save product
-                botProductService.confirmAndSaveProduct(userId);
-                messageService.sendProductSavedSuccess(chatId);
-                
-                telegramBot.execute(new AnswerCallbackQuery(callbackId).text("Mahsulot qo'shildi"));
-
-            } catch (Exception e) {
-                log.error("Error confirming product: {}", e.getMessage(), e);
-                telegramBot.execute(new AnswerCallbackQuery(callbackId)
-                        .text("Xatolik: " + e.getMessage())
-                        .showAlert(true));
-            }
-
-        } else if (data.equals("cancel_product")) {
-            botProductService.cancelProductCreation(userId);
-            messageService.sendProductCreationCancelled(chatId);
-            telegramBot.execute(new AnswerCallbackQuery(callbackId).text("Bekor qilindi"));
-        }
+        // Product callbacks are now handled by ProductCallbackHandler
     }
 
     private String buildCategoryInfo(CategoryCreationState state) {

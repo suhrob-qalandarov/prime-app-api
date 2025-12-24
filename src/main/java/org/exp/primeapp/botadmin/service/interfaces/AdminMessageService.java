@@ -22,17 +22,15 @@ public interface AdminMessageService {
     
     Integer sendProductBrandPrompt(Long chatId);
     
-    void sendProductColorPrompt(Long chatId);
+    Integer sendProductColorPrompt(Long chatId);
     
-    void sendMainImagePrompt(Long chatId);
+    Integer sendMainImagePrompt(Long chatId);
     
     void sendAdditionalImagesPrompt(Long chatId, int currentCount);
     
     void sendProductImagePrompt(Long chatId, int currentCount);
     
     void sendImageSavedSuccess(Long chatId, int currentCount, int remaining);
-    
-    void sendImagesCompleted(Long chatId, int totalCount);
     
     void sendSpotlightNamePromptForProduct(Long chatId);
     
@@ -73,5 +71,7 @@ public interface AdminMessageService {
     void sendRoleAddedSuccess(Long chatId, String roleName);
     
     void sendNoCategoriesMessage(Long chatId);
+    
+    void sendSimpleMessage(Long chatId, String message);
 }
 

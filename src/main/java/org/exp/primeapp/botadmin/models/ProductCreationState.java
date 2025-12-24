@@ -48,6 +48,7 @@ public class ProductCreationState {
     private Map<Size, Integer> sizeQuantities; // Size -> quantity
     private BigDecimal price;
     private Long userId;
+    private Map<Step, Integer> stepMessageIds; // Step -> messageId for editing
     
     public static ProductCreationState createInitial(Long userId) {
         return ProductCreationState.builder()
@@ -56,8 +57,20 @@ public class ProductCreationState {
                 .attachmentUrls(new ArrayList<>())
                 .selectedSizes(new ArrayList<>())
                 .sizeQuantities(new HashMap<>())
+                .stepMessageIds(new HashMap<>())
                 .userId(userId)
                 .build();
+    }
+    
+    public void setStepMessageId(Step step, Integer messageId) {
+        if (stepMessageIds == null) {
+            stepMessageIds = new HashMap<>();
+        }
+        stepMessageIds.put(step, messageId);
+    }
+    
+    public Integer getStepMessageId(Step step) {
+        return stepMessageIds != null ? stepMessageIds.get(step) : null;
     }
     
     public void addImageFileId(String fileId) {

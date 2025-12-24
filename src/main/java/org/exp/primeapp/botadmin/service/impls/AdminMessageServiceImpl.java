@@ -1,6 +1,7 @@
 package org.exp.primeapp.botadmin.service.impls;
 
 import com.pengrad.telegrambot.TelegramBot;
+import com.pengrad.telegrambot.model.request.InlineKeyboardButton;
 import com.pengrad.telegrambot.model.request.InlineKeyboardMarkup;
 import com.pengrad.telegrambot.model.request.ParseMode;
 import com.pengrad.telegrambot.model.request.ReplyKeyboardRemove;
@@ -157,19 +158,12 @@ public class AdminMessageServiceImpl implements AdminMessageService {
             SendMessage sendMessage;
             
             if (sectionName.equals("Mahsulotlar")) {
-                // First, remove old keyboard and set new cancel button
-                SendMessage cancelMessage = new SendMessage(chatId,
+                // Send message with reply keyboard
+                SendMessage productMessage = new SendMessage(chatId,
                         "🛍️ <b>Mahsulotlar bo'limi</b>\n\nQuyidagi amallardan birini tanlang:")
                         .parseMode(ParseMode.HTML)
-                        .replyMarkup(buttonService.createAdminCancelReplyKeyboard());
-                telegramBot.execute(cancelMessage);
-                
-                // Then send inline keyboard message
-                SendMessage inlineMessage = new SendMessage(chatId,
-                        "⬇️ Quyidagi tugmalardan birini tanlang:")
-                        .parseMode(ParseMode.HTML)
-                        .replyMarkup(buttonService.createProductMenuButtons());
-                telegramBot.execute(inlineMessage);
+                        .replyMarkup(buttonService.createProductReplyKeyboard());
+                telegramBot.execute(productMessage);
                 return;
             } else if (sectionName.equals("Kategoriyalar")) {
                 // First, remove old keyboard and set new cancel button
@@ -206,6 +200,7 @@ public class AdminMessageServiceImpl implements AdminMessageService {
                 "🛍️ <b>Yangi mahsulot qo'shish</b>\n\n" +
                 "Mahsulot qo'shish jarayonini boshlaymiz. Quyidagi ma'lumotlarni ketma-ket kiriting:")
                 .parseMode(ParseMode.HTML)
+                .replyMarkup(buttonService.createProductCreationCancelReplyKeyboard())
         );
     }
 
@@ -242,15 +237,16 @@ public class AdminMessageServiceImpl implements AdminMessageService {
     }
 
     @Override
-    public void sendProductColorPrompt(Long chatId) {
+    public Integer sendProductColorPrompt(Long chatId) {
         InlineKeyboardMarkup colorButtons = buttonService.createColorButtons();
         InlineKeyboardMarkup withBack = ((AdminButtonServiceImpl) buttonService).addBackButton(colorButtons, "WAITING_BRAND");
         
-        telegramBot.execute(new SendMessage(chatId,
+        SendResponse response = telegramBot.execute(new SendMessage(chatId,
                 "🎨 <b>4/9</b> Rangni tanlang:")
                 .parseMode(ParseMode.HTML)
                 .replyMarkup(withBack)
         );
+        return response.message() != null ? response.message().messageId() : null;
     }
 
     @Override
@@ -266,12 +262,13 @@ public class AdminMessageServiceImpl implements AdminMessageService {
     }
 
     @Override
-    public void sendMainImagePrompt(Long chatId) {
-        telegramBot.execute(new SendMessage(chatId,
+    public Integer sendMainImagePrompt(Long chatId) {
+        SendResponse response = telegramBot.execute(new SendMessage(chatId,
                 "📷 <b>5/9</b> Mahsulotning asosiy rasmlarini yuboring:")
                 .parseMode(ParseMode.HTML)
                 .replyMarkup(buttonService.createBackButton("WAITING_COLOR"))
         );
+        return response.message() != null ? response.message().messageId() : null;
     }
 
     @Override
@@ -291,22 +288,22 @@ public class AdminMessageServiceImpl implements AdminMessageService {
 
     @Override
     public void sendImageSavedSuccess(Long chatId, int currentCount, int remaining) {
-        String message = "✅ Rasm muvaffaqiyatli saqlandi!\n";
-        message += "Qo'shish mumkin yana " + remaining + " ta rasm!";
+        String message = "✅ Asosiy rasm muvaffaqiyatli saqlandi!\n";
+        message += "➕ Qo'shish mumkin yana " + remaining + " ta qo'shimcha rasm!";
         
-        telegramBot.execute(new SendMessage(chatId, message)
-                .parseMode(ParseMode.HTML)
-                .replyMarkup(buttonService.createNextStepImageButton())
+        // Create buttons: Previous step (back to WAITING_MAIN_IMAGE) and Next step (skip to WAITING_SPOTLIGHT_NAME)
+        InlineKeyboardButton previousButton = new InlineKeyboardButton("⬅️ Previous step")
+                .callbackData("back_to_WAITING_MAIN_IMAGE");
+        InlineKeyboardButton nextButton = new InlineKeyboardButton("➡️ Next step")
+                .callbackData("continue_images");
+        
+        InlineKeyboardMarkup keyboard = new InlineKeyboardMarkup(
+                new InlineKeyboardButton[]{previousButton, nextButton}
         );
-    }
-
-    @Override
-    public void sendImagesCompleted(Long chatId, int totalCount) {
-        String message = "✅ Mahsulot rasmlari muvaffaqiyatli saqlandi!\n";
-        message += "Hozirgi: " + totalCount + " ta";
         
         telegramBot.execute(new SendMessage(chatId, message)
                 .parseMode(ParseMode.HTML)
+                .replyMarkup(keyboard)
         );
     }
 
@@ -533,6 +530,13 @@ public class AdminMessageServiceImpl implements AdminMessageService {
         telegramBot.execute(new SendMessage(chatId,
                 "⚠️ <b>Kategoriya mavjud emas!</b>\n\n" +
                 "Birorta ham kategoriya mavjud emas. Avval kategoriya qo'shing!")
+                .parseMode(ParseMode.HTML)
+        );
+    }
+
+    @Override
+    public void sendSimpleMessage(Long chatId, String message) {
+        telegramBot.execute(new SendMessage(chatId, message)
                 .parseMode(ParseMode.HTML)
         );
     }
