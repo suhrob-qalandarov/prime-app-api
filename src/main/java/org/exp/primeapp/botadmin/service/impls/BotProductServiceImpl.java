@@ -134,6 +134,31 @@ public class BotProductServiceImpl implements BotProductService {
             return;
         }
 
+        // Clear old images when going back to image steps
+        if (state.getCurrentStep() == ProductCreationState.Step.WAITING_MAIN_IMAGE) {
+            // Clear main image if exists (user is replacing it)
+            clearMainImage(userId);
+        } else if (state.getCurrentStep() == ProductCreationState.Step.WAITING_ADDITIONAL_IMAGES) {
+            // Don't clear additional images automatically - user can add multiple
+            // Only clear if we're at max capacity and user wants to replace
+            if (!state.canAddMoreImages()) {
+                // At max capacity, clear last additional image to make room
+                if (state.getAttachmentUrls() != null && state.getAttachmentUrls().size() >= 3) {
+                    String lastImageUrl = state.getAttachmentUrls().get(state.getAttachmentUrls().size() - 1);
+                    Attachment attachment = attachmentRepository.findByUrl(lastImageUrl);
+                    if (attachment != null) {
+                        attachment.setActive(false);
+                        attachmentRepository.save(attachment);
+                        log.info("Last additional image attachment soft-deleted: {}", attachment.getId());
+                    }
+                    state.getAttachmentUrls().remove(state.getAttachmentUrls().size() - 1);
+                    if (state.getImageFileIds() != null && !state.getImageFileIds().isEmpty()) {
+                        state.getImageFileIds().remove(state.getImageFileIds().size() - 1);
+                    }
+                }
+            }
+        }
+
         if (!state.canAddMoreImages()) {
             return; // Already has 3 images
         }
@@ -475,6 +500,68 @@ public class BotProductServiceImpl implements BotProductService {
             case "webp" -> "image/webp";
             default -> "image/jpeg";
         };
+    }
+    
+    @Override
+    public void clearMainImage(Long userId) {
+        ProductCreationState state = getProductCreationState(userId);
+        if (state == null) {
+            return;
+        }
+        
+        // Remove first image (main image) if exists
+        if (state.getAttachmentUrls() != null && !state.getAttachmentUrls().isEmpty()) {
+            String mainImageUrl = state.getAttachmentUrls().get(0);
+            
+            // Find and soft-delete attachment
+            Attachment attachment = attachmentRepository.findByUrl(mainImageUrl);
+            if (attachment != null) {
+                attachment.setActive(false);
+                attachmentRepository.save(attachment);
+                log.info("Main image attachment soft-deleted: {}", attachment.getId());
+            }
+            
+            // Remove from state
+            state.getAttachmentUrls().remove(0);
+            if (state.getImageFileIds() != null && !state.getImageFileIds().isEmpty()) {
+                state.getImageFileIds().remove(0);
+            }
+            
+            log.info("Main image cleared from state for user: {}", userId);
+        }
+    }
+    
+    @Override
+    public void clearAdditionalImages(Long userId) {
+        ProductCreationState state = getProductCreationState(userId);
+        if (state == null) {
+            return;
+        }
+        
+        // Remove additional images (all except first/main image) if exists
+        if (state.getAttachmentUrls() != null && state.getAttachmentUrls().size() > 1) {
+            List<String> additionalImageUrls = new ArrayList<>(state.getAttachmentUrls().subList(1, state.getAttachmentUrls().size()));
+            
+            // Soft-delete all additional image attachments
+            for (String url : additionalImageUrls) {
+                Attachment attachment = attachmentRepository.findByUrl(url);
+                if (attachment != null) {
+                    attachment.setActive(false);
+                    attachmentRepository.save(attachment);
+                    log.info("Additional image attachment soft-deleted: {}", attachment.getId());
+                }
+            }
+            
+            // Remove from state (keep only first/main image)
+            if (state.getAttachmentUrls().size() > 1) {
+                state.getAttachmentUrls().subList(1, state.getAttachmentUrls().size()).clear();
+            }
+            if (state.getImageFileIds() != null && state.getImageFileIds().size() > 1) {
+                state.getImageFileIds().subList(1, state.getImageFileIds().size()).clear();
+            }
+            
+            log.info("Additional images cleared from state for user: {}, removed {} images", userId, additionalImageUrls.size());
+        }
     }
 }
 

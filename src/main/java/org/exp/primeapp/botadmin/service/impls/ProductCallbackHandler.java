@@ -182,6 +182,15 @@ public class ProductCallbackHandler {
             }
         }
         
+        // Clear images if going back to image steps
+        if (targetStep == ProductCreationState.Step.WAITING_MAIN_IMAGE) {
+            // Clear main image if exists
+            botProductService.clearMainImage(userId);
+        } else if (targetStep == ProductCreationState.Step.WAITING_ADDITIONAL_IMAGES) {
+            // Clear additional images if exists
+            botProductService.clearAdditionalImages(userId);
+        }
+        
         // Set the state to target step directly
         state.setCurrentStep(targetStep);
         
