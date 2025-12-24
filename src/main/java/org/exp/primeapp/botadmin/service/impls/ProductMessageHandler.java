@@ -100,12 +100,38 @@ public class ProductMessageHandler {
         
         if (state.getCurrentStep() == ProductCreationState.Step.WAITING_MAIN_IMAGE || 
             state.getCurrentStep() == ProductCreationState.Step.WAITING_ADDITIONAL_IMAGES) {
+            
+            // Save messageId before processing
+            ProductCreationState.Step currentStep = state.getCurrentStep();
+            Integer currentMessageId = state.getStepMessageId(currentStep);
+            
             // Get the largest photo
             PhotoSize[] photos = message.photo();
             PhotoSize largestPhoto = photos[photos.length - 1];
             String fileId = largestPhoto.fileId();
             
             botProductService.handleProductImage(userId, fileId);
+            
+            // Edit current step message to remove inline buttons
+            if (currentMessageId != null) {
+                try {
+                    String stepText = getStepMessageText(currentStep);
+                    if (stepText != null) {
+                        com.pengrad.telegrambot.response.BaseResponse response = telegramBot.execute(new EditMessageText(chatId, currentMessageId, stepText)
+                                .parseMode(ParseMode.HTML)
+                                .replyMarkup(new InlineKeyboardMarkup(new com.pengrad.telegrambot.model.request.InlineKeyboardButton[0][]))
+                        );
+                        log.info("Edit {} message response: {}", currentStep, response.isOk());
+                        if (!response.isOk()) {
+                            log.error("Edit {} failed: {}", currentStep, response.description());
+                        }
+                    }
+                } catch (Exception e) {
+                    log.error("Error editing {} message: {}", currentStep, e.getMessage(), e);
+                }
+            } else {
+                log.warn("{} messageId is null, cannot edit message", currentStep);
+            }
             
             int currentCount = state.getAttachmentUrls() != null ? state.getAttachmentUrls().size() : 0;
             
@@ -247,8 +273,11 @@ public class ProductMessageHandler {
                 // After brand, move to color selection step
                 if (state != null) {
                     state.setCurrentStep(ProductCreationState.Step.WAITING_COLOR);
+                    Integer colorMessageId = messageService.sendProductColorPrompt(chatId);
+                    if (colorMessageId != null) {
+                        state.setStepMessageId(ProductCreationState.Step.WAITING_COLOR, colorMessageId);
+                    }
                 }
-                messageService.sendProductColorPrompt(chatId);
                 break;
                 
             case WAITING_QUANTITIES:

@@ -236,15 +236,16 @@ public class AdminMessageServiceImpl implements AdminMessageService {
     }
 
     @Override
-    public void sendProductColorPrompt(Long chatId) {
+    public Integer sendProductColorPrompt(Long chatId) {
         InlineKeyboardMarkup colorButtons = buttonService.createColorButtons();
         InlineKeyboardMarkup withBack = ((AdminButtonServiceImpl) buttonService).addBackButton(colorButtons, "WAITING_BRAND");
         
-        telegramBot.execute(new SendMessage(chatId,
+        SendResponse response = telegramBot.execute(new SendMessage(chatId,
                 "🎨 <b>4/9</b> Rangni tanlang:")
                 .parseMode(ParseMode.HTML)
                 .replyMarkup(withBack)
         );
+        return response.message() != null ? response.message().messageId() : null;
     }
 
     @Override
@@ -260,12 +261,13 @@ public class AdminMessageServiceImpl implements AdminMessageService {
     }
 
     @Override
-    public void sendMainImagePrompt(Long chatId) {
-        telegramBot.execute(new SendMessage(chatId,
+    public Integer sendMainImagePrompt(Long chatId) {
+        SendResponse response = telegramBot.execute(new SendMessage(chatId,
                 "📷 <b>5/9</b> Mahsulotning asosiy rasmlarini yuboring:")
                 .parseMode(ParseMode.HTML)
                 .replyMarkup(buttonService.createBackButton("WAITING_COLOR"))
         );
+        return response.message() != null ? response.message().messageId() : null;
     }
 
     @Override

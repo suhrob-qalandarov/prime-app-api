@@ -22,9 +22,9 @@ public interface AdminMessageService {
     
     Integer sendProductBrandPrompt(Long chatId);
     
-    void sendProductColorPrompt(Long chatId);
+    Integer sendProductColorPrompt(Long chatId);
     
-    void sendMainImagePrompt(Long chatId);
+    Integer sendMainImagePrompt(Long chatId);
     
     void sendAdditionalImagesPrompt(Long chatId, int currentCount);
     

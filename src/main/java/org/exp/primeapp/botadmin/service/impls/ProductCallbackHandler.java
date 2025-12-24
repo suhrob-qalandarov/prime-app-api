@@ -198,7 +198,10 @@ public class ProductCallbackHandler {
                 newMessageId = messageService.sendProductBrandPrompt(chatId);
                 break;
             case WAITING_COLOR:
-                messageService.sendProductColorPrompt(chatId);
+                Integer colorMessageId = messageService.sendProductColorPrompt(chatId);
+                if (colorMessageId != null) {
+                    state.setStepMessageId(ProductCreationState.Step.WAITING_COLOR, colorMessageId);
+                }
                 break;
             default:
                 log.warn("No handler for back to step: {}", targetStep);
@@ -228,7 +231,10 @@ public class ProductCallbackHandler {
         }
         
         state.setCurrentStep(ProductCreationState.Step.WAITING_COLOR);
-        messageService.sendProductColorPrompt(chatId);
+        Integer colorMessageId = messageService.sendProductColorPrompt(chatId);
+        if (colorMessageId != null) {
+            state.setStepMessageId(ProductCreationState.Step.WAITING_COLOR, colorMessageId);
+        }
         telegramBot.execute(new AnswerCallbackQuery(callbackId).text("Brend o'tkazib yuborildi"));
     }
     
@@ -254,7 +260,10 @@ public class ProductCallbackHandler {
             }
             
             state.setCurrentStep(ProductCreationState.Step.WAITING_MAIN_IMAGE);
-            messageService.sendMainImagePrompt(chatId);
+            Integer mainImageMessageId = messageService.sendMainImagePrompt(chatId);
+            if (mainImageMessageId != null) {
+                state.setStepMessageId(ProductCreationState.Step.WAITING_MAIN_IMAGE, mainImageMessageId);
+            }
             telegramBot.execute(new AnswerCallbackQuery(callbackId).text("Rang tanlandi"));
         } else {
             log.error("Failed to parse color data: {}", colorData);
@@ -279,7 +288,10 @@ public class ProductCallbackHandler {
         }
         
         state.setCurrentStep(ProductCreationState.Step.WAITING_MAIN_IMAGE);
-        messageService.sendMainImagePrompt(chatId);
+        Integer mainImageMessageId = messageService.sendMainImagePrompt(chatId);
+        if (mainImageMessageId != null) {
+            state.setStepMessageId(ProductCreationState.Step.WAITING_MAIN_IMAGE, mainImageMessageId);
+        }
         telegramBot.execute(new AnswerCallbackQuery(callbackId).text("Rang tanlash o'tkazib yuborildi"));
     }
     
