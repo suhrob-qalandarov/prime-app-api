@@ -203,6 +203,9 @@ public class ProductCallbackHandler {
                     state.setStepMessageId(ProductCreationState.Step.WAITING_COLOR, colorMessageId);
                 }
                 break;
+            case WAITING_MAIN_IMAGE:
+                newMessageId = messageService.sendMainImagePrompt(chatId);
+                break;
             default:
                 log.warn("No handler for back to step: {}", targetStep);
                 break;

@@ -1,6 +1,7 @@
 package org.exp.primeapp.botadmin.service.impls;
 
 import com.pengrad.telegrambot.TelegramBot;
+import com.pengrad.telegrambot.model.request.InlineKeyboardButton;
 import com.pengrad.telegrambot.model.request.InlineKeyboardMarkup;
 import com.pengrad.telegrambot.model.request.ParseMode;
 import com.pengrad.telegrambot.model.request.ReplyKeyboardRemove;
@@ -287,12 +288,22 @@ public class AdminMessageServiceImpl implements AdminMessageService {
 
     @Override
     public void sendImageSavedSuccess(Long chatId, int currentCount, int remaining) {
-        String message = "✅ Rasm muvaffaqiyatli saqlandi!\n";
-        message += "Qo'shish mumkin yana " + remaining + " ta rasm!";
+        String message = "✅ Asosiy rasm muvaffaqiyatli saqlandi!\n";
+        message += "➕ Qo'shish mumkin yana " + remaining + " ta qo'shimcha rasm!";
+        
+        // Create buttons: Previous step (back to WAITING_MAIN_IMAGE) and Next step (skip to WAITING_SPOTLIGHT_NAME)
+        InlineKeyboardButton previousButton = new InlineKeyboardButton("⬅️ Previous step")
+                .callbackData("back_to_WAITING_MAIN_IMAGE");
+        InlineKeyboardButton nextButton = new InlineKeyboardButton("➡️ Next step")
+                .callbackData("continue_images");
+        
+        InlineKeyboardMarkup keyboard = new InlineKeyboardMarkup(
+                new InlineKeyboardButton[]{previousButton, nextButton}
+        );
         
         telegramBot.execute(new SendMessage(chatId, message)
                 .parseMode(ParseMode.HTML)
-                .replyMarkup(buttonService.createNextStepImageButton())
+                .replyMarkup(keyboard)
         );
     }
 
