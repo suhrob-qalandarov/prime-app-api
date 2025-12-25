@@ -7,8 +7,11 @@ import jakarta.servlet.http.HttpServletResponse;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.exp.primeapp.models.entities.Session;
 import org.exp.primeapp.models.entities.User;
 import org.exp.primeapp.repository.SessionRepository;
+import org.exp.primeapp.service.face.global.session.SessionService;
+import org.exp.primeapp.utils.IpAddressUtil;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
@@ -25,6 +28,8 @@ public class JwtCookieFilter extends OncePerRequestFilter {
 
     private final JwtCookieService jwtService;
     private final SessionRepository sessionRepository;
+    private final SessionService sessionService;
+    private final IpAddressUtil ipAddressUtil;
 
     @Override
     protected void doFilterInternal(
@@ -154,7 +159,63 @@ public class JwtCookieFilter extends OncePerRequestFilter {
 
         if (token != null) {
             try {
-                // Step 1: Token validation (IP solishtirish)
+                // Check IP mismatch before full validation
+                try {
+                    String tokenIp = jwtService.getIpFromToken(token);
+                    String requestIp = ipAddressUtil.getClientIpAddress(request);
+                    boolean ipMismatch = tokenIp != null && requestIp != null && !tokenIp.equals(requestIp);
+                    
+                    if (ipMismatch) {
+                        log.warn("IP mismatch detected: token IP = {}, request IP = {}. Creating new session.", tokenIp, requestIp);
+                        
+                        // Get user and session info from old token
+                        String oldSessionId = jwtService.getSessionIdFromToken(token);
+                        User user = jwtService.getUserObject(token);
+                        
+                        // Deactivate old session if exists
+                        if (oldSessionId != null) {
+                            sessionRepository.findBySessionId(oldSessionId).ifPresent(oldSession -> {
+                                oldSession.setIsActive(false);
+                                sessionRepository.save(oldSession);
+                                log.debug("Old session {} deactivated due to IP change", oldSessionId);
+                            });
+                        }
+                        
+                        // Create new session
+                        Session newSession = sessionService.createSession(request);
+                        
+                        // If user exists, migrate session to user and generate authenticated token
+                        if (user != null && user.getId() != null) {
+                            sessionService.migrateSessionToUser(newSession.getSessionId(), user);
+                            newSession = sessionService.getSessionById(newSession.getSessionId());
+                            
+                            // Generate new token with new IP
+                            String newToken = jwtService.generateToken(user, newSession, request);
+                            sessionService.setAccessToken(newSession.getSessionId(), newToken);
+                            jwtService.setJwtCookie(newToken, jwtService.getCookieNameUser(), response, request);
+                            
+                            // Set authentication
+                            var auth = new UsernamePasswordAuthenticationToken(user, null, user.getAuthorities());
+                            SecurityContextHolder.getContext().setAuthentication(auth);
+                            log.info("New session created for user {} with new IP {}", user.getId(), requestIp);
+                        } else {
+                            // Anonymous user - generate anonymous token
+                            String newToken = jwtService.generateAccessTokenForAnonymous(newSession, request);
+                            sessionService.setAccessToken(newSession.getSessionId(), newToken);
+                            jwtService.setJwtCookie(newToken, jwtService.getCookieNameUser(), response, request);
+                            log.info("New anonymous session created with new IP {}", requestIp);
+                        }
+                        
+                        // Continue with the request using new session/token
+                        filterChain.doFilter(request, response);
+                        return;
+                    }
+                } catch (Exception ipCheckException) {
+                    // If IP check fails (token invalid), continue to normal validation
+                    log.debug("IP mismatch check failed, continuing with normal validation: {}", ipCheckException.getMessage());
+                }
+                
+                // Step 1: Token validation (IP match bo'lsa normal validation)
                 if (!jwtService.validateToken(token, request)) {
                     log.warn("Token validation failed");
                     if (isPublicEndpoint) {
