@@ -35,6 +35,7 @@ public class UserServiceImpl implements UserService {
         return getById(user.getId());
     }
 
+    @Transactional
     @Override
     public UserRes getByTelegramId(Long userId) {
         User user = userRepository.findById(userId).orElseThrow();
@@ -55,6 +56,7 @@ public class UserServiceImpl implements UserService {
         return new AdminUserDashboardRes(count, activeCount, inactiveCount, adminUserResList, adminActiveUserResList, adminInactiveUserResList);
     }
 
+    @Transactional
     @Override
     public UserRes getByUsername(String tgUsername) {
         User user = userRepository.findByTgUsername(tgUsername);
@@ -66,12 +68,14 @@ public class UserServiceImpl implements UserService {
 
     }
 
+    @Transactional
     @Override
     public UserRes getByPhoneNumber(String phoneNumber) {
         User user = userRepository.findByPhone(phoneNumber);
         return convertToUserRes(user);
     }
 
+    @Transactional
     @Override
     public UserRes getUserDataFromToken(User user) {
         return convertToUserRes(user);
@@ -103,7 +107,8 @@ public class UserServiceImpl implements UserService {
         return optionalUser.map(this::convertToUserRes).orElse(null);
     }
 
-    private UserRes convertToUserRes(User user) {
+    @Transactional
+    public UserRes convertToUserRes(User user) {
         UserProfileOrdersRes profileOrdersById = orderService.getUserProfileOrdersById(user.getId());
 
         /*List<String> rolesNamesList = user.getRoles().stream()

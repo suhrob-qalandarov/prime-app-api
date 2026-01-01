@@ -29,6 +29,8 @@ public interface Const {
     String USER = "/user";
     String USERS = "/users";
 
+    String PROFILE = "/profile";
+
     String DASHBOARD = "/dashboard";
 
     String SPOTLIGHT = "/spotlight";
