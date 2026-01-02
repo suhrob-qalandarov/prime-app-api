@@ -2,12 +2,14 @@ package org.exp.primeapp.service.impl.user.order;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.exp.primeapp.models.dto.responce.order.OrderItemRes;
+import org.exp.primeapp.models.dto.request.CreateOrderItemReq;
+import org.exp.primeapp.models.dto.request.CreateOrderReq;
 import org.exp.primeapp.models.dto.responce.order.UserOrderItemRes;
 import org.exp.primeapp.models.dto.responce.order.UserOrderRes;
 import org.exp.primeapp.models.dto.responce.order.UserProfileOrdersRes;
 import org.exp.primeapp.models.entities.*;
 import org.exp.primeapp.models.enums.OrderStatus;
+
 import org.exp.primeapp.repository.*;
 import org.exp.primeapp.service.face.user.OrderService;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
@@ -25,25 +27,26 @@ import java.util.List;
 public class OrderServiceImpl implements OrderService {
 
     private final OrderRepository orderRepository;
-    private final UserRepository userRepository;
     private final ProductRepository productRepository;
     private final ProductSizeRepository productSizeRepository;
     private final AttachmentRepository attachmentRepository;
     private final ProductOutcomeRepository productOutcomeRepository;
+    private final CustomerRepository customerRepository;
+    private final org.exp.primeapp.service.face.user.CustomerService customerService;
 
     @Override
     public UserProfileOrdersRes getUserProfileOrdersById(Long id) {
-        List<UserOrderRes> pendingOrderResList = orderRepository.findByUserIdAndStatus(
-                id, OrderStatus.PENDING
-        ).stream().map(this::convertToUserOrderRes).toList();
+        List<UserOrderRes> pendingOrderResList = orderRepository.findByOrderedByUserIdAndStatus(id, OrderStatus.PENDING).stream()
+                .map(this::convertToUserOrderRes)
+                .toList();
 
-        List<UserOrderRes> confirmedOrderResList = orderRepository.findByUserIdAndStatus(
-                id, OrderStatus.CONFIRMED
-        ).stream().map(this::convertToUserOrderRes).toList();
+        List<UserOrderRes> confirmedOrderResList = orderRepository.findByOrderedByUserIdAndStatus(id, OrderStatus.CONFIRMED).stream()
+                .map(this::convertToUserOrderRes)
+                .toList();
 
-        List<UserOrderRes> shippedOrderResList = orderRepository.findByUserIdAndStatus(
-                id, OrderStatus.SHIPPED
-        ).stream().map(this::convertToUserOrderRes).toList();
+        List<UserOrderRes> shippedOrderResList = orderRepository.findByOrderedByUserIdAndStatus(id, OrderStatus.SHIPPED).stream()
+                .map(this::convertToUserOrderRes)
+                .toList();
 
         return UserProfileOrdersRes.builder()
                 .pendingOrders(pendingOrderResList)
@@ -54,81 +57,140 @@ public class OrderServiceImpl implements OrderService {
 
     @Transactional
     public UserOrderRes convertToUserOrderRes(Order order) {
+        List<UserOrderItemRes> items = order.getItems().stream()
+                .map(orderItem -> {
+                    BigDecimal totalSum = orderItem.getUnitPrice()
+                            .multiply(BigDecimal.valueOf(orderItem.getQuantity()));
+
+                    // Calculate discount amount for this item
+                    BigDecimal itemOriginalPrice = orderItem.getUnitPrice();
+                    if (orderItem.getDiscountPercent() != null && orderItem.getDiscountPercent() > 0) {
+                        BigDecimal multiplier = BigDecimal.valueOf(100 - orderItem.getDiscountPercent())
+                                .divide(BigDecimal.valueOf(100), 4, RoundingMode.HALF_UP);
+                        itemOriginalPrice = orderItem.getUnitPrice().divide(multiplier, 2, RoundingMode.HALF_UP);
+                    }
+                    BigDecimal itemDiscountAmount = itemOriginalPrice.subtract(orderItem.getUnitPrice())
+                            .multiply(BigDecimal.valueOf(orderItem.getQuantity()));
+
+                    return UserOrderItemRes.builder()
+                            .name(orderItem.getName())
+                            .brand(orderItem.getBrand())
+                            .colorName(orderItem.getColorName())
+                            .colorHex(orderItem.getColorHex())
+                            .mainImageUrl(attachmentRepository.findByProductId(orderItem.getProduct().getId())
+                                    .stream()
+                                    .findFirst()
+                                    .map(Attachment::getUrl)
+                                    .orElse(null))
+                            .size(orderItem.getSize())
+                            .price(orderItem.getUnitPrice().setScale(2, RoundingMode.HALF_UP))
+                            .discount(orderItem.getDiscountPercent())
+                            .discountPrice(itemDiscountAmount.intValue())
+                            .amount(orderItem.getQuantity())
+                            .totalSum(totalSum.setScale(2, RoundingMode.HALF_UP))
+                            .build();
+                })
+                .toList();
+
+        BigDecimal totalDiscountSum = items.stream()
+                .map(item -> BigDecimal.valueOf(item.discountPrice() != null ? item.discountPrice() : 0))
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
         return UserOrderRes.builder()
                 .id(order.getId())
-                .status(order.getStatus().name())
+                .status(order.getStatus().getLabel())
+                .deliveryType(order.getShippingType().toString())
                 .createdAt(order.getCreatedAt())
-                .orderItems(order.getItems().stream()
-                        .map(orderItem -> {
-                            BigDecimal itemPrice = calculateItemPrice(orderItem.getProduct());
-                            BigDecimal totalSum = itemPrice.multiply(BigDecimal.valueOf(orderItem.getQuantity()));
-
-                            return UserOrderItemRes.builder()
-                                    .name(orderItem.getProduct().getName())
-                                    .imageUrl(attachmentRepository.findByProductId(orderItem.getProduct().getId())
-                                            .stream()
-                                            .findFirst()
-                                            .map(Attachment::getUrl)
-                                            .orElse(null))
-                                    .size(orderItem.getProductSize().getSize().name())
-                                    .price(itemPrice.setScale(2, RoundingMode.HALF_UP))
-                                    .discount(orderItem.getProduct().getDiscount())
-                                    .count(orderItem.getQuantity())
-                                    .totalSum(totalSum.setScale(2, RoundingMode.HALF_UP))
-                                    .build();
-                        })
-                        .toList())
+                .deliveredAt(order.getDeliveredAt())
+                .items(items)
                 .totalSum(order.getTotalPrice().setScale(2, RoundingMode.HALF_UP))
+                .totalDiscountSum(totalDiscountSum)
                 .build();
     }
 
+    @Override
     @Transactional
-    public UserOrderRes createOrder(Long userId, List<OrderItemRes> orderItems) {
-        log.info("Buyurtma yaratish jarayoni boshlandi. Foydalanuvchi ID: {}", userId);
+    public UserOrderRes createOrder(User user, Session session, CreateOrderReq orderRequest) {
+        log.info("Creating order for User ID: {}", user.getId());
 
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("Foydalanuvchi topilmadi"));
+        // 1. Get or Create Customer
+        String phoneNumber = user.getPhone();
+        String fullName = user.getFirstName() + (user.getLastName() != null ? " " + user.getLastName() : "");
 
+        if (orderRequest.customer() != null) {
+            if (orderRequest.customer().phoneNumber() != null && !orderRequest.customer().phoneNumber().isBlank()) {
+                phoneNumber = orderRequest.customer().phoneNumber();
+            }
+            if (orderRequest.customer().fullName() != null && !orderRequest.customer().fullName().isBlank()) {
+                fullName = orderRequest.customer().fullName();
+            }
+        }
+
+        Customer customer = customerService.getOrCreateCustomer(phoneNumber, fullName, user);
+
+        // 2. Create Order
         Order order = new Order();
-        order.setUser(user);
-        order.setStatus(OrderStatus.PENDING);
-        order.setTotalPrice(BigDecimal.ZERO);
+        order.setOrderedByUser(user);
+        order.setOrderedBySession(session);
+        order.setCustomer(customer);
+        order.setStatus(OrderStatus.PENDING_PAYMENT); // Initial status
+        order.setShippingType(orderRequest.delivery());
+
+        if (orderRequest.customer() != null) {
+            order.setComment(orderRequest.customer().comment());
+        }
 
         BigDecimal totalPrice = BigDecimal.ZERO;
         List<OrderItem> orderItemsList = new ArrayList<>();
 
         try {
-            for (OrderItemRes itemDTO : orderItems) {
-                log.debug("Mahsulotni qayta ishlash. ProductID: {}, ProductSizeID: {}, Quantity: {}",
-                        itemDTO.getProductId(), itemDTO.getProductSizeId(), itemDTO.getQuantity());
+            for (CreateOrderItemReq itemReq : orderRequest.items()) {
+                log.debug("Processing Item. ProductID: {}, SizeID: {}, Quantity: {}",
+                        itemReq.productId(), itemReq.size(), itemReq.amount());
 
-                Product product = fetchProduct(itemDTO.getProductId());
+                // Fetch Product
+                Product product = fetchProduct(itemReq.productId());
+
+                // Fetch Size by ID (assuming itemReq.size() is ID, if it's enum/string, logic
+                // differs)
+                // Looks like CreateOrderItemReq has Long size. So it's likely ProductSize ID.
                 ProductSize productSize = fetchAndValidateProductSize(
-                        itemDTO.getProductSizeId(), product.getId(), itemDTO.getQuantity());
+                        itemReq.size(), product.getId(), itemReq.amount());
 
-                BigDecimal itemPrice = calculateItemPrice(product);
-                BigDecimal itemTotal = itemPrice.multiply(BigDecimal.valueOf(itemDTO.getQuantity()));
+                // Calculate Price
+                BigDecimal finalUnitPrice = calculateItemPrice(product);
+                BigDecimal itemTotal = finalUnitPrice.multiply(BigDecimal.valueOf(itemReq.amount()));
 
                 totalPrice = totalPrice.add(itemTotal);
 
-                OrderItem orderItem = createOrderItem(order, product, productSize, itemDTO.getQuantity(), itemPrice);
+                // Create OrderItem (Snapshot)
+                OrderItem orderItem = createOrderItem(order, product, productSize, itemReq.amount(), finalUnitPrice);
                 orderItemsList.add(orderItem);
 
-                updateStockAndLogOutcome(productSize, itemDTO.getQuantity(), user, product);
+                // Update Stock
+                updateStockAndLogOutcome(productSize, itemReq.amount(), user, product);
             }
 
             order.setItems(orderItemsList);
             order.setTotalPrice(totalPrice.setScale(2, RoundingMode.HALF_UP));
+
             Order savedOrder = orderRepository.save(order);
 
-            log.info("Buyurtma muvaffaqiyatli yaratildi. UserId: {}, OrderId: {}", userId, savedOrder.getId());
+            // Update customer stats
+            customer.setOrderAmount(customer.getOrderAmount() + 1);
+            if (customer.getIsNew()) {
+                customer.setIsNew(false);
+            }
+            customerRepository.save(customer);
+
+            log.info("Order successfully created. OrderId: {}", savedOrder.getId());
             return convertToUserOrderRes(savedOrder);
 
         } catch (ObjectOptimisticLockingFailureException e) {
-            log.error("Optimistik qulf xatosi. UserId: {}", userId, e);
-            throw new RuntimeException("Mahsulot zaxirasi o'zgartirilgan. Iltimos, sahifani yangilang va qaytadan urinib ko'ring.");
+            log.error("Optimistic locking failure. UserId: {}", user.getId(), e);
+            throw new RuntimeException("Mahsulot zaxirasi o'zgartirilgan. Iltimos, qaytadan urinib ko'ring.");
         } catch (RuntimeException e) {
-            log.error("Kutilmagan xato. Buyurtma yaratishda xatolik. UserId: {}", userId, e);
+            log.error("Error creating order. UserId: {}", user.getId(), e);
             throw e;
         }
     }
@@ -143,39 +205,53 @@ public class OrderServiceImpl implements OrderService {
                 .orElseThrow(() -> new RuntimeException("Mahsulot hajmi topilmadi"));
 
         if (!productSize.getProduct().getId().equals(productId)) {
-            throw new RuntimeException("Mahsulot hajmi ko'rsatilgan mahsulotga tegishli emas");
+            throw new RuntimeException("Mahsulot hajmi mos kelmadi");
         }
-        if (productSize.getAmount() < quantity) {
-            throw new RuntimeException("Zaxirada mahsulot yetarli emas: " + productSize.getSize());
+        if (productSize.getQuantity() < quantity) {
+            throw new RuntimeException("Zaxirada yetarli emas: " + productSize.getSize());
         }
         return productSize;
     }
 
     private BigDecimal calculateItemPrice(Product product) {
         BigDecimal price = product.getPrice();
-        Integer discount = product.getDiscount();
+        Integer discount = product.getDiscountPercent();
 
         if (discount != null && discount > 0) {
-            BigDecimal discountPercent = BigDecimal.valueOf(discount)
+            BigDecimal discountAmount = price.multiply(BigDecimal.valueOf(discount))
                     .divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP);
-            price = price.subtract(price.multiply(discountPercent));
+            price = price.subtract(discountAmount);
         }
 
         return price.setScale(2, RoundingMode.HALF_UP);
     }
 
-    private OrderItem createOrderItem(Order order, Product product, ProductSize productSize, int quantity, BigDecimal price) {
+    private OrderItem createOrderItem(Order order, Product product, ProductSize productSize, int quantity,
+            BigDecimal unitPrice) {
         OrderItem orderItem = new OrderItem();
         orderItem.setOrder(order);
         orderItem.setProduct(product);
         orderItem.setProductSize(productSize);
+        orderItem.setCategory(product.getCategory());
+
+        // Snapshot fields
+        orderItem.setName(product.getName());
+        orderItem.setBrand(product.getBrand());
+        orderItem.setColorName(product.getColorName());
+        orderItem.setColorHex(product.getColorHex());
+        orderItem.setSize(productSize.getSize().name()); // Assuming Size is Enum
+        orderItem.setCategoryName(product.getCategory().getName());
+        orderItem.setTag(product.getTag());
+
         orderItem.setQuantity(quantity);
-        orderItem.setPrice(price);
+        orderItem.setUnitPrice(unitPrice);
+        orderItem.setDiscountPercent(product.getDiscountPercent() != null ? product.getDiscountPercent() : 0);
+
         return orderItem;
     }
 
     private void updateStockAndLogOutcome(ProductSize productSize, int quantity, User user, Product product) {
-        productSize.setAmount(productSize.getAmount() - quantity);
+        productSize.setQuantity(productSize.getQuantity() - quantity);
         productSizeRepository.save(productSize);
 
         ProductOutcome outcome = new ProductOutcome();
@@ -183,6 +259,7 @@ public class OrderServiceImpl implements OrderService {
         outcome.setProduct(product);
         outcome.setStockQuantity(quantity);
         outcome.setProductSize(productSize);
+        // outcome.setUnitPrice/TotalPrice logic if needed
         productOutcomeRepository.save(outcome);
     }
 }
