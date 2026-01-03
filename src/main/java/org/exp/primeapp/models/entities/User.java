@@ -32,7 +32,6 @@ public class User extends BaseEntity implements UserDetails {
     @Column(columnDefinition = "TEXT", nullable = false)
     private String tgUsername;
 
-    @Column(nullable = false)
     private String phone;
 
     private Integer messageId;
@@ -72,5 +71,3 @@ public class User extends BaseEntity implements UserDetails {
         return this.status == AccountStatus.ACTIVE;
     }
 }
-
-
