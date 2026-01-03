@@ -117,10 +117,10 @@ public class JwtCookieService {
         Date dataExpiry = new Date(now.getTime() + dataExpiryMinutes * 60 * 1000L);
 
         Map<String, Integer> counts = new HashMap<>();
-        counts.put("category", maxCountCategory);
-        counts.put("product", maxCountProduct);
-        counts.put("attachment", maxCountAttachment);
-        counts.put("cart", maxCountCart);
+        counts.put("category", 0);
+        counts.put("product", 0);
+        counts.put("attachment", 0);
+        counts.put("cart", 0);
 
         Map<String, Object> dataClaims = new HashMap<>();
         dataClaims.put("iat", now.getTime() / 1000); // Unix timestamp (seconds)
@@ -380,14 +380,6 @@ public class JwtCookieService {
 
     public String getCookieNameAdmin() {
         return cookieNameAdmin;
-    }
-
-    public Boolean getCookieIsSecure() {
-        return cookieIsSecure;
-    }
-
-    public String getCookieAttributeValue() {
-        return cookieAttributeValue;
     }
 
     /**

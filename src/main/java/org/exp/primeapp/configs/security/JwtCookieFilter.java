@@ -293,16 +293,14 @@ public class JwtCookieFilter extends OncePerRequestFilter {
                 cookie.setMaxAge(0);
                 cookie.setPath("/");
                 cookie.setHttpOnly(true);
-                cookie.setSecure(jwtService.getCookieIsSecure());
-                cookie.setAttribute("SameSite", jwtService.getCookieAttributeValue());
+                cookie.setSecure(true);
                 response.addCookie(cookie);
 
                 jakarta.servlet.http.Cookie cookieAdmin = new jakarta.servlet.http.Cookie("prime-admin-token", null);
                 cookieAdmin.setMaxAge(0);
                 cookieAdmin.setPath("/");
                 cookieAdmin.setHttpOnly(true);
-                cookieAdmin.setSecure(jwtService.getCookieIsSecure());
-                cookieAdmin.setAttribute("SameSite", jwtService.getCookieAttributeValue());
+                cookieAdmin.setSecure(true);
                 response.addCookie(cookieAdmin);
             }
 

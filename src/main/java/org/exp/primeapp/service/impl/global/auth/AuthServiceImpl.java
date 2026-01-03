@@ -47,7 +47,8 @@ public class AuthServiceImpl implements AuthService {
 
     @Transactional
     @Override
-    public LoginRes verifyWithCodeAndSendUserData(Integer code, HttpServletResponse response, HttpServletRequest request) {
+    public LoginRes verifyWithCodeAndSendUserData(Integer code, HttpServletResponse response,
+            HttpServletRequest request) {
         User user = userRepository.findOneByVerifyCode(code);
 
         if (user == null) {
@@ -57,21 +58,37 @@ public class AuthServiceImpl implements AuthService {
         if (user.getVerifyCodeExpiration().isBefore(LocalDateTime.now())) {
             throw new IllegalArgumentException("Code expired");
         }
-        
+
         // Session topish yoki yaratish
         Session session = sessionService.getOrCreateSession(request, response);
-        
+
         // Session ni user ga biriktirish (migration)
         if (session.getUser() == null) {
             sessionService.migrateSessionToUser(session.getSessionId(), user);
             // Session ni qayta olish (migration dan keyin yangilanadi)
             session = sessionService.getSessionById(session.getSessionId());
         }
-        
+
         // Access token yaratish yoki olish
-        // Access token yaratish (User authenticated bo'ldi, yangi token shart)
-        String token = jwtService.generateToken(user, session, request);
-        sessionService.setAccessToken(session.getSessionId(), token);
+        String existingAccessToken = sessionService.getAccessToken(session.getSessionId());
+        String token;
+
+        if (existingAccessToken != null) {
+            // Token expiry tekshirish (3 kun)
+            long expiryDays = getAccessTokenExpiryDays(existingAccessToken);
+            if (expiryDays >= 3) {
+                // 3 kun va undan oshiq - eski token ishlatiladi
+                token = existingAccessToken;
+            } else {
+                // 3 kundan kam - yangi token yaratiladi
+                token = jwtService.generateToken(user, session, request);
+                sessionService.setAccessToken(session.getSessionId(), token);
+            }
+        } else {
+            // Token yo'q - yangi yaratish
+            token = jwtService.generateToken(user, session, request);
+            sessionService.setAccessToken(session.getSessionId(), token);
+        }
 
         // Global token endi cookie da bo'ladi, alohida yaratish kerak emas
 

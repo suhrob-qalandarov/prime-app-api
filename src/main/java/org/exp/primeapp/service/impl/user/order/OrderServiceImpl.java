@@ -18,6 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -25,6 +26,8 @@ import java.util.List;
 @Service
 @RequiredArgsConstructor
 public class OrderServiceImpl implements OrderService {
+
+    private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("dd-MM-yyyy HH:mm");
 
     private final OrderRepository orderRepository;
     private final ProductRepository productRepository;
@@ -38,7 +41,8 @@ public class OrderServiceImpl implements OrderService {
     @Override
     public UserProfileOrdersRes getUserProfileOrdersById(Long id) {
         List<UserOrderRes> pendingOrderResList = orderRepository
-                .findByOrderedByUserIdAndStatusIn(id, List.of(OrderStatus.PENDING, OrderStatus.PENDING_PAYMENT)).stream()
+                .findByOrderedByUserIdAndStatusIn(id, List.of(OrderStatus.PENDING, OrderStatus.PENDING_PAYMENT))
+                .stream()
                 .map(this::convertToUserOrderRes)
                 .toList();
 
@@ -99,9 +103,9 @@ public class OrderServiceImpl implements OrderService {
         return UserOrderRes.builder()
                 .id(order.getId())
                 .status(order.getStatus().getLabel())
-                .deliveryType(order.getShippingType().toString())
-                .createdAt(order.getCreatedAt())
-                .deliveredAt(order.getDeliveredAt())
+                .deliveryType(order.getShippingType().getLabel())
+                .createdAt(order.getCreatedAt() != null ? order.getCreatedAt().format(DATE_FORMATTER) : null)
+                .deliveredAt(order.getDeliveredAt() != null ? order.getDeliveredAt().format(DATE_FORMATTER) : null)
                 .items(items)
                 .totalSum(order.getTotalPrice().setScale(2, RoundingMode.HALF_UP))
                 .totalDiscountSum(totalDiscountSum)
@@ -248,7 +252,7 @@ public class OrderServiceImpl implements OrderService {
         List<Attachment> attachments = attachmentRepository.findByProductId(product.getId());
         String imageUrl = "N/A";
         if (!attachments.isEmpty()) {
-            imageUrl = attachments.get(0).getUrl();
+            imageUrl = attachments.getFirst().getUrl();
         }
         orderItem.setImageUrl(imageUrl);
 
