@@ -32,6 +32,7 @@ public class OrderServiceImpl implements OrderService {
     private final ProductOutcomeRepository productOutcomeRepository;
     private final CustomerRepository customerRepository;
     private final org.exp.primeapp.service.face.user.CustomerService customerService;
+    private final AttachmentRepository attachmentRepository;
 
     @Transactional
     @Override
@@ -242,6 +243,14 @@ public class OrderServiceImpl implements OrderService {
         orderItem.setSize(productSize.getSize().name()); // Assuming Size is Enum
         orderItem.setCategoryName(product.getCategory().getName());
         orderItem.setTag(product.getTag());
+
+        // Set Image URL
+        List<Attachment> attachments = attachmentRepository.findByProductId(product.getId());
+        String imageUrl = "N/A";
+        if (!attachments.isEmpty()) {
+            imageUrl = attachments.get(0).getUrl();
+        }
+        orderItem.setImageUrl(imageUrl);
 
         orderItem.setQuantity(quantity);
         orderItem.setUnitPrice(unitPrice);
