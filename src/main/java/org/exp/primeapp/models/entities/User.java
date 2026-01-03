@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
 import org.exp.primeapp.models.base.BaseEntity;
+import org.exp.primeapp.models.enums.AccountStatus;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
@@ -20,22 +21,36 @@ import java.util.List;
 @Table(name = "app_users")
 public class User extends BaseEntity implements UserDetails {
 
+    @Column(nullable = false, unique = true)
     private Long telegramId;
+
+    @Column(columnDefinition = "TEXT", nullable = false)
     private String firstName;
+
     private String lastName;
+
+    @Column(columnDefinition = "TEXT", nullable = false)
     private String tgUsername;
+
+    @Column(nullable = false)
     private String phone;
 
     private Integer messageId;
+
     private Integer verifyCode;
 
     private LocalDateTime verifyCodeExpiration;
 
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.EAGER)
-    private List<Session> sessions; // User ning barcha session lari
+    private List<Session> sessions;
 
     @ManyToMany(fetch = FetchType.EAGER)
     private List<Role> roles;
+
+    @Builder.Default
+    @Column(nullable = false)
+    @Enumerated(EnumType.STRING)
+    private AccountStatus status = AccountStatus.INACTIVE;
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
@@ -52,10 +67,10 @@ public class User extends BaseEntity implements UserDetails {
         return "[PROTECTED]";
     }
 
-    /*@Override
+    @Override
     public boolean isEnabled() {
-        return Boolean.TRUE.equals(getActive());
-    }*/
+        return this.status == AccountStatus.ACTIVE;
+    }
 }
 
 

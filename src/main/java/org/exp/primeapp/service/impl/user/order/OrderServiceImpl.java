@@ -36,15 +36,18 @@ public class OrderServiceImpl implements OrderService {
 
     @Override
     public UserProfileOrdersRes getUserProfileOrdersById(Long id) {
-        List<UserOrderRes> pendingOrderResList = orderRepository.findByOrderedByUserIdAndStatus(id, OrderStatus.PENDING).stream()
+        List<UserOrderRes> pendingOrderResList = orderRepository.findByOrderedByUserIdAndStatus(id, OrderStatus.PENDING)
+                .stream()
                 .map(this::convertToUserOrderRes)
                 .toList();
 
-        List<UserOrderRes> confirmedOrderResList = orderRepository.findByOrderedByUserIdAndStatus(id, OrderStatus.CONFIRMED).stream()
+        List<UserOrderRes> confirmedOrderResList = orderRepository
+                .findByOrderedByUserIdAndStatus(id, OrderStatus.CONFIRMED).stream()
                 .map(this::convertToUserOrderRes)
                 .toList();
 
-        List<UserOrderRes> shippedOrderResList = orderRepository.findByOrderedByUserIdAndStatus(id, OrderStatus.SHIPPED).stream()
+        List<UserOrderRes> shippedOrderResList = orderRepository.findByOrderedByUserIdAndStatus(id, OrderStatus.SHIPPED)
+                .stream()
                 .map(this::convertToUserOrderRes)
                 .toList();
 
@@ -133,7 +136,7 @@ public class OrderServiceImpl implements OrderService {
         order.setOrderedByUser(user);
         order.setOrderedBySession(session);
         order.setCustomer(customer);
-        order.setStatus(OrderStatus.PENDING_PAYMENT); // Initial status
+        order.setStatus(OrderStatus.PENDING_PAYMENT);
         order.setShippingType(orderRequest.delivery());
 
         if (orderRequest.customer() != null) {
@@ -146,16 +149,14 @@ public class OrderServiceImpl implements OrderService {
         try {
             for (CreateOrderItemReq itemReq : orderRequest.items()) {
                 log.debug("Processing Item. ProductID: {}, SizeID: {}, Quantity: {}",
-                        itemReq.productId(), itemReq.size(), itemReq.amount());
+                        itemReq.productId(), itemReq.sizeId(), itemReq.amount());
 
                 // Fetch Product
                 Product product = fetchProduct(itemReq.productId());
 
-                // Fetch Size by ID (assuming itemReq.size() is ID, if it's enum/string, logic
-                // differs)
-                // Looks like CreateOrderItemReq has Long size. So it's likely ProductSize ID.
+                // Fetch Size by ID
                 ProductSize productSize = fetchAndValidateProductSize(
-                        itemReq.size(), product.getId(), itemReq.amount());
+                        itemReq.sizeId(), product.getId(), itemReq.amount());
 
                 // Calculate Price
                 BigDecimal finalUnitPrice = calculateItemPrice(product);
@@ -201,6 +202,9 @@ public class OrderServiceImpl implements OrderService {
     }
 
     private ProductSize fetchAndValidateProductSize(Long productSizeId, Long productId, int quantity) {
+        if (productSizeId == null) {
+            throw new IllegalArgumentException("Mahsulot hajmi tanlanmagan");
+        }
         ProductSize productSize = productSizeRepository.findById(productSizeId)
                 .orElseThrow(() -> new RuntimeException("Mahsulot hajmi topilmadi"));
 
