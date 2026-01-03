@@ -170,7 +170,7 @@ public class AdminProductServiceImpl implements AdminProductService {
     private ProductIncome createIncome(Product product, Integer amount) {
         return ProductIncome.builder()
                 .stockQuantity(amount)
-                .product(product)
+                //.product(product)
                 .build();
     }
 
