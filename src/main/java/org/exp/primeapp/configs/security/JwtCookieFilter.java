@@ -35,38 +35,40 @@ public class JwtCookieFilter extends OncePerRequestFilter {
     protected void doFilterInternal(
             HttpServletRequest request,
             @NonNull HttpServletResponse response,
-            @NonNull FilterChain filterChain
-    ) throws ServletException, IOException {
+            @NonNull FilterChain filterChain) throws ServletException, IOException {
 
-        // Skip JWT validation for Swagger/OpenAPI endpoints, session endpoints, actuator health, and admin auth
+        // Skip JWT validation for Swagger/OpenAPI endpoints, session endpoints,
+        // actuator health, and admin auth
         String requestPath = request.getRequestURI();
-        if (requestPath.startsWith("/swagger-ui") || 
-            requestPath.startsWith("/v3/api-docs") ||
-            requestPath.equals("/swagger-ui.html") ||
-            requestPath.startsWith("/swagger-ui.html/") ||
-            requestPath.startsWith("/actuator/health") ||
-            requestPath.equals("/api/v2/auth/session") ||
-            requestPath.startsWith("/api/v2/auth/code/") ||
-            requestPath.equals("/api/v1/admin/auth") ||
-            requestPath.equals("/api/v2/admin/auth")) {
+        if (requestPath.startsWith("/swagger-ui") ||
+                requestPath.startsWith("/v3/api-docs") ||
+                requestPath.equals("/swagger-ui.html") ||
+                requestPath.startsWith("/swagger-ui.html/") ||
+                requestPath.startsWith("/actuator/health") ||
+                requestPath.equals("/api/v2/auth/session") ||
+                requestPath.startsWith("/api/v2/auth/code/") ||
+                requestPath.equals("/api/v1/admin/auth") ||
+                requestPath.equals("/api/v2/admin/auth")) {
             filterChain.doFilter(request, response);
             return;
         }
-        
-        // Admin endpoints - faqat Spring Security authentication, session token tekshiruv kerak emas
+
+        // Admin endpoints - faqat Spring Security authentication, session token
+        // tekshiruv kerak emas
         // Admin auth endpoint'i yuqorida skip qilingan
-        boolean isAdminEndpoint = requestPath.startsWith("/api/v1/admin") || 
-                                  requestPath.startsWith("/api/v2/admin");
-        
+        boolean isAdminEndpoint = requestPath.startsWith("/api/v1/admin") ||
+                requestPath.startsWith("/api/v2/admin");
+
         // Public endpoints - token bo'lmasa ham o'tkazib yuborish
         boolean isPublicEndpoint = isPublicEndpoint(requestPath, request.getMethod());
 
-        // Admin endpoint'lar uchun - faqat Spring Security authentication, session token tekshiruv kerak emas
+        // Admin endpoint'lar uchun - faqat Spring Security authentication, session
+        // token tekshiruv kerak emas
         if (isAdminEndpoint) {
             // Admin endpoint'lar uchun faqat token validation va user authentication
             // Session count tekshiruv kerak emas - Spring Security o'zi tekshiradi
             String token = null;
-            
+
             // Get token from header
             String authHeader = request.getHeader(AUTHORIZATION);
             if (authHeader != null && !authHeader.trim().isEmpty()) {
@@ -79,12 +81,12 @@ public class JwtCookieFilter extends OncePerRequestFilter {
                     }
                 }
             }
-            
+
             // If token not in header, get from cookie
             if (token == null) {
                 token = jwtService.extractTokenFromCookie(request);
             }
-            
+
             // Token bo'lsa, faqat validation va authentication
             if (token != null) {
                 try {
@@ -107,12 +109,14 @@ public class JwtCookieFilter extends OncePerRequestFilter {
 
         // Get token from header
         String authHeader = request.getHeader(AUTHORIZATION);
-        
-        // Extract token from header - supports both "Bearer <token>" and "<token>" formats
+
+        // Extract token from header - supports both "Bearer <token>" and "<token>"
+        // formats
         String token = null;
         if (authHeader != null && !authHeader.trim().isEmpty()) {
-            log.debug("Authorization header found: {}", authHeader.startsWith(TOKEN_PREFIX) ? "Bearer token" : "Direct token");
-            
+            log.debug("Authorization header found: {}",
+                    authHeader.startsWith(TOKEN_PREFIX) ? "Bearer token" : "Direct token");
+
             // Check if header starts with "Bearer " prefix
             if (authHeader.startsWith(TOKEN_PREFIX)) {
                 token = authHeader.substring(TOKEN_PREFIX.length()).trim();
@@ -129,23 +133,25 @@ public class JwtCookieFilter extends OncePerRequestFilter {
                 }
             }
         }
-        
+
         // Check if token doesn't exist, get from cookie
         if (token == null) {
-            log.debug("No token in header, checking cookies. Request URI: {}, Origin: {}", 
+            log.debug("No token in header, checking cookies. Request URI: {}, Origin: {}",
                     request.getRequestURI(), request.getHeader("Origin"));
             token = jwtService.extractTokenFromCookie(request);
             log.info("Token extracted from cookie: {}", token != null ? "***" : null);
             if (token == null && !isPublicEndpoint) {
-                log.warn("No JWT token found in cookies or header for request: {} from origin: {}", 
+                log.warn("No JWT token found in cookies or header for request: {} from origin: {}",
                         request.getRequestURI(), request.getHeader("Origin"));
             }
         }
 
-        // Cart endpoint - SessionTokenUtil o'zi token yaratadi, shuning uchun token bo'lmasa ham o'tkazib yuborish
+        // Cart endpoint - SessionTokenUtil o'zi token yaratadi, shuning uchun token
+        // bo'lmasa ham o'tkazib yuborish
         boolean isCartEndpoint = requestPath.equals("/api/v1/cart") && "POST".equals(request.getMethod());
         if (isCartEndpoint && token == null) {
-            log.debug("Cart endpoint without token - allowing request (SessionTokenUtil will create token): {}", requestPath);
+            log.debug("Cart endpoint without token - allowing request (SessionTokenUtil will create token): {}",
+                    requestPath);
             filterChain.doFilter(request, response);
             return;
         }
@@ -164,14 +170,15 @@ public class JwtCookieFilter extends OncePerRequestFilter {
                     String tokenIp = jwtService.getIpFromToken(token);
                     String requestIp = ipAddressUtil.getClientIpAddress(request);
                     boolean ipMismatch = tokenIp != null && requestIp != null && !tokenIp.equals(requestIp);
-                    
+
                     if (ipMismatch) {
-                        log.warn("IP mismatch detected: token IP = {}, request IP = {}. Creating new session.", tokenIp, requestIp);
-                        
+                        log.warn("IP mismatch detected: token IP = {}, request IP = {}. Creating new session.", tokenIp,
+                                requestIp);
+
                         // Get user and session info from old token
                         String oldSessionId = jwtService.getSessionIdFromToken(token);
                         User user = jwtService.getUserObject(token);
-                        
+
                         // Deactivate old session if exists
                         if (oldSessionId != null) {
                             sessionRepository.findBySessionId(oldSessionId).ifPresent(oldSession -> {
@@ -180,20 +187,20 @@ public class JwtCookieFilter extends OncePerRequestFilter {
                                 log.debug("Old session {} deactivated due to IP change", oldSessionId);
                             });
                         }
-                        
+
                         // Create new session
                         Session newSession = sessionService.createSession(request);
-                        
+
                         // If user exists, migrate session to user and generate authenticated token
                         if (user != null && user.getId() != null) {
                             sessionService.migrateSessionToUser(newSession.getSessionId(), user);
                             newSession = sessionService.getSessionById(newSession.getSessionId());
-                            
+
                             // Generate new token with new IP
                             String newToken = jwtService.generateToken(user, newSession, request);
                             sessionService.setAccessToken(newSession.getSessionId(), newToken);
                             jwtService.setJwtCookie(newToken, jwtService.getCookieNameUser(), response, request);
-                            
+
                             // Set authentication
                             var auth = new UsernamePasswordAuthenticationToken(user, null, user.getAuthorities());
                             SecurityContextHolder.getContext().setAuthentication(auth);
@@ -205,16 +212,17 @@ public class JwtCookieFilter extends OncePerRequestFilter {
                             jwtService.setJwtCookie(newToken, jwtService.getCookieNameUser(), response, request);
                             log.info("New anonymous session created with new IP {}", requestIp);
                         }
-                        
+
                         // Continue with the request using new session/token
                         filterChain.doFilter(request, response);
                         return;
                     }
                 } catch (Exception ipCheckException) {
                     // If IP check fails (token invalid), continue to normal validation
-                    log.debug("IP mismatch check failed, continuing with normal validation: {}", ipCheckException.getMessage());
+                    log.debug("IP mismatch check failed, continuing with normal validation: {}",
+                            ipCheckException.getMessage());
                 }
-                
+
                 // Step 1: Token validation (IP match bo'lsa normal validation)
                 if (!jwtService.validateToken(token, request)) {
                     log.warn("Token validation failed");
@@ -275,7 +283,8 @@ public class JwtCookieFilter extends OncePerRequestFilter {
         filterChain.doFilter(request, response);
     }
 
-    private void clearCookieAndSend403(HttpServletResponse response, HttpServletRequest request, boolean isPublicEndpoint) {
+    private void clearCookieAndSend403(HttpServletResponse response, HttpServletRequest request,
+            boolean isPublicEndpoint) {
         try {
             // Public endpoint'lar uchun cookie clear qilmaslik
             if (!isPublicEndpoint) {
@@ -284,14 +293,16 @@ public class JwtCookieFilter extends OncePerRequestFilter {
                 cookie.setMaxAge(0);
                 cookie.setPath("/");
                 cookie.setHttpOnly(true);
-                cookie.setSecure(true);
+                cookie.setSecure(jwtService.getCookieIsSecure());
+                cookie.setAttribute("SameSite", jwtService.getCookieAttributeValue());
                 response.addCookie(cookie);
 
                 jakarta.servlet.http.Cookie cookieAdmin = new jakarta.servlet.http.Cookie("prime-admin-token", null);
                 cookieAdmin.setMaxAge(0);
                 cookieAdmin.setPath("/");
                 cookieAdmin.setHttpOnly(true);
-                cookieAdmin.setSecure(true);
+                cookieAdmin.setSecure(jwtService.getCookieIsSecure());
+                cookieAdmin.setAttribute("SameSite", jwtService.getCookieAttributeValue());
                 response.addCookie(cookieAdmin);
             }
 
@@ -303,7 +314,8 @@ public class JwtCookieFilter extends OncePerRequestFilter {
             } else {
                 response.setStatus(HttpServletResponse.SC_FORBIDDEN);
                 response.setContentType("application/json");
-                response.getWriter().write("{\"error\":\"Session revoked\",\"message\":\"Your session has been revoked. Please login again.\"}");
+                response.getWriter().write(
+                        "{\"error\":\"Session revoked\",\"message\":\"Your session has been revoked. Please login again.\"}");
             }
         } catch (IOException e) {
             log.error("Error sending response: {}", e.getMessage());
@@ -328,29 +340,29 @@ public class JwtCookieFilter extends OncePerRequestFilter {
         if ("GET".equals(method)) {
             // Public product endpoints
             if (requestPath.startsWith("/api/v1/product") ||
-                requestPath.equals("/api/v1/products") ||
-                requestPath.startsWith("/api/v1/products/by-category/")) {
+                    requestPath.equals("/api/v1/products") ||
+                    requestPath.startsWith("/api/v1/products/by-category/")) {
                 return true;
             }
-            
+
             // Public category endpoints
             if (requestPath.equals("/api/v1/category") ||
-                requestPath.equals("/api/v1/category/**") ||
-                requestPath.equals("/api/v1/categories") ||
-                requestPath.equals("/api/v1/categories/**") ||
-                requestPath.startsWith("/api/v1/category/")) {
+                    requestPath.equals("/api/v1/category/**") ||
+                    requestPath.equals("/api/v1/categories") ||
+                    requestPath.equals("/api/v1/categories/**") ||
+                    requestPath.startsWith("/api/v1/category/")) {
                 return true;
             }
         }
-        
+
         // Public POST endpoints
         if ("POST".equals(method)) {
             if (requestPath.equals("/api/v2/auth/session") ||
-                requestPath.startsWith("/api/v2/auth/code/")) {
+                    requestPath.startsWith("/api/v2/auth/code/")) {
                 return true;
             }
         }
-        
+
         return false;
     }
 }

@@ -69,28 +69,12 @@ public class AuthServiceImpl implements AuthService {
         }
         
         // Access token yaratish yoki olish
-        String existingAccessToken = sessionService.getAccessToken(session.getSessionId());
-        String token;
-        
-        if (existingAccessToken != null) {
-            // Token expiry tekshirish (3 kun)
-            long expiryDays = getAccessTokenExpiryDays(existingAccessToken);
-            if (expiryDays >= 3) {
-                // 3 kun va undan oshiq - eski token ishlatiladi
-                token = existingAccessToken;
-            } else {
-                // 3 kundan kam - yangi token yaratiladi
-                token = jwtService.generateToken(user, session, request);
-                sessionService.setAccessToken(session.getSessionId(), token);
-            }
-        } else {
-            // Token yo'q - yangi yaratish
-            token = jwtService.generateToken(user, session, request);
-            sessionService.setAccessToken(session.getSessionId(), token);
-        }
-        
+        // Access token yaratish (User authenticated bo'ldi, yangi token shart)
+        String token = jwtService.generateToken(user, session, request);
+        sessionService.setAccessToken(session.getSessionId(), token);
+
         // Global token endi cookie da bo'ladi, alohida yaratish kerak emas
-        
+
         userRepository.save(user);
 
         jwtService.setJwtCookie(token, cookieNameUser, response, request);
@@ -121,10 +105,11 @@ public class AuthServiceImpl implements AuthService {
                 .lastName(userUtil.truncateName(user.getLastName()))
                 .phone(user.getPhone())
                 .username(user.getTgUsername())
-                //.roles(user.getRoles().stream().map(Role::getName).toList())
+                // .roles(user.getRoles().stream().map(Role::getName).toList())
                 .orders(profileOrdersById)
                 .sessions(sessions)
-                .isAdmin(user.getRoles().stream().anyMatch(role -> role.getName().equals("ROLE_ADMIN") || role.getName().equals("ROLE_VISITOR")))
+                .isAdmin(user.getRoles().stream()
+                        .anyMatch(role -> role.getName().equals("ROLE_ADMIN") || role.getName().equals("ROLE_VISITOR")))
                 .isVisitor(user.getRoles().stream().anyMatch(role -> role.getName().equals("ROLE_VISITOR")))
                 .isSuperAdmin(user.getRoles().stream().anyMatch(role -> role.getName().equals("ROLE_SUPER_ADMIN")))
                 .build();
@@ -143,7 +128,7 @@ public class AuthServiceImpl implements AuthService {
     public void logout(HttpServletResponse response) {
         Cookie cookie = new Cookie(cookieNameUser, null);
         cookie.setHttpOnly(true);
-        //cookie.setDomain("howdy.uz");
+        // cookie.setDomain("howdy.uz");
         cookie.setSecure(true);
         cookie.setPath("/");
         cookie.setMaxAge(0);
@@ -152,14 +137,14 @@ public class AuthServiceImpl implements AuthService {
 
         Cookie cookieAdmin = new Cookie(cookieNameAdmin, null);
         cookieAdmin.setHttpOnly(true);
-        //cookieAdmin.setDomain("howdy.uz");
+        // cookieAdmin.setDomain("howdy.uz");
         cookieAdmin.setSecure(true);
         cookieAdmin.setPath("/");
         cookieAdmin.setMaxAge(0);
-        cookieAdmin .setAttribute("SameSite", "None");
-        response.addCookie(cookieAdmin );
+        cookieAdmin.setAttribute("SameSite", "None");
+        response.addCookie(cookieAdmin);
     }
-    
+
     private long getAccessTokenExpiryDays(String token) {
         try {
             io.jsonwebtoken.Claims claims = io.jsonwebtoken.Jwts.parser()
@@ -175,8 +160,7 @@ public class AuthServiceImpl implements AuthService {
 
             LocalDateTime expiryDateTime = LocalDateTime.ofInstant(
                     expiration.toInstant(),
-                    java.time.ZoneId.systemDefault()
-            );
+                    java.time.ZoneId.systemDefault());
             LocalDateTime now = LocalDateTime.now();
 
             return java.time.temporal.ChronoUnit.DAYS.between(now, expiryDateTime);
