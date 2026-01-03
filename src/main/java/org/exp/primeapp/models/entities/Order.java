@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
 import org.exp.primeapp.models.base.BaseEntity;
+import org.exp.primeapp.models.enums.CancelReason;
 import org.exp.primeapp.models.enums.OrderStatus;
 import org.exp.primeapp.models.enums.OrderDeliveryType;
 
@@ -44,8 +45,6 @@ public class Order extends BaseEntity {
     )
     private List<OrderItem> items = new ArrayList<>();
 
-    private LocalDateTime deliveredAt;
-
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "customer_id", nullable = false)
     private Customer customer;
@@ -65,4 +64,18 @@ public class Order extends BaseEntity {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "admin_session_id")
     private Session confirmedByAdminSession;
+
+    @Column(columnDefinition = "TEXT")
+    private String adminComment;
+
+    @Enumerated(EnumType.STRING)
+    private CancelReason cancelReason;
+
+    private LocalDateTime deliveredAt;
+
+    private LocalDateTime paidAt;
+
+    private LocalDateTime cancelledAt;
+
+    private LocalDateTime refundedAt;
 }
