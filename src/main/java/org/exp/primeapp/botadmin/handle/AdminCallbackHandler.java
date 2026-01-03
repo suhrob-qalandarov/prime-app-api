@@ -2,6 +2,7 @@ package org.exp.primeapp.botadmin.handle;
 
 import com.pengrad.telegrambot.TelegramBot;
 import com.pengrad.telegrambot.model.CallbackQuery;
+import com.pengrad.telegrambot.model.Message;
 import com.pengrad.telegrambot.model.request.InlineKeyboardMarkup;
 import com.pengrad.telegrambot.model.request.ParseMode;
 import com.pengrad.telegrambot.request.AnswerCallbackQuery;
@@ -19,7 +20,7 @@ import org.exp.primeapp.botadmin.service.interfaces.AdminMessageService;
 import org.exp.primeapp.botuser.service.interfaces.UserService;
 import org.exp.primeapp.models.entities.Category;
 import org.exp.primeapp.models.entities.User;
-import org.exp.primeapp.models.enums.Size;
+
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
 
@@ -41,14 +42,14 @@ public class AdminCallbackHandler implements Consumer<CallbackQuery> {
     private final org.exp.primeapp.botadmin.service.impls.ProductCallbackHandler productCallbackHandler;
 
     public AdminCallbackHandler(UserService userService,
-                                 AdminMessageService messageService,
-                                 BotProductService botProductService,
-                                 BotCategoryService botCategoryService,
-                                 BotUserService botUserService,
-                                 AdminButtonService buttonService,
-                                 @Qualifier("adminBot") TelegramBot telegramBot,
-                                 @Qualifier("userBot") TelegramBot userBot,
-                                 org.exp.primeapp.botadmin.service.impls.ProductCallbackHandler productCallbackHandler) {
+            AdminMessageService messageService,
+            BotProductService botProductService,
+            BotCategoryService botCategoryService,
+            BotUserService botUserService,
+            AdminButtonService buttonService,
+            @Qualifier("adminBot") TelegramBot telegramBot,
+            @Qualifier("userBot") TelegramBot userBot,
+            org.exp.primeapp.botadmin.service.impls.ProductCallbackHandler productCallbackHandler) {
         this.userService = userService;
         this.messageService = messageService;
         this.botProductService = botProductService;
@@ -65,9 +66,9 @@ public class AdminCallbackHandler implements Consumer<CallbackQuery> {
             return false;
         }
         return user.getRoles().stream()
-                .anyMatch(role -> role.getName() != null && 
-                        (role.getName().equals("ROLE_ADMIN") || 
-                         role.getName().equals("ROLE_SUPER_ADMIN")));
+                .anyMatch(role -> role.getName() != null &&
+                        (role.getName().equals("ROLE_ADMIN") ||
+                                role.getName().equals("ROLE_SUPER_ADMIN")));
     }
 
     private String getUserBotUsername() {
@@ -103,40 +104,36 @@ public class AdminCallbackHandler implements Consumer<CallbackQuery> {
 
         // Handle admin menu callbacks
         if (data.equals("admin_menu_product")) {
-            com.pengrad.telegrambot.model.Message callbackMessage = callbackQuery.message();
+            Message callbackMessage = callbackQuery.message();
             Integer messageId = callbackMessage != null ? callbackMessage.messageId() : null;
             if (messageId != null) {
                 telegramBot.execute(new EditMessageText(chatId, messageId,
                         "🛍️ <b>Product bo'limi</b>\n\nQuyidagi amallardan birini tanlang:")
                         .parseMode(ParseMode.HTML)
-                        .replyMarkup(buttonService.createProductMenuButtons())
-                );
+                        .replyMarkup(buttonService.createProductMenuButtons()));
             } else {
                 telegramBot.execute(new SendMessage(chatId,
                         "🛍️ <b>Product bo'limi</b>\n\nQuyidagi amallardan birini tanlang:")
                         .parseMode(ParseMode.HTML)
-                        .replyMarkup(buttonService.createProductMenuButtons())
-                );
+                        .replyMarkup(buttonService.createProductMenuButtons()));
             }
             telegramBot.execute(new AnswerCallbackQuery(callbackId).text("Product bo'limi"));
             return;
         }
 
         if (data.equals("admin_menu_category")) {
-            com.pengrad.telegrambot.model.Message callbackMessage = callbackQuery.message();
+            Message callbackMessage = callbackQuery.message();
             Integer messageId = callbackMessage != null ? callbackMessage.messageId() : null;
             if (messageId != null) {
                 telegramBot.execute(new EditMessageText(chatId, messageId,
                         "📂 <b>Category bo'limi</b>\n\nQuyidagi amallardan birini tanlang:")
                         .parseMode(ParseMode.HTML)
-                        .replyMarkup(buttonService.createCategoryMenuButtons())
-                );
+                        .replyMarkup(buttonService.createCategoryMenuButtons()));
             } else {
                 telegramBot.execute(new SendMessage(chatId,
                         "📂 <b>Category bo'limi</b>\n\nQuyidagi amallardan birini tanlang:")
                         .parseMode(ParseMode.HTML)
-                        .replyMarkup(buttonService.createCategoryMenuButtons())
-                );
+                        .replyMarkup(buttonService.createCategoryMenuButtons()));
             }
             telegramBot.execute(new AnswerCallbackQuery(callbackId).text("Category bo'limi"));
             return;
@@ -150,30 +147,28 @@ public class AdminCallbackHandler implements Consumer<CallbackQuery> {
         }
 
         if (data.equals("admin_menu_back")) {
-            com.pengrad.telegrambot.model.Message callbackMessage = callbackQuery.message();
+            Message callbackMessage = callbackQuery.message();
             Integer messageId = callbackMessage != null ? callbackMessage.messageId() : null;
             if (messageId != null) {
                 telegramBot.execute(new EditMessageText(chatId, messageId,
                         "👨‍💼 <b>Xush kelibsiz, Admin!</b>\n\n" +
-                        "Quyidagi bo'limlardan birini tanlang:")
+                                "Quyidagi bo'limlardan birini tanlang:")
                         .parseMode(ParseMode.HTML)
-                        .replyMarkup(buttonService.createAdminMainMenuButtons())
-                );
+                        .replyMarkup(buttonService.createAdminMainMenuButtons()));
             } else {
                 telegramBot.execute(new SendMessage(chatId,
                         "👨‍💼 <b>Xush kelibsiz, Admin!</b>\n\n" +
-                        "Quyidagi bo'limlardan birini tanlang:")
+                                "Quyidagi bo'limlardan birini tanlang:")
                         .parseMode(ParseMode.HTML)
-                        .replyMarkup(buttonService.createAdminMainMenuButtons())
-                );
+                        .replyMarkup(buttonService.createAdminMainMenuButtons()));
             }
-            
+
             // Cancel category creation if active
             CategoryCreationState categoryState = botCategoryService.getCategoryCreationState(userId);
             if (categoryState != null) {
                 botCategoryService.cancelCategoryCreation(userId);
             }
-            
+
             // Return to main menu
             String firstName = user.getFirstName() != null ? user.getFirstName() : "Admin";
             messageService.sendAdminMenu(chatId, firstName);
@@ -220,14 +215,15 @@ public class AdminCallbackHandler implements Consumer<CallbackQuery> {
                 case "aksessuarlar" -> "Aksessuarlar";
                 default -> spotlightName;
             };
-            
+
             // Check if it's for product creation or category creation
             ProductCreationState productState = botProductService.getProductCreationState(userId);
-            if (productState != null && productState.getCurrentStep() == ProductCreationState.Step.WAITING_SPOTLIGHT_NAME) {
+            if (productState != null
+                    && productState.getCurrentStep() == ProductCreationState.Step.WAITING_SPOTLIGHT_NAME) {
                 // Product creation flow
                 botProductService.handleSpotlightNameSelection(userId, actualSpotlightName);
                 List<Category> categories = botProductService.getCategoriesBySpotlightName(actualSpotlightName);
-                
+
                 // Check if categories exist
                 if (categories == null || categories.isEmpty()) {
                     // No categories found - cancel product creation and return to main menu
@@ -240,23 +236,23 @@ public class AdminCallbackHandler implements Consumer<CallbackQuery> {
                             .showAlert(true));
                     return;
                 }
-                
+
                 // Edit toifa message to remove buttons
-                com.pengrad.telegrambot.model.Message callbackMessage = callbackQuery.message();
+                Message callbackMessage = callbackQuery.message();
                 Integer messageId = callbackMessage != null ? callbackMessage.messageId() : null;
                 if (messageId != null) {
                     String toifaText = "📂 <b>6/9</b> Toifani tanlang: " + actualSpotlightName;
                     telegramBot.execute(new EditMessageText(chatId, messageId, toifaText)
                             .parseMode(ParseMode.HTML)
-                            .replyMarkup(new InlineKeyboardMarkup(new com.pengrad.telegrambot.model.request.InlineKeyboardButton[0][]))
-                    );
+                            .replyMarkup(new InlineKeyboardMarkup(
+                                    new com.pengrad.telegrambot.model.request.InlineKeyboardButton[0][])));
                 }
-                
+
                 // Send category selection message with buttons
                 telegramBot.execute(new SendMessage(chatId, "📂 <b>7/9</b> Kategoriyani tanlang:")
                         .parseMode(ParseMode.HTML)
-                        .replyMarkup(buttonService.addBackButton(buttonService.createCategoryButtons(categories), "WAITING_SPOTLIGHT_NAME"))
-                );
+                        .replyMarkup(buttonService.addBackButton(buttonService.createCategoryButtons(categories),
+                                "WAITING_SPOTLIGHT_NAME")));
                 telegramBot.execute(new AnswerCallbackQuery(callbackId).text("Toifa tanlandi"));
             } else {
                 // Category creation flow
@@ -280,7 +276,7 @@ public class AdminCallbackHandler implements Consumer<CallbackQuery> {
                             .showAlert(true));
                     return;
                 }
-                
+
                 botCategoryService.confirmAndSaveCategory(userId);
                 messageService.sendCategorySavedSuccess(chatId);
                 telegramBot.execute(new AnswerCallbackQuery(callbackId).text("Kategoriya qo'shildi"));
@@ -316,30 +312,30 @@ public class AdminCallbackHandler implements Consumer<CallbackQuery> {
         if (productCallbackHandler.handleCallback(callbackQuery, userId, chatId)) {
             return;
         }
-        
+
         // Handle user role callbacks (before product creation state check)
         if (data.equals("set_admin_search")) {
             // Check if user is super admin
             boolean isSuperAdmin = user.getRoles() != null && user.getRoles().stream()
-                    .anyMatch(role -> role.getName() != null && 
+                    .anyMatch(role -> role.getName() != null &&
                             role.getName().equals("ROLE_SUPER_ADMIN"));
-            
+
             if (!isSuperAdmin) {
                 telegramBot.execute(new AnswerCallbackQuery(callbackId)
                         .text("Faqat Super Admin bu funksiyani ishlatishi mumkin")
                         .showAlert(true));
                 return;
             }
-            
+
             messageService.sendPhoneNumberPrompt(chatId);
             botUserService.setUserSearchState(userId, true);
             telegramBot.execute(new AnswerCallbackQuery(callbackId).text("Telefon raqam kiriting"));
             return;
         }
-        
+
         if (data.startsWith("set_admin_")) {
             Long targetUserId = Long.parseLong(data.substring("set_admin_".length()));
-            
+
             try {
                 botUserService.addRoleToUser(targetUserId, "ROLE_ADMIN");
                 messageService.sendRoleAddedSuccess(chatId, "ROLE_ADMIN");
@@ -352,22 +348,22 @@ public class AdminCallbackHandler implements Consumer<CallbackQuery> {
             }
             return;
         }
-        
+
         if (data.startsWith("set_super_admin_")) {
             // Check if user is super admin
             boolean isSuperAdmin = user.getRoles() != null && user.getRoles().stream()
-                    .anyMatch(role -> role.getName() != null && 
+                    .anyMatch(role -> role.getName() != null &&
                             role.getName().equals("ROLE_SUPER_ADMIN"));
-            
+
             if (!isSuperAdmin) {
                 telegramBot.execute(new AnswerCallbackQuery(callbackId)
                         .text("Faqat Super Admin bu funksiyani ishlatishi mumkin")
                         .showAlert(true));
                 return;
             }
-            
+
             Long targetUserId = Long.parseLong(data.substring("set_super_admin_".length()));
-            
+
             try {
                 botUserService.addRoleToUser(targetUserId, "ROLE_SUPER_ADMIN");
                 messageService.sendRoleAddedSuccess(chatId, "ROLE_SUPER_ADMIN");
