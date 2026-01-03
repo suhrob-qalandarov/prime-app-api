@@ -105,7 +105,8 @@ public class JwtCookieService {
         // Build user claims
         Map<String, Object> userClaims = new HashMap<>();
         userClaims.put("id", user.getId());
-        userClaims.put("fullName", userUtil.truncateName(user.getFirstName() + " " + (user.getLastName() != null ? user.getLastName() : "")));
+        userClaims.put("fullName", userUtil
+                .truncateName(user.getFirstName() + " " + (user.getLastName() != null ? user.getLastName() : "")));
         userClaims.put("telegramId", user.getTelegramId());
         userClaims.put("roles", rolesList);
 
@@ -114,20 +115,20 @@ public class JwtCookieService {
         // Build data object (counts, iat, exp)
         Date now = new Date();
         Date dataExpiry = new Date(now.getTime() + dataExpiryMinutes * 60 * 1000L);
-        
+
         Map<String, Integer> counts = new HashMap<>();
         counts.put("category", 0);
         counts.put("product", 0);
         counts.put("attachment", 0);
         counts.put("cart", 0);
-        
+
         Map<String, Object> dataClaims = new HashMap<>();
-        dataClaims.put("iat", now.getTime() / 1000);  // Unix timestamp (seconds)
-        dataClaims.put("exp", dataExpiry.getTime() / 1000);  // Unix timestamp (seconds)
+        dataClaims.put("iat", now.getTime() / 1000); // Unix timestamp (seconds)
+        dataClaims.put("exp", dataExpiry.getTime() / 1000); // Unix timestamp (seconds)
         dataClaims.put("counts", counts);
 
         String token = Jwts.builder()
-                .setSubject("SESSION")  // sub da type
+                .subject("SESSION") // sub da type
                 .claim("sessionId", session.getSessionId())
                 .claim("ip", currentIp)
                 .claim("browserInfo", browserInfo)
@@ -135,8 +136,9 @@ public class JwtCookieService {
                 .claim("user", userClaims)
                 .claim("data", dataClaims)
                 .issuedAt(now)
-                .expiration(new Date(now.getTime() + accessTokenExpiryDays * 24L * 60 * 60 * 1000)) // days from properties
-                .signWith(getSecretKey(), SignatureAlgorithm.HS256)
+                .expiration(new Date(now.getTime() + accessTokenExpiryDays * 24L * 60 * 60 * 1000)) // days from
+                                                                                                    // properties
+                .signWith(getSecretKey(), Jwts.SIG.HS256)
                 .compact();
 
         // Save token to session entity
@@ -160,21 +162,21 @@ public class JwtCookieService {
         // Build data object (counts, iat, exp)
         Date now = new Date();
         Date dataExpiry = new Date(now.getTime() + dataExpiryMinutes * 60 * 1000L);
-        
+
         // Yangi session yaratilganda max count qiymatlarini o'rnatish
         Map<String, Integer> counts = new HashMap<>();
         counts.put("category", maxCountCategory);
         counts.put("product", maxCountProduct);
         counts.put("attachment", maxCountAttachment);
         counts.put("cart", maxCountCart);
-        
+
         Map<String, Object> dataClaims = new HashMap<>();
-        dataClaims.put("iat", now.getTime() / 1000);  // Unix timestamp (seconds)
-        dataClaims.put("exp", dataExpiry.getTime() / 1000);  // Unix timestamp (seconds)
+        dataClaims.put("iat", now.getTime() / 1000); // Unix timestamp (seconds)
+        dataClaims.put("exp", dataExpiry.getTime() / 1000); // Unix timestamp (seconds)
         dataClaims.put("counts", counts);
 
         String token = Jwts.builder()
-                .setSubject("SESSION")  // sub da type
+                .subject("SESSION") // sub da type
                 .claim("sessionId", session.getSessionId())
                 .claim("ip", currentIp)
                 .claim("browserInfo", browserInfo)
@@ -182,8 +184,9 @@ public class JwtCookieService {
                 .claim("user", null)
                 .claim("data", dataClaims)
                 .issuedAt(now)
-                .expiration(new Date(now.getTime() + accessTokenExpiryDays * 24L * 60 * 60 * 1000)) // days from properties
-                .signWith(getSecretKey(), SignatureAlgorithm.HS256)
+                .expiration(new Date(now.getTime() + accessTokenExpiryDays * 24L * 60 * 60 * 1000)) // days from
+                                                                                                    // properties
+                .signWith(getSecretKey(), Jwts.SIG.HS256)
                 .compact();
 
         // Save token to session entity
@@ -235,7 +238,8 @@ public class JwtCookieService {
                 return false;
             }
 
-            // isAuthenticated tekshirish olib tashlandi - anonymous session'lar uchun false bo'lishi mumkin
+            // isAuthenticated tekshirish olib tashlandi - anonymous session'lar uchun false
+            // bo'lishi mumkin
             // Faqat token validligini tekshiramiz (IP, sessionId, type)
 
             return true;
@@ -255,7 +259,7 @@ public class JwtCookieService {
         // Get user claims from token
         @SuppressWarnings("unchecked")
         Map<String, Object> userClaims = (Map<String, Object>) claims.get("user");
-        
+
         // Anonymous user uchun user null bo'lishi mumkin
         if (userClaims == null) {
             return null;
@@ -279,11 +283,12 @@ public class JwtCookieService {
         @SuppressWarnings("unchecked")
         List<String> rolesList = (List<String>) userClaims.get("roles");
         if (rolesList != null) {
-            // Set roles from token (we'll use the roles from database, but validate they match)
+            // Set roles from token (we'll use the roles from database, but validate they
+            // match)
             List<String> dbRoles = user.getRoles().stream()
                     .map(Role::getAuthority)
                     .collect(Collectors.toList());
-            
+
             // Validate roles match (optional security check)
             if (!new HashSet<>(rolesList).equals(new HashSet<>(dbRoles))) {
                 log.warn("Token roles do not match database roles. Token: {}, DB: {}", rolesList, dbRoles);
@@ -368,11 +373,11 @@ public class JwtCookieService {
         cookie.setAttribute(cookieAttributeName, cookieAttributeValue);
         response.addCookie(cookie);
     }
-    
+
     public String getCookieNameUser() {
         return cookieNameUser;
     }
-    
+
     public String getCookieNameAdmin() {
         return cookieNameAdmin;
     }
@@ -387,19 +392,19 @@ public class JwtCookieService {
                     .build()
                     .parseSignedClaims(token)
                     .getPayload();
-            
+
             @SuppressWarnings("unchecked")
             Map<String, Object> dataClaims = (Map<String, Object>) claims.get("data");
             if (dataClaims == null) {
                 return 0;
             }
-            
+
             @SuppressWarnings("unchecked")
             Map<String, Integer> counts = (Map<String, Integer>) dataClaims.get("counts");
             if (counts == null) {
                 return 0;
             }
-            
+
             return counts.getOrDefault("product", 0);
         } catch (Exception e) {
             log.warn("Failed to get product count from token: {}", e.getMessage());
@@ -417,19 +422,19 @@ public class JwtCookieService {
                     .build()
                     .parseSignedClaims(token)
                     .getPayload();
-            
+
             @SuppressWarnings("unchecked")
             Map<String, Object> dataClaims = (Map<String, Object>) claims.get("data");
             if (dataClaims == null) {
                 return 0;
             }
-            
+
             @SuppressWarnings("unchecked")
             Map<String, Integer> counts = (Map<String, Integer>) dataClaims.get("counts");
             if (counts == null) {
                 return 0;
             }
-            
+
             return counts.getOrDefault("category", 0);
         } catch (Exception e) {
             log.warn("Failed to get category count from token: {}", e.getMessage());
@@ -447,19 +452,19 @@ public class JwtCookieService {
                     .build()
                     .parseSignedClaims(token)
                     .getPayload();
-            
+
             @SuppressWarnings("unchecked")
             Map<String, Object> dataClaims = (Map<String, Object>) claims.get("data");
             if (dataClaims == null) {
                 return 0;
             }
-            
+
             @SuppressWarnings("unchecked")
             Map<String, Integer> counts = (Map<String, Integer>) dataClaims.get("counts");
             if (counts == null) {
                 return 0;
             }
-            
+
             return counts.getOrDefault("attachment", 0);
         } catch (Exception e) {
             log.warn("Failed to get attachment count from token: {}", e.getMessage());
@@ -477,19 +482,19 @@ public class JwtCookieService {
                     .build()
                     .parseSignedClaims(token)
                     .getPayload();
-            
+
             @SuppressWarnings("unchecked")
             Map<String, Object> dataClaims = (Map<String, Object>) claims.get("data");
             if (dataClaims == null) {
                 return 0;
             }
-            
+
             @SuppressWarnings("unchecked")
             Map<String, Integer> counts = (Map<String, Integer>) dataClaims.get("counts");
             if (counts == null) {
                 return 0;
             }
-            
+
             return counts.getOrDefault("cart", 0);
         } catch (Exception e) {
             log.warn("Failed to get cart count from token: {}", e.getMessage());
@@ -507,21 +512,21 @@ public class JwtCookieService {
                     .build()
                     .parseSignedClaims(token)
                     .getPayload();
-            
+
             @SuppressWarnings("unchecked")
             Map<String, Object> dataClaims = (Map<String, Object>) claims.get("data");
             if (dataClaims == null) {
                 return true;
             }
-            
+
             Object expObj = dataClaims.get("exp");
             if (expObj == null) {
                 return true;
             }
-            
+
             Long exp = ((Number) expObj).longValue();
             long currentTime = System.currentTimeMillis() / 1000;
-            
+
             return exp < currentTime;
         } catch (Exception e) {
             log.warn("Failed to check data expiry: {}", e.getMessage());
@@ -530,17 +535,19 @@ public class JwtCookieService {
     }
 
     /**
-     * Count'ni kamaytirib token yangilash - faqat count o'zgaradi, boshqa ma'lumotlar o'zgarishmaydi
+     * Count'ni kamaytirib token yangilash - faqat count o'zgaradi, boshqa
+     * ma'lumotlar o'zgarishmaydi
      */
     @Transactional
-    public String updateTokenWithDecrementedCount(String token, String countType, HttpServletRequest request, Session session) {
+    public String updateTokenWithDecrementedCount(String token, String countType, HttpServletRequest request,
+            Session session) {
         try {
             Claims claims = Jwts.parser()
                     .verifyWith(getSecretKey())
                     .build()
                     .parseSignedClaims(token)
                     .getPayload();
-            
+
             // Eski ma'lumotlarni olish (barcha ma'lumotlar o'zgarishmasligi kerak)
             String sessionId = claims.get("sessionId", String.class);
             String ip = claims.get("ip", String.class);
@@ -548,11 +555,11 @@ public class JwtCookieService {
             Boolean isAuthenticated = claims.get("isAuthenticated", Boolean.class);
             @SuppressWarnings("unchecked")
             Map<String, Object> userClaims = (Map<String, Object>) claims.get("user");
-            
+
             // Eski issuedAt va expiration ni olish
             Date issuedAt = claims.getIssuedAt();
             Date expiration = claims.getExpiration();
-            
+
             // Data claims ni olish va faqat count ni yangilash
             @SuppressWarnings("unchecked")
             Map<String, Object> dataClaims = (Map<String, Object>) claims.get("data");
@@ -563,27 +570,27 @@ public class JwtCookieService {
                 dataClaims.put("iat", now.getTime() / 1000);
                 dataClaims.put("exp", new Date(now.getTime() + dataExpiryMinutes * 60 * 1000L).getTime() / 1000);
             }
-            
+
             // Eski iat va exp ni saqlash
             Object iat = dataClaims.get("iat");
             Object exp = dataClaims.get("exp");
-            
+
             @SuppressWarnings("unchecked")
             Map<String, Integer> counts = (Map<String, Integer>) dataClaims.get("counts");
             if (counts == null) {
                 counts = new HashMap<>();
             }
-            
+
             // Faqat count'ni kamaytirish
             int currentCount = counts.getOrDefault(countType, 0);
             counts.put(countType, Math.max(0, currentCount - 1));
-            
+
             // Data claims ni yangilash - faqat counts o'zgaradi, iat va exp o'zgarishmaydi
             Map<String, Object> newDataClaims = new HashMap<>();
             newDataClaims.put("iat", iat);
             newDataClaims.put("exp", exp);
             newDataClaims.put("counts", counts);
-            
+
             // Yangi token yaratish - barcha eski ma'lumotlar bilan
             String newToken = Jwts.builder()
                     .setSubject("SESSION")
@@ -594,15 +601,16 @@ public class JwtCookieService {
                     .claim("user", userClaims)
                     .claim("data", newDataClaims)
                     .issuedAt(issuedAt != null ? issuedAt : new Date())
-                    .expiration(expiration != null ? expiration : new Date(System.currentTimeMillis() + accessTokenExpiryDays * 24L * 60 * 60 * 1000))
+                    .expiration(expiration != null ? expiration
+                            : new Date(System.currentTimeMillis() + accessTokenExpiryDays * 24L * 60 * 60 * 1000))
                     .signWith(getSecretKey(), SignatureAlgorithm.HS256)
                     .compact();
-            
+
             // Session'ga saqlash
             if (session != null) {
                 session.setAccessToken(newToken);
             }
-            
+
             return newToken;
         } catch (Exception e) {
             log.error("Failed to update token with decremented count: {}", e.getMessage(), e);
@@ -611,16 +619,17 @@ public class JwtCookieService {
     }
 
     /**
-     * Yangi token yaratish - expiry bugan bo'lsa, har bir count type uchun max count qiymatlarini application.properties'dan oladi
+     * Yangi token yaratish - expiry bugan bo'lsa, har bir count type uchun max
+     * count qiymatlarini application.properties'dan oladi
      */
     @Transactional
     public String generateNewTokenWithCount(String countType, int count, Session session, HttpServletRequest request) {
         User user = session.getUser();
-        
+
         // Get current IP
         String currentIp = ipAddressUtil.getClientIpAddress(request);
         String browserInfo = session.getBrowserInfo();
-        
+
         // Build user claims
         Map<String, Object> userClaims = null;
         List<String> rolesList = null;
@@ -628,19 +637,21 @@ public class JwtCookieService {
             rolesList = user.getRoles().stream()
                     .map(Role::getAuthority)
                     .collect(Collectors.toList());
-            
+
             userClaims = new HashMap<>();
             userClaims.put("id", user.getId());
-            userClaims.put("fullName", userUtil.truncateName(user.getFirstName() + " " + (user.getLastName() != null ? user.getLastName() : "")));
+            userClaims.put("fullName", userUtil
+                    .truncateName(user.getFirstName() + " " + (user.getLastName() != null ? user.getLastName() : "")));
             userClaims.put("telegramId", user.getTelegramId());
             userClaims.put("roles", rolesList);
         }
-        
+
         // Build data object (counts, iat, exp)
         Date now = new Date();
         Date dataExpiry = new Date(now.getTime() + dataExpiryMinutes * 60 * 1000L);
-        
-        // Har bir count type uchun max count qiymatlarini application.properties'dan olish
+
+        // Har bir count type uchun max count qiymatlarini application.properties'dan
+        // olish
         Map<String, Integer> counts = new HashMap<>();
         if (count == -1) {
             // Expiry bugan bo'lsa, har bir count type uchun max count qiymatlarini olish
@@ -655,12 +666,12 @@ public class JwtCookieService {
             counts.put("attachment", countType.equals("attachment") ? count : 0);
             counts.put("cart", countType.equals("cart") ? count : 0);
         }
-        
+
         Map<String, Object> dataClaims = new HashMap<>();
         dataClaims.put("iat", now.getTime() / 1000);
         dataClaims.put("exp", dataExpiry.getTime() / 1000);
         dataClaims.put("counts", counts);
-        
+
         String newToken = Jwts.builder()
                 .setSubject("SESSION")
                 .claim("sessionId", session.getSessionId())
@@ -673,10 +684,10 @@ public class JwtCookieService {
                 .expiration(new Date(now.getTime() + accessTokenExpiryDays * 24L * 60 * 60 * 1000))
                 .signWith(getSecretKey(), SignatureAlgorithm.HS256)
                 .compact();
-        
+
         // Session'ga saqlash
         session.setAccessToken(newToken);
-        
+
         return newToken;
     }
 }
