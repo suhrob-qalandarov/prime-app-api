@@ -7,7 +7,7 @@ import java.math.BigDecimal;
 import java.util.Set;
 
 @Builder
-public record ProductReq (
+public record ProductReq(
 
         @NotBlank(message = "Mahsulot nomi bo‘sh bo‘lmasligi kerak")
         @Size(max = 512, message = "Mahsulot nomi 512 belgidan oshmasin")

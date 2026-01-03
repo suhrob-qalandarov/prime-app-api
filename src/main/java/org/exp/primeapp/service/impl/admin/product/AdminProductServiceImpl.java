@@ -162,6 +162,7 @@ public class AdminProductServiceImpl implements AdminProductService {
                 .price(req.price())
                 .status(ProductStatus.PENDING_INCOME)
                 .category(category)
+                .categoryName(category.getName())
                 .sizes(new HashSet<>())
                 .build();
     }
@@ -188,6 +189,7 @@ public class AdminProductServiceImpl implements AdminProductService {
             Category category = categoryRepository.findById(req.categoryId())
                     .orElseThrow(() -> new RuntimeException("Category not found with categoryId: " + req.categoryId()));
             product.setCategory(category);
+            product.setCategoryName(category.getName());
         }
 
         /*
