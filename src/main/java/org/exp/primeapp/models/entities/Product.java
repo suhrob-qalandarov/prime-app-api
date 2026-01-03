@@ -1,5 +1,7 @@
 package org.exp.primeapp.models.entities;
 
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import org.exp.primeapp.models.base.BaseEntity;
 import org.exp.primeapp.models.enums.ProductTag;
 import org.exp.primeapp.models.enums.ProductStatus;
@@ -29,28 +31,34 @@ public class Product extends BaseEntity {
     private String name;
 
     @Column(nullable = false)
-    private String colorName;
-
-    @Column(nullable = false)
-    private String colorHex;
-
-    @Column(nullable = false)
     private String brand;
 
     @Column(columnDefinition = "TEXT", nullable = false)
     private String description;
 
-    @Builder.Default
     @Column(nullable = false)
+    private String colorName;
+
+    @Column(nullable = false)
+    private String colorHex;
+
+    @Builder.Default
+    @Column(nullable = false, precision = 19, scale = 2)
     private BigDecimal price = BigDecimal.ZERO;
 
     @Builder.Default
     @Column(nullable = false)
-    private Integer discount = 0;
+    @Min(0)
+    @Max(100)
+    private Integer discountPercent = 0;
 
     @Builder.Default
     @Column(nullable = false)
     private Integer salesCount = 0;
+
+    @Builder.Default
+    @Column(nullable = false)
+    private Integer warningQuantity = 0;
 
     @Builder.Default
     @Column(nullable = false)
@@ -62,6 +70,9 @@ public class Product extends BaseEntity {
     @Enumerated(EnumType.STRING)
     private ProductStatus status = ProductStatus.PENDING_INCOME;
 
+    @Column(nullable = false)
+    private String categoryName;
+
     @ManyToOne
     @JoinColumn(nullable = false)
     private Category category;
@@ -70,20 +81,3 @@ public class Product extends BaseEntity {
     @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, orphanRemoval = true)
     private Set<ProductSize> sizes = new HashSet<>();
 }
-
-/*
-public void addSize(ProductSize productSize) {
-    ProductSize existing = sizes.stream()
-            .filter(ps -> ps.getSize().equals(productSize.getSize()))
-            .findFirst()
-            .orElse(null);
-
-    if (existing == null) {
-        productSize.setProduct(this);
-        sizes.add(productSize);
-    } else {
-        int newAmount = existing.getAmount() + productSize.getAmount();
-        existing.setAmount(newAmount);
-    }
-}
-*/

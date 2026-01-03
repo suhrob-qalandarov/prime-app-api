@@ -35,13 +35,13 @@ public class CategoryServiceImpl implements CategoryService {
 
     @Override
     public List<CategoryRes> getResCategoriesBySpotlightName(String spotlightName) {
-        return categoryRepository.findBySpotlightNameAndStatusOrderByOrderNumberAsc(spotlightName, CategoryStatus.VISIBLE)
+        return categoryRepository
+                .findBySpotlightNameAndStatusOrderByOrderNumberAsc(spotlightName, CategoryStatus.VISIBLE)
                 .stream()
                 .map(category -> new CategoryRes(
                         category.getId(),
                         category.getName(),
-                        category.getSpotlightName()
-                ))
+                        category.getSpotlightName()))
                 .toList();
     }
 
@@ -51,8 +51,7 @@ public class CategoryServiceImpl implements CategoryService {
                 .map(category -> new CategoryRes(
                         category.getId(),
                         category.getName(),
-                        category.getSpotlightName()
-                ))
+                        category.getSpotlightName()))
                 .toList();
     }
 
@@ -83,7 +82,8 @@ public class CategoryServiceImpl implements CategoryService {
 
     @Override
     public AdminCategoryRes saveCategory(@NonNull CategoryReq categoryReq) {
-        // Calculate orderNumber - get max orderNumber and add 1, or start from 1 if no categories exist
+        // Calculate orderNumber - get max orderNumber and add 1, or start from 1 if no
+        // categories exist
         Long orderNumber = 1L;
         List<Category> allCategories = categoryRepository.findAllByOrderByOrderNumberAsc();
         if (!allCategories.isEmpty()) {
@@ -100,12 +100,9 @@ public class CategoryServiceImpl implements CategoryService {
                         .spotlightName(
                                 categoryReq.spotlightName() != null && !categoryReq.spotlightName().isBlank()
                                         ? categoryReq.spotlightName()
-                                        : null
-                        )
+                                        : null)
                         .orderNumber(orderNumber)
-                        .active(false)
-                        .build()
-        );
+                        .build());
         System.out.println("Category saved successfully");
         return convertToAdminCategoryRes(saved);
     }
@@ -129,7 +126,7 @@ public class CategoryServiceImpl implements CategoryService {
     @Override
     public void toggleCategoryActiveStatusWithProductActiveStatus(Long categoryId) {
         Category category = categoryRepository.findById(categoryId).orElseThrow();
-        Boolean active = category.getActive();
+        Boolean active = category.getStatus() == CategoryStatus.VISIBLE;
 
         if (active) {
             deactivateCategoryWithProducts(categoryId);
@@ -142,11 +139,11 @@ public class CategoryServiceImpl implements CategoryService {
     @Transactional
     public void deactivateCategoryWithProducts(Long categoryId) {
         Category category = categoryRepository.findById(categoryId).orElseThrow(RuntimeException::new);
-        category.setActive(false);
+        category.setStatus(CategoryStatus.CREATED);
         categoryRepository.save(category);
 
         List<Product> products = productRepository.findAllByCategory(category);
-        products.forEach(product -> product.setActive(false));
+        products.forEach(product -> product.setStatus(org.exp.primeapp.models.enums.ProductStatus.ARCHIVED));
         productRepository.saveAll(products);
 
         System.out.println("Category active updated successfully");
@@ -155,11 +152,11 @@ public class CategoryServiceImpl implements CategoryService {
     @Transactional
     public void activateCategoryWithProducts(Long categoryId) {
         Category category = categoryRepository.findById(categoryId).orElseThrow(RuntimeException::new);
-        category.setActive(true);
+        category.setStatus(CategoryStatus.VISIBLE);
         categoryRepository.save(category);
 
         List<Product> products = productRepository.findAllByCategory(category);
-        products.forEach(product -> product.setActive(true));
+        products.forEach(product -> product.setStatus(org.exp.primeapp.models.enums.ProductStatus.ON_SALE));
         productRepository.saveAll(products);
 
         System.out.println("Category and category products activated successfully");
@@ -182,8 +179,7 @@ public class CategoryServiceImpl implements CategoryService {
         return new CategoryRes(
                 category.getId(),
                 category.getName(),
-                category.getSpotlightName()
-        );
+                category.getSpotlightName());
     }
 
     public AdminCategoryRes convertToAdminCategoryRes(@NonNull Category category) {
@@ -193,10 +189,9 @@ public class CategoryServiceImpl implements CategoryService {
                 category.getName(),
                 category.getSpotlightName(),
                 category.getOrderNumber(),
-                category.getActive(),
+                category.getStatus() == CategoryStatus.VISIBLE,
                 countByCategory,
-                category.getCreatedAt() != null ? category.getCreatedAt().format(formatter) : null
-        );
+                category.getCreatedAt() != null ? category.getCreatedAt().format(formatter) : null);
     }
 
 }

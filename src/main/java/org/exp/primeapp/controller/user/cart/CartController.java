@@ -71,5 +71,16 @@ public class CartController {
             return ResponseEntity.ok(cartProducts);
         });
     }
+
+    @GetMapping("/order")
+    public ResponseEntity<?> getCartOrderProducts(
+            List<CartItemReq> cartItems,
+            HttpServletRequest request,
+            HttpServletResponse response) {
+        return sessionTokenUtil.handleSessionTokenRequest("cart", request, response, () -> {
+            List<ProductCartRes> cartOrderProducts = productService.getCartOrderProducts(cartItems);
+            return ResponseEntity.ok(cartOrderProducts);
+        });
+    }
 }
 

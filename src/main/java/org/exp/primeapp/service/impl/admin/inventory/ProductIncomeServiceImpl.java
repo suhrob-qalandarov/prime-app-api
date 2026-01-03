@@ -62,7 +62,7 @@ public class ProductIncomeServiceImpl implements ProductIncomeService {
                     ProductSize newSize = ProductSize.builder()
                             .product(product)
                             .size(incomeRequest.size())
-                            .amount(0)
+                            .quantity(0)
                             .costPrice(BigDecimal.ZERO)
                             .build();
                     return productSizeRepository.save(newSize);
@@ -77,9 +77,11 @@ public class ProductIncomeServiceImpl implements ProductIncomeService {
             totalIncomeStockPrice = oneStockPrice.multiply(BigDecimal.valueOf(incomeRequest.incomeStock()))
                     .setScale(2, RoundingMode.HALF_UP);
         }
-        // Agar totalIncomeStockPrice null bo'lmasa va oneStockPrice null bo'lsa, oneStockPrice ni hisobla
+        // Agar totalIncomeStockPrice null bo'lmasa va oneStockPrice null bo'lsa,
+        // oneStockPrice ni hisobla
         else if (oneStockPrice == null && totalIncomeStockPrice != null) {
-            oneStockPrice = totalIncomeStockPrice.divide(BigDecimal.valueOf(incomeRequest.incomeStock()), 2, RoundingMode.HALF_UP);
+            oneStockPrice = totalIncomeStockPrice.divide(BigDecimal.valueOf(incomeRequest.incomeStock()), 2,
+                    RoundingMode.HALF_UP);
         }
         // Agar ikkalasi ham null bo'lsa, default qiymatlar
         else if (oneStockPrice == null && totalIncomeStockPrice == null) {
@@ -87,14 +89,15 @@ public class ProductIncomeServiceImpl implements ProductIncomeService {
             totalIncomeStockPrice = BigDecimal.ZERO;
         }
 
-        // isCalculated ni hisoblash: sellingPrice va (oneStockPrice yoki totalIncomeStockPrice) bo'lsa true
-        boolean isCalculated = incomeRequest.sellingPrice() != null 
-                && (oneStockPrice != null && !oneStockPrice.equals(BigDecimal.ZERO) 
-                    || totalIncomeStockPrice != null && !totalIncomeStockPrice.equals(BigDecimal.ZERO));
+        // isCalculated ni hisoblash: sellingPrice va (oneStockPrice yoki
+        // totalIncomeStockPrice) bo'lsa true
+        boolean isCalculated = incomeRequest.sellingPrice() != null
+                && (oneStockPrice != null && !oneStockPrice.equals(BigDecimal.ZERO)
+                        || totalIncomeStockPrice != null && !totalIncomeStockPrice.equals(BigDecimal.ZERO));
 
         // ProductIncome yaratish
         User currentUser = (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-        
+
         ProductIncome productIncome = ProductIncome.builder()
                 .product(product)
                 .stockQuantity(incomeRequest.incomeStock())
@@ -107,12 +110,13 @@ public class ProductIncomeServiceImpl implements ProductIncomeService {
 
         ProductIncome savedIncome = productIncomeRepository.save(productIncome);
 
-        // ProductSize amount ni yangilash
-        productSize.setAmount(productSize.getAmount() + incomeRequest.incomeStock());
+        // ProductSize quantity ni yangilash
+        productSize.setQuantity(productSize.getQuantity() + incomeRequest.incomeStock());
         productSize.setCostPrice(oneStockPrice);
         productSizeRepository.save(productSize);
 
-        // Agar sellingPrice null bo'lmasa va canSetPriceToProduct=true bo'lsa, product price ni yangilash
+        // Agar sellingPrice null bo'lmasa va canSetPriceToProduct=true bo'lsa, product
+        // price ni yangilash
         if (incomeRequest.sellingPrice() != null && Boolean.TRUE.equals(incomeRequest.canSetPriceToProduct())) {
             product.setPrice(incomeRequest.sellingPrice());
             productRepository.save(product);
@@ -134,19 +138,19 @@ public class ProductIncomeServiceImpl implements ProductIncomeService {
                 return;
             }
 
-            // Product ni active qilish
-            if (!product.getActive()) {
-                product.setActive(true);
+            // Product ni active qilish (ON_SALE ga o'tkazish)
+            if (product.getStatus() != org.exp.primeapp.models.enums.ProductStatus.ON_SALE) {
+                product.setStatus(org.exp.primeapp.models.enums.ProductStatus.ON_SALE);
                 productRepository.save(product);
-                log.info("Product {} activated due to income", product.getId());
+                log.info("Product {} activated/set to ON_SALE due to income", product.getId());
             }
 
-            // Category ni active qilish
+            // Category ni active qilish (VISIBLE ga o'tkazish)
             Category category = product.getCategory();
-            if (category != null && !category.getActive()) {
-                category.setActive(true);
+            if (category != null && category.getStatus() != org.exp.primeapp.models.enums.CategoryStatus.VISIBLE) {
+                category.setStatus(org.exp.primeapp.models.enums.CategoryStatus.VISIBLE);
                 categoryRepository.save(category);
-                log.info("Category {} activated due to product income", category.getId());
+                log.info("Category {} activated/set to VISIBLE due to product income", category.getId());
             }
         } catch (Exception e) {
             log.error("Error activating product and category for ProductIncome {}", productIncome.getId(), e);
@@ -197,17 +201,17 @@ public class ProductIncomeServiceImpl implements ProductIncomeService {
         int totalStockQuantity = incomes.stream()
                 .mapToInt(ProductIncome::getStockQuantity)
                 .sum();
-        
+
         BigDecimal totalIncomeAmount = incomes.stream()
                 .map(ProductIncome::getTotalPrice)
                 .filter(price -> price != null)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
-        
+
         BigDecimal totalUnitPrice = incomes.stream()
                 .map(ProductIncome::getUnitPrice)
                 .filter(price -> price != null)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
-        
+
         BigDecimal averageUnitPrice = totalCount > 0 && totalUnitPrice.compareTo(BigDecimal.ZERO) > 0
                 ? totalUnitPrice.divide(BigDecimal.valueOf(totalCount), 2, RoundingMode.HALF_UP)
                 : BigDecimal.ZERO;
@@ -225,4 +229,3 @@ public class ProductIncomeServiceImpl implements ProductIncomeService {
                 .build();
     }
 }
-

@@ -44,7 +44,6 @@ public class Runner implements CommandLineRunner {
                             .phone("+998901234567")
                             .verifyCode(123456)
                             .verifyCodeExpiration(LocalDateTime.of(2030, 12, 12, 12, 0))
-                            .active(true)
                             .roles(roles)
                             .build()
             );

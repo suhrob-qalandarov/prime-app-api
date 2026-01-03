@@ -48,7 +48,6 @@ public class AdminAttachmentServiceImpl implements AdminAttachmentService {
         return attachmentService.convertToAttachmentResList(noProduct);
     }
 
-
     @Override
     public List<AttachmentRes> getAttachmentsLinkedWithProduct() {
         List<Attachment> linkedToProduct = attachmentRepository.findByProductIsNotNull();
@@ -109,11 +108,10 @@ public class AdminAttachmentServiceImpl implements AdminAttachmentService {
         Attachment attachment = attachmentService.getAttachment(attachmentId);
 
         try {
-            attachment.setActive(false);
-            attachmentRepository.save(attachment);
+            attachmentRepository.delete(attachment);
         } catch (Exception e) {
-            log.error("Failed to soft-delete attachment ID {}: {}", attachmentId, e.getMessage());
-            throw new RuntimeException("Unable to soft-delete attachment in database", e);
+            log.error("Failed to delete attachment ID {}: {}", attachmentId, e.getMessage());
+            throw new RuntimeException("Unable to delete attachment in database", e);
         }
     }
 
@@ -123,13 +121,12 @@ public class AdminAttachmentServiceImpl implements AdminAttachmentService {
         Attachment attachment = attachmentService.getAttachment(attachmentId);
         String url = attachment.getUrl();
 
-        if (attachment.getActive() || attachment.getUrl().startsWith("deleted_")) {
+        if (attachment.getUrl().startsWith("deleted_")) {
             return;
         }
 
         try {
             attachment.setUrl("deleted_" + attachment.getUrl());
-            attachment.setActive(false);
             attachmentRepository.save(attachment);
         } catch (Exception e) {
             log.error("Failed to soft-delete attachment ID {}: {}", attachmentId, e.getMessage());
@@ -143,18 +140,11 @@ public class AdminAttachmentServiceImpl implements AdminAttachmentService {
     public AttachmentRes toggleAttachmentActiveStatus(Long attachmentId) {
         Attachment attachment = attachmentRepository.findById(attachmentId)
                 .orElseThrow(() -> new IllegalArgumentException("Attachment not found with ID: " + attachmentId));
-        Boolean active = attachment.getActive();
 
-        if (active) {
-            attachment.setActive(false);
-            log.info("Attachment deactivated {}", attachment.getId());
-        } else {
-            attachment.setActive(true);
-            log.info("Attachment activated {}", attachment.getId());
-        }
+        // Active status no longer supported for Attachments
+        log.info("Toggle active status called for attachment {}, but active field is removed.", attachment.getId());
 
-        Attachment updatedAttachment = attachmentRepository.save(attachment);
-        return attachmentService.convertToAttachmentRes(updatedAttachment);
+        return attachmentService.convertToAttachmentRes(attachment);
     }
 
     private String saveFileLocally(MultipartFile file) {
@@ -183,14 +173,14 @@ public class AdminAttachmentServiceImpl implements AdminAttachmentService {
             log.info("File saved successfully: {}", filePath.toAbsolutePath());
 
             // Generate URL: base_url + folder_path + filename
-            String baseUrl = attachmentBaseUrl.endsWith("/") 
-                    ? attachmentBaseUrl.substring(0, attachmentBaseUrl.length() - 1) 
+            String baseUrl = attachmentBaseUrl.endsWith("/")
+                    ? attachmentBaseUrl.substring(0, attachmentBaseUrl.length() - 1)
                     : attachmentBaseUrl;
-            String folderPath = attachmentFolderPath.startsWith("/") 
-                    ? attachmentFolderPath 
+            String folderPath = attachmentFolderPath.startsWith("/")
+                    ? attachmentFolderPath
                     : "/" + attachmentFolderPath;
             String url = baseUrl + folderPath + "/" + uniqueFilename;
-            
+
             return url;
         } catch (IOException e) {
             log.error("Failed to save file {}: {}", file.getOriginalFilename(), e.getMessage());
@@ -204,7 +194,7 @@ public class AdminAttachmentServiceImpl implements AdminAttachmentService {
         if (!filePath.startsWith("/")) {
             filePath = "/" + filePath;
         }
-        
+
         Attachment newAttachment = Attachment.builder()
                 .url(url)
                 .filePath(filePath)
@@ -213,7 +203,6 @@ public class AdminAttachmentServiceImpl implements AdminAttachmentService {
                 .contentType(file.getContentType())
                 .fileSize(file.getSize())
                 .fileExtension(getFileExtension(file.getOriginalFilename()))
-                .active(true)
                 .build();
         try {
             return attachmentRepository.save(newAttachment);
@@ -235,14 +224,14 @@ public class AdminAttachmentServiceImpl implements AdminAttachmentService {
     private void deleteLocalFile(String url) {
         try {
             // Extract file path from URL
-            String baseUrl = attachmentBaseUrl.endsWith("/") 
-                    ? attachmentBaseUrl.substring(0, attachmentBaseUrl.length() - 1) 
+            String baseUrl = attachmentBaseUrl.endsWith("/")
+                    ? attachmentBaseUrl.substring(0, attachmentBaseUrl.length() - 1)
                     : attachmentBaseUrl;
             String filePath = url.replace(baseUrl, "");
             if (filePath.startsWith("/")) {
                 filePath = filePath.substring(1);
             }
-            
+
             Path fileToDelete = Paths.get(filePath);
             if (Files.exists(fileToDelete)) {
                 Files.delete(fileToDelete);

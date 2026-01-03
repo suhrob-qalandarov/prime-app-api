@@ -3,7 +3,7 @@ package org.exp.primeapp.botadmin.handle;
 import com.pengrad.telegrambot.model.Contact;
 import com.pengrad.telegrambot.model.Message;
 import com.pengrad.telegrambot.model.PhotoSize;
-import lombok.RequiredArgsConstructor;
+
 import lombok.extern.slf4j.Slf4j;
 import org.exp.primeapp.botadmin.models.CategoryCreationState;
 import org.exp.primeapp.botadmin.models.ProductCreationState;
@@ -37,13 +37,13 @@ public class AdminMessageHandler implements Consumer<Message> {
     private final ProductMessageHandler productMessageHandler;
 
     public AdminMessageHandler(AdminMessageService messageService,
-                               UserService userService,
-                               BotProductService botProductService,
-                               BotCategoryService botCategoryService,
-                               BotUserService botUserService,
-                               UserRepository userRepository,
-                               @Qualifier("userBot") TelegramBot userBot,
-                               ProductMessageHandler productMessageHandler) {
+            UserService userService,
+            BotProductService botProductService,
+            BotCategoryService botCategoryService,
+            BotUserService botUserService,
+            UserRepository userRepository,
+            @Qualifier("userBot") TelegramBot userBot,
+            ProductMessageHandler productMessageHandler) {
         this.messageService = messageService;
         this.userService = userService;
         this.botProductService = botProductService;
@@ -73,51 +73,51 @@ public class AdminMessageHandler implements Consumer<Message> {
             return false;
         }
         return user.getRoles().stream()
-                .anyMatch(role -> role.getName() != null && 
-                        (role.getName().equals("ROLE_ADMIN") || 
-                         role.getName().equals("ROLE_SUPER_ADMIN")));
+                .anyMatch(role -> role.getName() != null &&
+                        (role.getName().equals("ROLE_ADMIN") ||
+                                role.getName().equals("ROLE_SUPER_ADMIN")));
     }
 
     @Override
     public void accept(Message message) {
         try {
             log.debug("Received admin message from chatId: {}, text: {}", message.chat().id(), message.text());
-            
+
             String text = message.text();
             Long telegramId = message.from().id();
             Long chatId = message.chat().id();
-            
+
             // Admin bot - faqat database'dan tekshirish, user yaratmaslik
             User user = userRepository.findByTelegramId(telegramId).orElse(null);
-            
+
             // /start buyrug'i uchun alohida tekshirish
             if (text != null && text.trim().startsWith("/start")) {
                 log.info("Processing /start command from admin bot, chatId: {}", chatId);
-                
+
                 if (user == null) {
                     log.warn("User with telegramId {} not found in database", telegramId);
                     String userBotUsername = getUserBotUsername();
                     messageService.sendAccessDeniedMessage(chatId, userBotUsername);
                     return;
                 }
-                
+
                 // Check if user is admin or super admin
                 boolean isAdminUser = user.getRoles() != null && user.getRoles().stream()
-                        .anyMatch(role -> role.getName() != null && 
-                                (role.getName().equals("ROLE_ADMIN") || 
-                                 role.getName().equals("ROLE_SUPER_ADMIN")));
-                
+                        .anyMatch(role -> role.getName() != null &&
+                                (role.getName().equals("ROLE_ADMIN") ||
+                                        role.getName().equals("ROLE_SUPER_ADMIN")));
+
                 if (!isAdminUser) {
                     log.warn("User with telegramId {} is not an admin", telegramId);
                     String userBotUsername = getUserBotUsername();
                     messageService.sendAccessDeniedMessage(chatId, userBotUsername);
                     return;
                 }
-                
+
                 // User is admin - send admin menu
                 String firstName = user.getFirstName() != null ? user.getFirstName() : "Admin";
                 boolean hasPhone = user.getPhone() != null && !user.getPhone().trim().isEmpty();
-                
+
                 if (hasPhone) {
                     log.info("Admin {} already has phone, sending admin menu", user.getId());
                     messageService.sendAdminMenu(chatId, firstName);
@@ -128,7 +128,7 @@ public class AdminMessageHandler implements Consumer<Message> {
                 log.info("Start message sent to chatId: {}", chatId);
                 return;
             }
-            
+
             // Boshqa message'lar uchun - user mavjudligini tekshirish
             if (user == null) {
                 log.warn("User with telegramId {} not found in database", telegramId);
@@ -136,7 +136,7 @@ public class AdminMessageHandler implements Consumer<Message> {
                 messageService.sendAccessDeniedMessage(chatId, userBotUsername);
                 return;
             }
-            
+
             // Check if user is admin - if not, send access denied message
             if (!isAdmin(user)) {
                 log.warn("Non-admin user {} tried to access admin bot", user.getId());
@@ -144,7 +144,7 @@ public class AdminMessageHandler implements Consumer<Message> {
                 messageService.sendAccessDeniedMessage(chatId, userBotUsername);
                 return;
             }
-            
+
             Long userId = user.getId();
             log.debug("Processing admin message for user: {} (chatId: {}), text: {}", userId, chatId, text);
 
@@ -152,7 +152,7 @@ public class AdminMessageHandler implements Consumer<Message> {
                 Contact contact = message.contact();
                 messageService.sendAdminMenuWithCancel(chatId);
                 userService.updateUserPhoneById(chatId, contact.phoneNumber());
-                
+
                 // Admin - send admin menu
                 String firstName = user.getFirstName() != null ? user.getFirstName() : "Admin";
                 messageService.sendAdminMenu(chatId, firstName);
@@ -180,9 +180,9 @@ public class AdminMessageHandler implements Consumer<Message> {
                 } else if (text.equals("👥 Foydalanuvchilar")) {
                     // Check if user is super admin
                     boolean isSuperAdmin = user.getRoles() != null && user.getRoles().stream()
-                            .anyMatch(role -> role.getName() != null && 
+                            .anyMatch(role -> role.getName() != null &&
                                     role.getName().equals("ROLE_SUPER_ADMIN"));
-                    
+
                     long[] counts = botUserService.getUserCounts();
                     messageService.sendUsersStatistics(chatId, counts[0], counts[1], counts[2], isSuperAdmin);
                     return;
@@ -193,7 +193,8 @@ public class AdminMessageHandler implements Consumer<Message> {
                     return;
                 } else if (text.equals("✏️ Mahsulot o'zgartirish")) {
                     // Product edit functionality - to be implemented later
-                    messageService.sendSimpleMessage(chatId, "⚠️ <b>Mahsulot o'zgartirish</b> funksiyasi keyinroq qo'shiladi");
+                    messageService.sendSimpleMessage(chatId,
+                            "⚠️ <b>Mahsulot o'zgartirish</b> funksiyasi keyinroq qo'shiladi");
                     return;
                 } else if (text.equals("📥 Income")) {
                     // Income functionality - to be implemented later
@@ -206,7 +207,8 @@ public class AdminMessageHandler implements Consumer<Message> {
                 } else if (text.equals("✅ Yangi mahsulotni tasdiqlash")) {
                     // Check if product creation is in confirmation state
                     ProductCreationState productState = botProductService.getProductCreationState(userId);
-                    if (productState != null && productState.getCurrentStep() == ProductCreationState.Step.CONFIRMATION) {
+                    if (productState != null
+                            && productState.getCurrentStep() == ProductCreationState.Step.CONFIRMATION) {
                         try {
                             botProductService.confirmAndSaveProduct(userId);
                             messageService.sendProductSavedSuccess(chatId);
@@ -227,7 +229,7 @@ public class AdminMessageHandler implements Consumer<Message> {
                         // Cancel product creation
                         botProductService.cancelProductCreation(userId);
                         messageService.sendProductCreationCancelled(chatId);
-                        
+
                         // Return to products menu
                         messageService.sendAdminSectionMessage(chatId, "Mahsulotlar");
                         return;
@@ -239,44 +241,44 @@ public class AdminMessageHandler implements Consumer<Message> {
                         // Cancel category creation
                         botCategoryService.cancelCategoryCreation(userId);
                         messageService.sendCategoryCreationCancelled(chatId);
-                        
+
                         // Return to categories menu
                         messageService.sendAdminSectionMessage(chatId, "Kategoriyalar");
                         return;
                     }
-                    
+
                     // If no active creation, return to products menu
                     messageService.sendAdminSectionMessage(chatId, "Mahsulotlar");
                     return;
                 } else if (text.equals("🏠 Asosiy menyu")) {
                     // Cancel all active states
                     botUserService.setUserSearchState(userId, false);
-                    
+
                     // Cancel product creation if active
                     ProductCreationState productState = botProductService.getProductCreationState(userId);
                     if (productState != null) {
                         botProductService.cancelProductCreation(userId);
                     }
-                    
+
                     // Cancel category creation if active
                     CategoryCreationState categoryState = botCategoryService.getCategoryCreationState(userId);
                     if (categoryState != null) {
                         botCategoryService.cancelCategoryCreation(userId);
                     }
-                    
+
                     // Return to main menu
                     String firstName = user.getFirstName() != null ? user.getFirstName() : "Admin";
                     messageService.sendAdminMenu(chatId, firstName);
                     return;
                 }
             }
-            
+
             // Check if user is in user search flow
             if (botUserService.getUserSearchState(userId)) {
                 handleUserSearchMessage(message, user);
                 return;
             }
-            
+
             // Check if user is in category creation flow
             CategoryCreationState categoryState = botCategoryService.getCategoryCreationState(userId);
             if (categoryState != null) {
@@ -316,17 +318,17 @@ public class AdminMessageHandler implements Consumer<Message> {
 
         // Handle photo messages
         if (message.photo() != null && message.photo().length > 0) {
-            if (state.getCurrentStep() == ProductCreationState.Step.WAITING_MAIN_IMAGE || 
-                state.getCurrentStep() == ProductCreationState.Step.WAITING_ADDITIONAL_IMAGES) {
+            if (state.getCurrentStep() == ProductCreationState.Step.WAITING_MAIN_IMAGE ||
+                    state.getCurrentStep() == ProductCreationState.Step.WAITING_ADDITIONAL_IMAGES) {
                 // Get the largest photo
                 PhotoSize[] photos = message.photo();
                 PhotoSize largestPhoto = photos[photos.length - 1];
                 String fileId = largestPhoto.fileId();
-                
+
                 botProductService.handleProductImage(userId, fileId);
-                
+
                 int currentCount = state.getAttachmentUrls() != null ? state.getAttachmentUrls().size() : 0;
-                
+
                 if (state.getCurrentStep() == ProductCreationState.Step.WAITING_MAIN_IMAGE) {
                     // Main image uploaded, move to additional images step
                     messageService.sendAdditionalImagesPrompt(chatId, currentCount);
@@ -381,32 +383,32 @@ public class AdminMessageHandler implements Consumer<Message> {
                         messageService.sendProductSizeQuantityPrompt(user.getTelegramId(), state);
                         return;
                     }
-                    
+
                     // Find the first size without quantity
                     Size sizeToSet = null;
                     for (Size size : state.getSelectedSizes()) {
-                        if (!state.getSizeQuantities().containsKey(size) || 
-                            state.getSizeQuantities().get(size) == null || 
-                            state.getSizeQuantities().get(size) == 0) {
+                        if (!state.getSizeQuantities().containsKey(size) ||
+                                state.getSizeQuantities().get(size) == null ||
+                                state.getSizeQuantities().get(size) == 0) {
                             sizeToSet = size;
                             break;
                         }
                     }
-                    
+
                     if (sizeToSet != null) {
                         botProductService.handleSizeQuantity(userId, sizeToSet.name(), quantity);
-                        
+
                         // Check if all sizes have quantities
                         boolean allSizesHaveQuantities = true;
                         for (Size size : state.getSelectedSizes()) {
-                            if (!state.getSizeQuantities().containsKey(size) || 
-                                state.getSizeQuantities().get(size) == null || 
-                                state.getSizeQuantities().get(size) == 0) {
+                            if (!state.getSizeQuantities().containsKey(size) ||
+                                    state.getSizeQuantities().get(size) == null ||
+                                    state.getSizeQuantities().get(size) == 0) {
                                 allSizesHaveQuantities = false;
                                 break;
                             }
                         }
-                        
+
                         if (allSizesHaveQuantities) {
                             // All quantities set, ask for price
                             state.setCurrentStep(ProductCreationState.Step.WAITING_PRICE);
@@ -440,7 +442,7 @@ public class AdminMessageHandler implements Consumer<Message> {
                 break;
         }
     }
-    
+
     private String buildProductInfo(ProductCreationState state) {
         StringBuilder info = new StringBuilder();
         info.append("<b>Nomi:</b> ").append(state.getName()).append("\n");
@@ -452,7 +454,8 @@ public class AdminMessageHandler implements Consumer<Message> {
         if (state.getPrice() != null) {
             info.append("<b>Narx:</b> ").append(state.getPrice()).append(" so'm\n");
         }
-        info.append("<b>Rasmlar:</b> ").append(state.getAttachmentUrls() != null ? state.getAttachmentUrls().size() : 0).append(" ta\n");
+        info.append("<b>Rasmlar:</b> ").append(state.getAttachmentUrls() != null ? state.getAttachmentUrls().size() : 0)
+                .append(" ta\n");
         if (state.getSelectedSizes() != null && !state.getSelectedSizes().isEmpty()) {
             info.append("<b>O'lchamlar:</b>\n");
             for (Size size : state.getSelectedSizes()) {
@@ -483,31 +486,30 @@ public class AdminMessageHandler implements Consumer<Message> {
                 break;
         }
     }
-    
+
     private void handleUserSearchMessage(Message message, User user) {
         String text = message.text();
         Long chatId = user.getTelegramId();
         Long userId = user.getId();
-        
+
         if (text == null || text.trim().isEmpty()) {
             return;
         }
-        
+
         // Search user by phone number
         User foundUser = botUserService.findUserByPhone(text.trim());
-        
+
         if (foundUser == null) {
             messageService.sendUserNotFound(chatId);
             botUserService.setUserSearchState(userId, false);
         } else {
             // Check if user can set admin or super admin
-            boolean canSetAdmin = !botUserService.hasRole(foundUser, "ROLE_ADMIN") && 
-                                 !botUserService.hasRole(foundUser, "ROLE_SUPER_ADMIN");
+            boolean canSetAdmin = !botUserService.hasRole(foundUser, "ROLE_ADMIN") &&
+                    !botUserService.hasRole(foundUser, "ROLE_SUPER_ADMIN");
             boolean canSetSuperAdmin = !botUserService.hasRole(foundUser, "ROLE_SUPER_ADMIN");
-            
+
             messageService.sendUserInfo(chatId, foundUser, canSetAdmin, canSetSuperAdmin);
             botUserService.setUserSearchState(userId, false);
         }
     }
 }
-

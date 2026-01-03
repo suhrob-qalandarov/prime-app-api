@@ -42,14 +42,14 @@ public class UserServiceImpl implements UserService {
                 .firstName(tgUser.firstName())
                 .lastName(tgUser.lastName())
                 .tgUsername(tgUser.username())
-                .active(true)
+                .status(org.exp.primeapp.models.enums.AccountStatus.ACTIVE)
                 .verifyCode(oneTimeCode)
                 .verifyCodeExpiration(expirationTime)
                 .roles(roleUser)
                 .build();
-        
+
         User savedUser = userRepository.save(build);
-        
+
         return savedUser;
     }
 
@@ -59,7 +59,6 @@ public class UserServiceImpl implements UserService {
         LocalDateTime expirationTime = LocalDateTime.now().plusMinutes(2);
         userRepository.updateVerifyCodeAndExpiration(userId, oneTimeCode, expirationTime);
     }
-
 
     @Override
     public void updateTgUser(Long userId, User user) {
@@ -72,9 +71,10 @@ public class UserServiceImpl implements UserService {
         String formattedPhone = formatPhoneNumber(phoneNumber);
         userRepository.updatePhoneByUserId(userId, formattedPhone);
     }
-    
+
     /**
      * Telefon raqamini format qilish: + ni olib tashlash
+     * 
      * @param phoneNumber Telefon raqami
      * @return Formatlangan telefon raqami (+ siz)
      */
@@ -82,14 +82,14 @@ public class UserServiceImpl implements UserService {
         if (phoneNumber == null || phoneNumber.trim().isEmpty()) {
             return phoneNumber;
         }
-        
+
         String trimmed = phoneNumber.trim();
-        
+
         // Agar + bilan boshlansa, uni olib tashlash
         if (trimmed.startsWith("+")) {
             return trimmed.substring(1);
         }
-        
+
         return trimmed;
     }
 

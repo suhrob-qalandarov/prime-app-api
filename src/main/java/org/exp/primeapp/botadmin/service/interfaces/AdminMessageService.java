@@ -73,5 +73,7 @@ public interface AdminMessageService {
     void sendNoCategoriesMessage(Long chatId);
     
     void sendSimpleMessage(Long chatId, String message);
+
+    void sendNewOrderNotification(Long orderId);
 }
 

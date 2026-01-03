@@ -6,10 +6,15 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.exp.primeapp.models.dto.request.CreateOrderReq;
 import org.exp.primeapp.models.dto.responce.order.UserOrderRes;
-import org.exp.primeapp.models.dto.responce.order.UserProfileOrdersRes;
+
+import org.exp.primeapp.models.entities.User;
+import org.exp.primeapp.service.face.global.session.SessionService;
 import org.exp.primeapp.service.face.user.OrderService;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import static org.exp.primeapp.utils.Const.*;
@@ -21,18 +26,17 @@ import static org.exp.primeapp.utils.Const.*;
 public class OrderController {
 
     private final OrderService orderService;
-
-    @Operation(security = @SecurityRequirement(name = "Authorization"))
-    @GetMapping("/{id}")
-    public ResponseEntity<UserProfileOrdersRes> getUserOrdersById(@PathVariable Long id) {
-        UserProfileOrdersRes profileOrderRes = orderService.getUserProfileOrdersById(id);
-        return new ResponseEntity<>(profileOrderRes, HttpStatus.OK);
-    }
+    private final SessionService sessionService;
 
     @Operation(security = @SecurityRequirement(name = "Authorization"))
     @PostMapping
-    public ResponseEntity<UserOrderRes> createOrder(@RequestBody CreateOrderReq request) {
-        UserOrderRes orderRes = orderService.createOrder(request.getUserId(), request.getOrderItems());
+    public ResponseEntity<UserOrderRes> createOrder(
+            @RequestBody CreateOrderReq orderRequest,
+            @AuthenticationPrincipal User user,
+            HttpServletRequest request,
+            HttpServletResponse response) {
+        var session = sessionService.getOrCreateSession(request, response);
+        UserOrderRes orderRes = orderService.createOrder(user, session, orderRequest);
         return new ResponseEntity<>(orderRes, HttpStatus.OK);
     }
 }

@@ -91,7 +91,7 @@ public class AdminProductServiceImpl implements AdminProductService {
         List<ProductSizeRes> productSizeReslist = product.getSizes().stream()
                 .map(size -> ProductSizeRes.builder()
                         .size(size.getSize())
-                        .amount(size.getAmount())
+                        .amount(size.getQuantity())
                         .build())
                 .toList();
         List<String> picturesUrlList = attachmentRepository.findByProductId(product.getId())
@@ -108,8 +108,8 @@ public class AdminProductServiceImpl implements AdminProductService {
                 .categoryName(product.getCategory().getName())
                 .price(product.getPrice())
                 .status(product.getStatus().name())
-                .active(product.getActive())
-                .discount(product.getDiscount())
+                .active(product.getStatus() == ProductStatus.ON_SALE)
+                .discount(product.getDiscountPercent())
                 .createdAt(product.getCreatedAt().format(formatter))
                 .picturesUrls(picturesUrlList)
                 .productSizeRes(productSizeReslist)
@@ -128,7 +128,8 @@ public class AdminProductServiceImpl implements AdminProductService {
     @Override
     public AdminProductRes saveProduct(ProductReq productReq) {
         Category category = categoryRepository.findById(productReq.categoryId())
-                .orElseThrow(() -> new RuntimeException("Category not found with categoryId: " + productReq.categoryId()));
+                .orElseThrow(
+                        () -> new RuntimeException("Category not found with categoryId: " + productReq.categoryId()));
 
         Set<String> attachmentUrls = productReq.attachmentUrls();
         if (attachmentUrls == null || attachmentUrls.isEmpty()) {
@@ -141,7 +142,7 @@ public class AdminProductServiceImpl implements AdminProductService {
         }
 
         Product product = createProductFromReq(productReq, category);
-        product.setDiscount(0);
+        product.setDiscountPercent(0);
         Product savedProduct = productRepository.save(product);
 
         // Attachments ga product_id ni set qilamiz
@@ -159,9 +160,9 @@ public class AdminProductServiceImpl implements AdminProductService {
                 .colorHex(req.colorHex())
                 .description(formatDescription(req.description()))
                 .price(req.price())
-                .active(false)
                 .status(ProductStatus.PENDING_INCOME)
                 .category(category)
+                .categoryName(category.getName())
                 .sizes(new HashSet<>())
                 .build();
     }
@@ -169,13 +170,13 @@ public class AdminProductServiceImpl implements AdminProductService {
     private ProductIncome createIncome(Product product, Integer amount) {
         return ProductIncome.builder()
                 .stockQuantity(amount)
-                .product(product)
+                //.product(product)
                 .build();
     }
 
     @Transactional
     @Override
-    public AdminProductRes  updateProduct(Long productId, ProductReq productReq) {
+    public AdminProductRes updateProduct(Long productId, ProductReq productReq) {
         Product product = productRepository.findById(productId)
                 .orElseThrow(() -> new RuntimeException("Product not found with productId: " + productId));
         updateProductFields(product, productReq);
@@ -188,12 +189,16 @@ public class AdminProductServiceImpl implements AdminProductService {
             Category category = categoryRepository.findById(req.categoryId())
                     .orElseThrow(() -> new RuntimeException("Category not found with categoryId: " + req.categoryId()));
             product.setCategory(category);
+            product.setCategoryName(category.getName());
         }
 
-        /*if (req.getAttachmentIds() != null && !req.getAttachmentIds().isEmpty()) {
-            Set<Attachment> attachments = new HashSet<>(attachmentRepository.findAllById(req.getAttachmentIds()));
-            product.setAttachments(attachments);
-        }*/
+        /*
+         * if (req.getAttachmentIds() != null && !req.getAttachmentIds().isEmpty()) {
+         * Set<Attachment> attachments = new
+         * HashSet<>(attachmentRepository.findAllById(req.getAttachmentIds()));
+         * product.setAttachments(attachments);
+         * }
+         */
 
         if (hasText(req.name())) {
             product.setName(formatName(req.name()));
@@ -219,30 +224,34 @@ public class AdminProductServiceImpl implements AdminProductService {
             product.setPrice(req.price());
         }
 
-        /*if (req.getDiscount() != null) {
-            product.setDiscount(req.getDiscount());
-        }
-
-        if (req.getStatus() != null) {
-            product.setStatus(req.getStatus());
-        }*/
+        /*
+         * if (req.getDiscount() != null) {
+         * product.setDiscount(req.getDiscount());
+         * }
+         * 
+         * if (req.getStatus() != null) {
+         * product.setStatus(req.getStatus());
+         * }
+         */
 
         // ProductSize'larni yangilaymiz
-        /*if (req.productSizes() != null) {
-            product.getSizes().clear();
-            req.productSizes().forEach(sizeReq -> {
-                ProductSize productSize = new ProductSize();
-                productSize.setSize(sizeReq.size());
-                productSize.setAmount(sizeReq.amount());
-                product.addSize(productSize);
-            });
-        }*/
+        /*
+         * if (req.productSizes() != null) {
+         * product.getSizes().clear();
+         * req.productSizes().forEach(sizeReq -> {
+         * ProductSize productSize = new ProductSize();
+         * productSize.setSize(sizeReq.size());
+         * productSize.setAmount(sizeReq.amount());
+         * product.addSize(productSize);
+         * });
+         * }
+         */
     }
 
     private boolean hasText(String str) {
         return str != null && !str.isBlank();
     }
-    
+
     /**
      * Format name: birinchi harfni katta, qolganlarini kichik
      * Example: "JOHN DOE" -> "John doe"
@@ -257,7 +266,7 @@ public class AdminProductServiceImpl implements AdminProductService {
         }
         return trimmed.substring(0, 1).toUpperCase() + trimmed.substring(1).toLowerCase();
     }
-    
+
     /**
      * Format description: faqat birinchi harfni katta
      * Example: "this is a description" -> "This is a description"
@@ -272,7 +281,7 @@ public class AdminProductServiceImpl implements AdminProductService {
         }
         return trimmed.substring(0, 1).toUpperCase() + trimmed.substring(1);
     }
-    
+
     /**
      * Format brand: barcha harflarni katta
      * Example: "nike" -> "NIKE"

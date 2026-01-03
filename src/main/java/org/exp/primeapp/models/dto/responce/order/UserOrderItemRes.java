@@ -7,11 +7,14 @@ import java.math.BigDecimal;
 @Builder
 public record UserOrderItemRes(
         String name,
-        String imageUrl,
+        String brand,
+        String colorName,
+        String colorHex,
+        String mainImageUrl,
         String size,
         BigDecimal price,
         Integer discount,
-        Integer count,
+        Integer discountPrice,
+        Integer amount,
         BigDecimal totalSum
-) {
-}
+) {}

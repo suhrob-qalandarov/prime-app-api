@@ -14,41 +14,49 @@ import java.util.List;
 @Repository
 public interface CategoryRepository extends JpaRepository<Category, Long> {
 
-    List<Category> findAllByOrderByOrderNumberAsc();
+        List<Category> findAllByOrderByOrderNumberAsc();
 
-    List<Category> findAllByActiveTrueOrderByOrderNumberAsc();
+        // List<Category> findAllByActiveTrueOrderByOrderNumberAsc(); // Removed
 
-    List<Category> findAllByActiveFalseOrderByOrderNumberAsc();
+        // List<Category> findAllByActiveFalseOrderByOrderNumberAsc(); // Removed
 
-    long count();
+        long count();
 
-    /*long countByActiveTrue();
+        /*
+         * long countByActiveTrue();
+         * 
+         * long countByActiveFalse();
+         */
 
-    long countByActiveFalse();*/
+        // List<Category> findByActive(boolean active); // Removed
 
-    List<Category> findByActive(boolean active);
+        // List<Category> findAllBySpotlightId(Long spotlightName);
 
-    //List<Category> findAllBySpotlightId(Long spotlightName);
+        @Transactional
+        @Modifying
+        @Query("UPDATE Category c SET c.status = CASE WHEN c.status = 'VISIBLE' THEN 'CREATED' ELSE 'VISIBLE' END WHERE c.id = :categoryId")
+        void toggleCategoryActiveStatus(@Param("categoryId") Long categoryId);
 
-    @Transactional
-    @Modifying
-    @Query("UPDATE Category c SET c.active = CASE WHEN c.active = true THEN false ELSE true END WHERE c.id = :categoryId")
-    void toggleCategoryActiveStatus(@Param("categoryId") Long categoryId);
+        /*
+         * @Query("SELECT c FROM Category c " +
+         * "WHERE c.spotlight.id = :spotlightName AND c.active = :active " +
+         * "ORDER BY c.orderNumber ASC")
+         * List<Category> findBySpotlightIdAndActiveSorted(
+         * 
+         * @Param("spotlightName") Long spotlightName,
+         * 
+         * @Param("active") Boolean active
+         * );
+         */
 
-    /*@Query("SELECT c FROM Category c " +
-            "WHERE c.spotlight.id = :spotlightName AND c.active = :active " +
-            "ORDER BY c.orderNumber ASC")
-    List<Category> findBySpotlightIdAndActiveSorted(
-            @Param("spotlightName") Long spotlightName,
-            @Param("active") Boolean active
-    );*/
+        // List<Category> findBySpotlightNameAndActive(String spotlightName, Boolean
+        // active); // Removed
 
-    List<Category> findBySpotlightNameAndActive(String spotlightName, Boolean active);
+        // Status ga qarab filter qilish
+        List<Category> findByStatusOrderByOrderNumberAsc(CategoryStatus status);
 
-    // Status ga qarab filter qilish
-    List<Category> findByStatusOrderByOrderNumberAsc(CategoryStatus status);
+        List<Category> findBySpotlightNameAndStatusOrderByOrderNumberAsc(String spotlightName, CategoryStatus status);
 
-    List<Category> findBySpotlightNameAndStatusOrderByOrderNumberAsc(String spotlightName, CategoryStatus status);
-
-    List<Category> findBySpotlightNameAndStatusInOrderByOrderNumberAsc(String spotlightName, List<CategoryStatus> statuses);
+        List<Category> findBySpotlightNameAndStatusInOrderByOrderNumberAsc(String spotlightName,
+                        List<CategoryStatus> statuses);
 }

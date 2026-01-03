@@ -64,13 +64,13 @@ public class ProductServiceImpl implements ProductService {
 
                 productRepository.findRandom4ActiveProductsStatusHot().stream()
                         .map(this::convertToProductRes)
-                        .collect(toList())
-        );
+                        .collect(toList()));
     }
 
     @Override
     public PageRes<ProductPageRes> getActiveProducts(Pageable pageable) {
-        Page<ProductPageRes> productRes = productRepository.findAllByStatusOrderByIdDesc(ProductStatus.ON_SALE, pageable)
+        Page<ProductPageRes> productRes = productRepository
+                .findAllByStatusOrderByIdDesc(ProductStatus.ON_SALE, pageable)
                 .map(this::convertToProductPageRes);
         return toPageRes(productRes);
     }
@@ -85,33 +85,35 @@ public class ProductServiceImpl implements ProductService {
             String tag,
             String sortBy,
             Pageable pageable) {
-        
+
         // Agar barcha filterlar bo'sh bo'lsa, oddiy query ishlatish
         boolean hasFilters = (spotlightName != null && !spotlightName.isBlank()) ||
-                            (categoryName != null && !categoryName.isBlank()) ||
-                            (colorName != null && !colorName.isBlank()) ||
-                            (sizeName != null && !sizeName.isBlank()) ||
-                            (brandName != null && !brandName.isBlank()) ||
-                            (tag != null && !tag.isBlank());
-        
-        // Sort qo'shish - faqat sortBy parametridan, Pageable ichidagi sort e'tiborsiz qoldiriladi
+                (categoryName != null && !categoryName.isBlank()) ||
+                (colorName != null && !colorName.isBlank()) ||
+                (sizeName != null && !sizeName.isBlank()) ||
+                (brandName != null && !brandName.isBlank()) ||
+                (tag != null && !tag.isBlank());
+
+        // Sort qo'shish - faqat sortBy parametridan, Pageable ichidagi sort e'tiborsiz
+        // qoldiriladi
         Sort sort = buildSort(sortBy);
         Pageable sortedPageable = PageRequest.of(
                 pageable.getPageNumber(),
                 pageable.getPageSize(),
                 sort);
-        
+
         if (!hasFilters) {
             // Filterlar yo'q - oddiy query (tezroq va ishonchli)
-            Page<ProductPageRes> productRes = productRepository.findAllByStatusOrderByIdDesc(ProductStatus.ON_SALE, sortedPageable)
+            Page<ProductPageRes> productRes = productRepository
+                    .findAllByStatusOrderByIdDesc(ProductStatus.ON_SALE, sortedPageable)
                     .map(this::convertToProductPageRes);
             return toPageRes(productRes);
         }
-        
+
         // Filterlar bor - Specification ishlatish
         Specification<Product> spec = buildProductSpecification(
                 spotlightName, categoryName, colorName, sizeName, brandName, tag);
-        
+
         Page<ProductPageRes> productRes = productRepository.findAll(spec, sortedPageable)
                 .map(this::convertToProductPageRes);
         return toPageRes(productRes);
@@ -126,30 +128,30 @@ public class ProductServiceImpl implements ProductService {
             String tag) {
         return (root, query, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
-            
+
             // Status filter - only ON_SALE products
             predicates.add(cb.equal(root.get("status"), ProductStatus.ON_SALE));
-            
+
             // Spotlight name filter
             if (spotlightName != null && !spotlightName.isBlank()) {
                 predicates.add(cb.equal(root.get("category").get("spotlightName"), spotlightName));
             }
-            
+
             // Category name filter
             if (categoryName != null && !categoryName.isBlank()) {
                 predicates.add(cb.equal(root.get("category").get("name"), categoryName));
             }
-            
+
             // Color name filter
             if (colorName != null && !colorName.isBlank()) {
                 predicates.add(cb.equal(root.get("colorName"), colorName));
             }
-            
+
             // Brand name filter
             if (brandName != null && !brandName.isBlank()) {
                 predicates.add(cb.equal(root.get("brand"), brandName));
             }
-            
+
             // Tag filter
             if (tag != null && !tag.isBlank()) {
                 try {
@@ -159,7 +161,7 @@ public class ProductServiceImpl implements ProductService {
                     // Invalid tag enum, ignore
                 }
             }
-            
+
             // Size filter - requires join with ProductSize
             if (sizeName != null && !sizeName.isBlank()) {
                 try {
@@ -171,7 +173,7 @@ public class ProductServiceImpl implements ProductService {
                     // Invalid size enum, ignore
                 }
             }
-            
+
             return cb.and(predicates.toArray(new Predicate[0]));
         };
     }
@@ -180,7 +182,7 @@ public class ProductServiceImpl implements ProductService {
         if (sortBy == null || sortBy.isBlank()) {
             return Sort.unsorted(); // Default sort yo'q
         }
-        
+
         switch (sortBy.toLowerCase()) {
             case "discount":
                 return Sort.by(Sort.Direction.DESC, "discount");
@@ -195,7 +197,8 @@ public class ProductServiceImpl implements ProductService {
 
     @Override
     public PageRes<ProductRes> getProductsByCategoryId(Long categoryId, Pageable pageable) {
-        Page<ProductRes> productRes = productRepository.findAllByCategory_IdAndActive(categoryId, true, pageable)
+        Page<ProductRes> productRes = productRepository
+                .findAllByCategoryIdAndStatus(categoryId, ProductStatus.ON_SALE, pageable)
                 .map(this::convertToProductRes);
 
         return toPageRes(productRes);
@@ -203,7 +206,7 @@ public class ProductServiceImpl implements ProductService {
 
     @Override
     public List<ProductRes> getInactiveProducts() {
-        return productRepository.findAllByActive(false)
+        return productRepository.findAllByStatusNot(ProductStatus.ON_SALE)
                 .stream()
                 .map(this::convertToProductRes)
                 .collect(toList());
@@ -219,7 +222,7 @@ public class ProductServiceImpl implements ProductService {
 
     @Override
     public List<ProductRes> getInactiveProductsByCategoryId(Long categoryId) {
-        return productRepository.findByActiveAndCategoryId(categoryId, false)
+        return productRepository.findByStatusNotAndCategoryId(ProductStatus.ON_SALE, categoryId)
                 .stream()
                 .map(this::convertToProductRes)
                 .collect(toList());
@@ -228,7 +231,8 @@ public class ProductServiceImpl implements ProductService {
     @Override
     public ProductRes getProductById(Long productId) {
         Product product = productRepository.findById(productId)
-                .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("Product not found with productId: " + productId));
+                .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException(
+                        "Product not found with productId: " + productId));
         return convertToProductRes(product);
     }
 
@@ -244,7 +248,6 @@ public class ProductServiceImpl implements ProductService {
     }
 
     public ProductRes convertToProductRes(Product product) {
-        // Query orqali attachments ni topamiz
         List<String> attachmentUrls = attachmentRepository.findByProductId(product.getId())
                 .stream()
                 .map(Attachment::getUrl)
@@ -252,15 +255,13 @@ public class ProductServiceImpl implements ProductService {
 
         List<ProductSizeRes> productSizes = product.getSizes()
                 .stream()
-                .map(size -> new ProductSizeRes(size.getSize(), size.getAmount()))
+                .map(size -> new ProductSizeRes(size.getId(), size.getSize(), size.getQuantity()))
                 .collect(toList());
 
-        // Discount'ni hisoblab discountPrice'ni set qilish
-        // Faqat discount > 0 va tag = SALE bo'lsagina discount hisoblanadi
         BigDecimal price = product.getPrice();
-        Integer discount = product.getDiscount() != null ? product.getDiscount() : 0;
+        int discount = product.getDiscountPercent() != null ? product.getDiscountPercent() : 0;
         BigDecimal discountPrice = price;
-        
+
         if (discount > 0 && discount <= 100 && product.getTag() == ProductTag.SALE) {
             // discountPrice = price - (price * discount / 100)
             BigDecimal discountAmount = price.multiply(BigDecimal.valueOf(discount))
@@ -281,8 +282,7 @@ public class ProductServiceImpl implements ProductService {
                 discountPrice,
                 discount,
                 attachmentUrls,
-                productSizes
-        );
+                productSizes);
     }
 
     public ProductPageRes convertToProductPageRes(Product product) {
@@ -294,11 +294,11 @@ public class ProductServiceImpl implements ProductService {
                 .orElse(null);
 
         // Discount'ni hisoblab discountPrice'ni set qilish
-        // Faqat discount > 0 va tag = SALE bo'lsagina discount hisoblanadi
+        // Faqat discountPercent > 0 va tag = SALE bo'lsagina discount hisoblanadi
         BigDecimal price = product.getPrice();
-        Integer discount = product.getDiscount() != null ? product.getDiscount() : 0;
+        Integer discount = product.getDiscountPercent() != null ? product.getDiscountPercent() : 0;
         BigDecimal discountPrice = price;
-        
+
         if (discount > 0 && discount <= 100 && product.getTag() == ProductTag.SALE) {
             // discountPrice = price - (price * discount / 100)
             BigDecimal discountAmount = price.multiply(BigDecimal.valueOf(discount))
@@ -315,8 +315,7 @@ public class ProductServiceImpl implements ProductService {
                 price,
                 discountPrice,
                 discount,
-                mainImage
-        );
+                mainImage);
     }
 
     @Override
@@ -327,11 +326,113 @@ public class ProductServiceImpl implements ProductService {
                 .collect(toList());
     }
 
+    @Override
+    public List<ProductCartRes> getCartOrderProducts(List<CartItemReq> cartItems) {
+        if (cartItems == null) {
+            return List.of();
+        }
+        return cartItems.stream()
+                .map(this::convertToProductOrderCartRes)
+                .collect(toList());
+    }
+
+    private ProductCartRes convertToProductOrderCartRes(CartItemReq cartItem) {
+        Product product = productRepository.findById(cartItem.productId())
+                .orElse(null);
+
+        if (product == null) {
+            return new ProductCartRes(
+                    cartItem.productId(),
+                    null,
+                    null,
+                    null,
+                    null,
+                    cartItem.productSize(),
+                    null,
+                    null,
+                    null,
+                    false,
+                    null,
+                    cartItem.productQuantity(),
+                    null);
+        }
+
+        // Size parse logic
+        Size size = null;
+        String sizeString = cartItem.productSize();
+        if (sizeString != null && !sizeString.isBlank()) {
+            try {
+                size = Size.valueOf(sizeString.toUpperCase());
+            } catch (IllegalArgumentException e) {
+                for (Size s : Size.values()) {
+                    if (s.getLabel().equalsIgnoreCase(sizeString)) {
+                        size = s;
+                        break;
+                    }
+                }
+            }
+        }
+
+        String sizeLabel = size != null ? size.getLabel() : sizeString;
+
+        // ProductSize and Availability logic
+        ProductSize productSize = null;
+        Integer available = null;
+        boolean hasEnough = false;
+
+        if (size != null) {
+            productSize = productSizeRepository.findByProductAndSize(product, size).orElse(null);
+            if (productSize != null) {
+                available = productSize.getQuantity();
+                hasEnough = available >= cartItem.productQuantity();
+            }
+        }
+
+        // Image logic
+        String mainImage = attachmentRepository.findByProductId(product.getId())
+                .stream()
+                .findFirst()
+                .map(Attachment::getUrl)
+                .orElse(null);
+
+        // Price logic
+        BigDecimal price = product.getPrice();
+        Integer discount = product.getDiscountPercent() != null ? product.getDiscountPercent() : 0;
+        BigDecimal discountPrice = price;
+        boolean hasDiscount = false;
+
+        if (discount > 0 && discount <= 100 && product.getTag() == ProductTag.SALE) {
+            BigDecimal discountAmount = price.multiply(BigDecimal.valueOf(discount))
+                    .divide(BigDecimal.valueOf(100), 2, java.math.RoundingMode.HALF_UP);
+            discountPrice = price.subtract(discountAmount);
+            hasDiscount = true;
+        }
+
+        // Calculation
+        BigDecimal unitPriceToUse = hasDiscount ? discountPrice : price;
+        BigDecimal totalPrice = unitPriceToUse.multiply(BigDecimal.valueOf(cartItem.productQuantity()));
+
+        return new ProductCartRes(
+                product.getId(),
+                product.getName(),
+                product.getBrand(),
+                product.getColorName(),
+                product.getColorHex(),
+                sizeLabel,
+                price,
+                discountPrice,
+                mainImage,
+                hasEnough,
+                available,
+                cartItem.productQuantity(),
+                totalPrice);
+    }
+
     private ProductCartRes convertToProductCartRes(CartItemReq cartItem) {
         // Product'ni database'dan olish
         Product product = productRepository.findById(cartItem.productId())
                 .orElse(null);
-        
+
         if (product == null) {
             // Product topilmasa, hasEnough = false bilan bo'sh ma'lumotlar qaytarish
             return new ProductCartRes(
@@ -347,30 +448,29 @@ public class ProductServiceImpl implements ProductService {
                     false,
                     null,
                     cartItem.productQuantity(),
-                    null
-            );
+                    null);
         }
-        
+
         // Size'ni parse qilish - enum name yoki label orqali
         Size size = parseSize(cartItem.productSize());
-        
+
         if (size == null) {
             // Size topilmasa, hasEnough = false
             return buildProductCartRes(product, cartItem.productSize(), null, false, cartItem.productQuantity());
         }
-        
+
         // ProductSize'ni topish
         ProductSize productSize = productSizeRepository.findByProductAndSize(product, size)
                 .orElse(null);
-        
+
         if (productSize == null) {
             // ProductSize topilmasa, hasEnough = false, available = null
             return buildProductCartRes(product, size.getLabel(), null, false, cartItem.productQuantity());
         }
-        
+
         // Quantity'ni tekshirish
-        boolean hasEnough = productSize.getAmount() >= cartItem.productQuantity();
-        
+        boolean hasEnough = productSize.getQuantity() >= cartItem.productQuantity();
+
         return buildProductCartRes(product, size.getLabel(), productSize, hasEnough, cartItem.productQuantity());
     }
 
@@ -378,7 +478,7 @@ public class ProductServiceImpl implements ProductService {
         if (sizeString == null || sizeString.isBlank()) {
             return null;
         }
-        
+
         // Avval enum name orqali tekshirish (masalan "L", "SIZE_41")
         try {
             return Size.valueOf(sizeString.toUpperCase());
@@ -393,37 +493,39 @@ public class ProductServiceImpl implements ProductService {
         }
     }
 
-    private ProductCartRes buildProductCartRes(Product product, String chosenSize, ProductSize productSize, boolean hasEnough, Integer quantity) {
+    private ProductCartRes buildProductCartRes(Product product, String chosenSize, ProductSize productSize,
+            boolean hasEnough, Integer quantity) {
         // Main image'ni olish
         String mainImage = attachmentRepository.findByProductId(product.getId())
                 .stream()
                 .findFirst()
                 .map(Attachment::getUrl)
                 .orElse(null);
-        
+
         // Discount'ni hisoblab discountPrice'ni set qilish
         BigDecimal price = product.getPrice();
-        Integer discount = product.getDiscount() != null ? product.getDiscount() : 0;
+        Integer discount = product.getDiscountPercent() != null ? product.getDiscountPercent() : 0;
         BigDecimal discountPrice = price;
         boolean hasDiscount = false;
-        
+
         if (discount > 0 && discount <= 100 && product.getTag() == ProductTag.SALE) {
             BigDecimal discountAmount = price.multiply(BigDecimal.valueOf(discount))
                     .divide(BigDecimal.valueOf(100), 2, java.math.RoundingMode.HALF_UP);
             discountPrice = price.subtract(discountAmount);
             hasDiscount = true;
         }
-        
+
         // available - tanlangan product'ning tanlangan size'ining omborda mavjud raqami
-        Integer available = productSize != null ? productSize.getAmount() : null;
-        
-        // totalPrice - umumiy summa: quantity * (discountPrice agar discount bo'lsa, aks holda price)
+        Integer available = productSize != null ? productSize.getQuantity() : null;
+
+        // totalPrice - umumiy summa: quantity * (discountPrice agar discount bo'lsa,
+        // aks holda price)
         BigDecimal totalPrice = null;
         if (quantity != null && quantity > 0) {
             BigDecimal priceToUse = hasDiscount ? discountPrice : price;
             totalPrice = priceToUse.multiply(BigDecimal.valueOf(quantity));
         }
-        
+
         return new ProductCartRes(
                 product.getId(),
                 product.getName(),
@@ -437,7 +539,6 @@ public class ProductServiceImpl implements ProductService {
                 hasEnough,
                 available,
                 quantity,
-                totalPrice
-        );
+                totalPrice);
     }
 }

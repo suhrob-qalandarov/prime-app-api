@@ -18,62 +18,59 @@ import java.util.List;
 @Repository
 public interface ProductRepository extends JpaRepository<Product, Long>, JpaSpecificationExecutor<Product> {
 
-    List<Product> findAllByCategory(Category category);
+        List<Product> findAllByCategory(Category category);
 
-    List<Product> findAllByActive(boolean active);
+        // List<Product> findAllByCategory(Category category); // Already generic enough
 
-    @Modifying
-    @Transactional
-    @Query("UPDATE Product p SET p.active = :active WHERE p.id = :productId")
-    int updateActive(@Param("active") boolean active, @Param("productId") Long productId);
+        // List<Product> findAllByActive(boolean active); // REMOVED
 
-    @Query("SELECT p FROM Product p WHERE p.category.id = :categoryId AND p.active = :active")
-    List<Product> findByActiveAndCategoryId(@Param("categoryId") Long categoryId, @Param("active") Boolean active);
+        @Modifying
+        @Transactional
+        @Query("UPDATE Product p SET p.status = :status WHERE p.id = :productId")
+        int updateStatus(@Param("status") ProductStatus status, @Param("productId") Long productId);
 
+        @Query("SELECT p FROM Product p WHERE p.category.id = :categoryId AND p.status = :status")
+        List<Product> findByStatusAndCategoryId(@Param("categoryId") Long categoryId,
+                        @Param("status") ProductStatus status);
 
-    long countByActive(Boolean active);
+        long countByStatus(ProductStatus status);
 
-    @Transactional
-    @Modifying
-    @Query("UPDATE Product p SET p.active = CASE WHEN p.active = true THEN false ELSE true END WHERE p.id = :productId")
-    void toggleProductUpdateStatus(@Param("productId") Long productId);
+        @Transactional
+        @Modifying
+        @Query("UPDATE Product p SET p.status = CASE WHEN p.status = 'ON_SALE' THEN 'ARCHIVED' ELSE 'ON_SALE' END WHERE p.id = :productId")
+        void toggleProductUpdateStatus(@Param("productId") Long productId);
 
-    @Query(
-            value = "SELECT * FROM product p WHERE p.active = true AND p.status = 'SALE' ORDER BY RANDOM() LIMIT 4",
-            nativeQuery = true
-    )
-    List<Product> findRandom4ActiveProductsStatusSale();
+        @Query(value = "SELECT * FROM product p WHERE p.status = 'SALE' ORDER BY RANDOM() LIMIT 4", nativeQuery = true)
+        List<Product> findRandom4ActiveProductsStatusSale();
 
+        @Query(value = "SELECT * FROM product p WHERE p.status = 'NEW' ORDER BY RANDOM() LIMIT 4", nativeQuery = true)
+        List<Product> findRandom4ActiveProductsStatusNew();
 
-    @Query(
-            value = "SELECT * FROM product p WHERE p.active = true AND p.status = 'NEW' ORDER BY RANDOM() LIMIT 4",
-            nativeQuery = true
-    )
-    List<Product> findRandom4ActiveProductsStatusNew();
+        @Query(value = "SELECT * FROM product p WHERE p.status = 'HOT' ORDER BY RANDOM() LIMIT 4", nativeQuery = true)
+        List<Product> findRandom4ActiveProductsStatusHot();
 
+        // List<Product> findAllByCategory_IdAndActive(Long categoryId, Boolean active);
 
-    @Query(
-            value = "SELECT * FROM product p WHERE p.active = true AND p.status = 'HOT' ORDER BY RANDOM() LIMIT 4",
-            nativeQuery = true
-    )
-    List<Product> findRandom4ActiveProductsStatusHot();
+        Page<Product> findAllByStatus(ProductStatus status, Pageable pageable);
 
+        Page<Product> findAllByCategory_IdAndStatus(Long categoryId, ProductStatus status, Pageable pageable);
 
-    //List<Product> findAllByCategory_IdAndActive(Long categoryId, Boolean active);
+        // Status ga qarab filter qilish
+        Page<Product> findAllByStatusOrderByIdDesc(ProductStatus status, Pageable pageable);
 
-    Page<Product> findAllByActive(boolean active, Pageable pageable);
-    Page<Product> findAllByCategory_IdAndActive(Long categoryId, boolean active, Pageable pageable);
+        List<Product> findByStatus(ProductStatus status);
 
-    // Status ga qarab filter qilish
-    Page<Product> findAllByStatusOrderByIdDesc(ProductStatus status, Pageable pageable);
-    
-    List<Product> findByStatus(ProductStatus status);
-    
-    List<Product> findByCategoryIdAndStatus(Long categoryId, ProductStatus status);
-    
-    Page<Product> findAllByCategoryIdAndStatus(Long categoryId, ProductStatus status, Pageable pageable);
+        List<Product> findByCategoryIdAndStatus(Long categoryId, ProductStatus status);
 
-    long countByCategory(Category category);
+        List<Product> findAllByStatus(ProductStatus status);
 
-    long countByCategoryId(Long categoryId);
+        List<Product> findAllByStatusNot(ProductStatus status);
+
+        List<Product> findByStatusNotAndCategoryId(ProductStatus status, Long categoryId);
+
+        Page<Product> findAllByCategoryIdAndStatus(Long categoryId, ProductStatus status, Pageable pageable);
+
+        long countByCategory(Category category);
+
+        long countByCategoryId(Long categoryId);
 }
