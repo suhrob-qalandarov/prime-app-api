@@ -18,6 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
@@ -40,19 +41,32 @@ public class OrderServiceImpl implements OrderService {
     @Transactional
     @Override
     public UserProfileOrdersRes getUserProfileOrdersById(Long id) {
+        LocalDateTime daysAgo = LocalDateTime.now().minusDays(10);
+
         List<UserOrderRes> pendingOrderResList = orderRepository
-                .findByOrderedByUserIdAndStatusIn(id, List.of(OrderStatus.PENDING, OrderStatus.PENDING_PAYMENT))
-                .stream()
+                .findByOrderedByUserIdAndStatusInAndCreatedAtAfter(
+                        id,
+                        List.of(OrderStatus.PENDING, OrderStatus.PENDING_PAYMENT),
+                        daysAgo
+                ).stream()
                 .map(this::convertToUserOrderRes)
                 .toList();
 
         List<UserOrderRes> confirmedOrderResList = orderRepository
-                .findByOrderedByUserIdAndStatusIn(id, List.of(OrderStatus.PAID, OrderStatus.CONFIRMED)).stream()
+                .findByOrderedByUserIdAndStatusInAndCreatedAtAfter(
+                        id,
+                        List.of(OrderStatus.PAID, OrderStatus.CONFIRMED),
+                        daysAgo
+                ).stream()
                 .map(this::convertToUserOrderRes)
                 .toList();
 
         List<UserOrderRes> shippedOrderResList = orderRepository
-                .findByOrderedByUserIdAndStatusIn(id, List.of(OrderStatus.SHIPPED, OrderStatus.DELIVERED)).stream()
+                .findByOrderedByUserIdAndStatusInAndCreatedAtAfter(
+                        id,
+                        List.of(OrderStatus.SHIPPED, OrderStatus.DELIVERED),
+                        daysAgo
+                ).stream()
                 .map(this::convertToUserOrderRes)
                 .toList();
 
