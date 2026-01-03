@@ -36,10 +36,10 @@ public class AdminOrderServiceImpl implements AdminOrderService {
             OrdersRes ordersRes = OrdersRes.builder()
                     .id(order.getId())
                     .user(UserRes.builder()
-                            .id(order.getUser().getId())
-                            .firstName(userUtil.truncateName(order.getUser().getFirstName()))
-                            .lastName(userUtil.truncateName(order.getUser().getLastName()))
-                            .phone(order.getUser().getPhone())
+                            .id(order.getOrderedByUser().getId())
+                            .firstName(userUtil.truncateName(order.getOrderedByUser().getFirstName()))
+                            .lastName(userUtil.truncateName(order.getOrderedByUser().getLastName()))
+                            .phone(order.getOrderedByUser().getPhone())
                             .sessions(List.of()) // Sessions not needed in order context
                             .build())
                     .totalPrice(order.getTotalPrice())
@@ -61,7 +61,7 @@ public class AdminOrderServiceImpl implements AdminOrderService {
                     .productRes(productServiceImpl.convertToProductRes(orderItem.getProduct()))
                     .productSize(ProductSizeRes.builder()
                             .size(orderItem.getProductSize().getSize())
-                            .amount(orderItem.getProductSize().getAmount())
+                            .amount(orderItem.getProductSize().getQuantity())
                             .build())
                     .quantity(orderItem.getQuantity())
                     .build();
