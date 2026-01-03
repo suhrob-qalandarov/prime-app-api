@@ -7,7 +7,7 @@ import java.util.List;
 
 @Builder
 public record UserOrderRes(
-                Long id,
+                Long number,
                 String status,
                 String deliveryType,
                 String createdAt,

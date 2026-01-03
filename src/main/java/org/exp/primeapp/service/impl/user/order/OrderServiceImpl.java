@@ -46,7 +46,7 @@ public class OrderServiceImpl implements OrderService {
         List<UserOrderRes> pendingOrderResList = orderRepository
                 .findByOrderedByUserIdAndStatusInAndCreatedAtAfter(
                         id,
-                        List.of(OrderStatus.PENDING, OrderStatus.PENDING_PAYMENT),
+                        List.of(OrderStatus.PENDING_PAYMENT),
                         daysAgo
                 ).stream()
                 .map(this::convertToUserOrderRes)
@@ -115,7 +115,7 @@ public class OrderServiceImpl implements OrderService {
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
         return UserOrderRes.builder()
-                .id(order.getId())
+                .number(order.getId())
                 .status(order.getStatus().getLabel())
                 .deliveryType(order.getShippingType().getLabel())
                 .createdAt(order.getCreatedAt() != null ? order.getCreatedAt().format(DATE_FORMATTER) : null)
