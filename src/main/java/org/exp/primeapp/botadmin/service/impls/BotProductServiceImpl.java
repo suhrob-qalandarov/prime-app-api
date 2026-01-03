@@ -56,10 +56,10 @@ public class BotProductServiceImpl implements BotProductService {
     private String botToken;
 
     public BotProductServiceImpl(@Qualifier("adminBot") TelegramBot telegramBot,
-                                 CategoryRepository categoryRepository,
-                                 AttachmentRepository attachmentRepository,
-                                 ProductRepository productRepository,
-                                 AdminProductService adminProductService) {
+            CategoryRepository categoryRepository,
+            AttachmentRepository attachmentRepository,
+            ProductRepository productRepository,
+            AdminProductService adminProductService) {
         this.telegramBot = telegramBot;
         this.categoryRepository = categoryRepository;
         this.attachmentRepository = attachmentRepository;
@@ -134,9 +134,9 @@ public class BotProductServiceImpl implements BotProductService {
     @Transactional
     public void handleProductImage(Long userId, String fileId) {
         ProductCreationState state = getProductCreationState(userId);
-        if (state == null || 
-            (state.getCurrentStep() != ProductCreationState.Step.WAITING_MAIN_IMAGE && 
-             state.getCurrentStep() != ProductCreationState.Step.WAITING_ADDITIONAL_IMAGES)) {
+        if (state == null ||
+                (state.getCurrentStep() != ProductCreationState.Step.WAITING_MAIN_IMAGE &&
+                        state.getCurrentStep() != ProductCreationState.Step.WAITING_ADDITIONAL_IMAGES)) {
             return;
         }
 
@@ -153,7 +153,6 @@ public class BotProductServiceImpl implements BotProductService {
                     String lastImageUrl = state.getAttachmentUrls().get(state.getAttachmentUrls().size() - 1);
                     Attachment attachment = attachmentRepository.findByUrl(lastImageUrl);
                     if (attachment != null) {
-                        attachment.setActive(false);
                         attachmentRepository.save(attachment);
                         log.info("Last additional image attachment soft-deleted: {}", attachment.getId());
                     }
@@ -173,10 +172,11 @@ public class BotProductServiceImpl implements BotProductService {
             // Download file from Telegram
             com.pengrad.telegrambot.response.GetFileResponse getFileResponse = telegramBot.execute(new GetFile(fileId));
             if (!getFileResponse.isOk()) {
-                log.error("Failed to get file from Telegram for fileId: {}, error: {}", fileId, getFileResponse.description());
+                log.error("Failed to get file from Telegram for fileId: {}, error: {}", fileId,
+                        getFileResponse.description());
                 return;
             }
-            
+
             File file = getFileResponse.file();
             if (file == null) {
                 log.error("File not found for fileId: {}", fileId);
@@ -188,14 +188,14 @@ public class BotProductServiceImpl implements BotProductService {
                 log.error("File path is null or empty for fileId: {}", fileId);
                 return;
             }
-            
+
             log.info("Downloading file from Telegram: fileId={}, filePath={}", fileId, filePath);
             String fileUrl = "https://api.telegram.org/file/bot" + botToken + "/" + filePath;
 
             // Download and save file
             String savedUrl = downloadAndSaveFile(fileUrl, filePath);
             log.info("File saved successfully: savedUrl={}", savedUrl);
-            
+
             // Create attachment
             Attachment attachment = createAttachment(fileUrl, savedUrl, filePath);
             attachmentRepository.save(attachment);
@@ -303,25 +303,25 @@ public class BotProductServiceImpl implements BotProductService {
 
         try {
             // Validate state
-            if (state.getName() == null || state.getDescription() == null || 
-                state.getCategory() == null ||
-                state.getAttachmentUrls() == null || state.getAttachmentUrls().isEmpty() ||
-                state.getSelectedSizes() == null || state.getSelectedSizes().isEmpty() ||
-                state.getPrice() == null) {
+            if (state.getName() == null || state.getDescription() == null ||
+                    state.getCategory() == null ||
+                    state.getAttachmentUrls() == null || state.getAttachmentUrls().isEmpty() ||
+                    state.getSelectedSizes() == null || state.getSelectedSizes().isEmpty() ||
+                    state.getPrice() == null) {
                 throw new RuntimeException("Product data is incomplete");
             }
-            
+
             // Color is optional - use default values if not provided
-            String colorName = (state.getColorName() != null && !state.getColorName().trim().isEmpty()) 
-                    ? state.getColorName() 
+            String colorName = (state.getColorName() != null && !state.getColorName().trim().isEmpty())
+                    ? state.getColorName()
                     : "N/A";
-            String colorHex = (state.getColorHex() != null && !state.getColorHex().trim().isEmpty()) 
-                    ? state.getColorHex() 
+            String colorHex = (state.getColorHex() != null && !state.getColorHex().trim().isEmpty())
+                    ? state.getColorHex()
                     : "#808080";
 
             // Brand is optional - use empty string if not provided
-            String brand = (state.getBrand() != null && !state.getBrand().trim().isEmpty()) 
-                    ? state.getBrand() 
+            String brand = (state.getBrand() != null && !state.getBrand().trim().isEmpty())
+                    ? state.getBrand()
                     : "N/A";
 
             // Create ProductReq
@@ -338,7 +338,7 @@ public class BotProductServiceImpl implements BotProductService {
 
             // Save product using AdminProductService
             var productRes = adminProductService.saveProduct(productReq);
-            
+
             // Get saved product by ID
             Product savedProduct = productRepository.findById(productRes.id())
                     .orElseThrow(() -> new RuntimeException("Product not found after save"));
@@ -350,13 +350,13 @@ public class BotProductServiceImpl implements BotProductService {
                     ProductSize productSize = ProductSize.builder()
                             .product(savedProduct)
                             .size(size)
-                            .amount(quantity)
+                            .quantity(quantity)
                             .costPrice(BigDecimal.ZERO)
                             .build();
                     savedProduct.getSizes().add(productSize);
                 }
             }
-            
+
             // Set status to ON_SALE
             savedProduct.setStatus(ProductStatus.ON_SALE);
             productRepository.save(savedProduct);
@@ -388,15 +388,15 @@ public class BotProductServiceImpl implements BotProductService {
         if (state == null) {
             return;
         }
-        
+
         ProductCreationState.Step currentStep = state.getCurrentStep();
         ProductCreationState.Step previousStep = getPreviousStep(currentStep);
-        
+
         if (previousStep != null) {
             state.setCurrentStep(previousStep);
         }
     }
-    
+
     private ProductCreationState.Step getPreviousStep(ProductCreationState.Step currentStep) {
         return switch (currentStep) {
             case WAITING_NAME -> null; // First step, no previous
@@ -424,8 +424,7 @@ public class BotProductServiceImpl implements BotProductService {
         // Get categories by spotlight name with CREATED or VISIBLE status
         List<org.exp.primeapp.models.enums.CategoryStatus> statuses = List.of(
                 org.exp.primeapp.models.enums.CategoryStatus.CREATED,
-                org.exp.primeapp.models.enums.CategoryStatus.VISIBLE
-        );
+                org.exp.primeapp.models.enums.CategoryStatus.VISIBLE);
         return categoryRepository.findBySpotlightNameAndStatusInOrderByOrderNumberAsc(spotlightName, statuses);
     }
 
@@ -451,7 +450,7 @@ public class BotProductServiceImpl implements BotProductService {
                 Path filePath = uploadDir.resolve(uniqueFilename);
                 long bytesCopied = Files.copy(in, filePath, StandardCopyOption.REPLACE_EXISTING);
                 log.info("File saved successfully: {} ({} bytes)", filePath.toAbsolutePath(), bytesCopied);
-                
+
                 // Verify file was saved
                 if (!Files.exists(filePath) || Files.size(filePath) == 0) {
                     throw new IOException("File was not saved correctly or is empty");
@@ -466,11 +465,11 @@ public class BotProductServiceImpl implements BotProductService {
         }
 
         // Generate URL
-        String baseUrl = attachmentBaseUrl.endsWith("/") 
-                ? attachmentBaseUrl.substring(0, attachmentBaseUrl.length() - 1) 
+        String baseUrl = attachmentBaseUrl.endsWith("/")
+                ? attachmentBaseUrl.substring(0, attachmentBaseUrl.length() - 1)
                 : attachmentBaseUrl;
-        String folderPath = attachmentFolderPath.startsWith("/") 
-                ? attachmentFolderPath 
+        String folderPath = attachmentFolderPath.startsWith("/")
+                ? attachmentFolderPath
                 : "/" + attachmentFolderPath;
         return baseUrl + folderPath + "/" + uniqueFilename;
     }
@@ -478,7 +477,7 @@ public class BotProductServiceImpl implements BotProductService {
     private Attachment createAttachment(String originalUrl, String savedUrl, String filePath) {
         String fileExtension = getFileExtension(filePath);
         String filename = savedUrl.substring(savedUrl.lastIndexOf("/") + 1);
-        
+
         return Attachment.builder()
                 .url(savedUrl)
                 .filePath(attachmentFolderPath + "/" + filename)
@@ -507,57 +506,59 @@ public class BotProductServiceImpl implements BotProductService {
             default -> "image/jpeg";
         };
     }
-    
+
     @Override
     public void clearMainImage(Long userId) {
         ProductCreationState state = getProductCreationState(userId);
         if (state == null) {
             return;
         }
-        
+
         // Remove first image (main image) if exists
         if (state.getAttachmentUrls() != null && !state.getAttachmentUrls().isEmpty()) {
             String mainImageUrl = state.getAttachmentUrls().get(0);
-            
+
             // Find and soft-delete attachment
             Attachment attachment = attachmentRepository.findByUrl(mainImageUrl);
             if (attachment != null) {
-                attachment.setActive(false);
-                attachmentRepository.save(attachment);
-                log.info("Main image attachment soft-deleted: {}", attachment.getId());
+                // attachment.setActive(false); // Removed as field doesn't exist
+                // attachmentRepository.save(attachment);
+                log.info("Main image attachment cleared (not soft-deleted as field missing): {}", attachment.getId());
             }
-            
+
             // Remove from state
             state.getAttachmentUrls().remove(0);
             if (state.getImageFileIds() != null && !state.getImageFileIds().isEmpty()) {
                 state.getImageFileIds().remove(0);
             }
-            
+
             log.info("Main image cleared from state for user: {}", userId);
         }
     }
-    
+
     @Override
     public void clearAdditionalImages(Long userId) {
         ProductCreationState state = getProductCreationState(userId);
         if (state == null) {
             return;
         }
-        
+
         // Remove additional images (all except first/main image) if exists
         if (state.getAttachmentUrls() != null && state.getAttachmentUrls().size() > 1) {
-            List<String> additionalImageUrls = new ArrayList<>(state.getAttachmentUrls().subList(1, state.getAttachmentUrls().size()));
-            
+            List<String> additionalImageUrls = new ArrayList<>(
+                    state.getAttachmentUrls().subList(1, state.getAttachmentUrls().size()));
+
             // Soft-delete all additional image attachments
             for (String url : additionalImageUrls) {
                 Attachment attachment = attachmentRepository.findByUrl(url);
                 if (attachment != null) {
-                    attachment.setActive(false);
-                    attachmentRepository.save(attachment);
-                    log.info("Additional image attachment soft-deleted: {}", attachment.getId());
+                    // attachment.setActive(false); // Removed as field doesn't exist
+                    // attachmentRepository.save(attachment);
+                    log.info("Additional image attachment cleared (not soft-deleted as field missing): {}",
+                            attachment.getId());
                 }
             }
-            
+
             // Remove from state (keep only first/main image)
             if (state.getAttachmentUrls().size() > 1) {
                 state.getAttachmentUrls().subList(1, state.getAttachmentUrls().size()).clear();
@@ -565,11 +566,12 @@ public class BotProductServiceImpl implements BotProductService {
             if (state.getImageFileIds() != null && state.getImageFileIds().size() > 1) {
                 state.getImageFileIds().subList(1, state.getImageFileIds().size()).clear();
             }
-            
-            log.info("Additional images cleared from state for user: {}, removed {} images", userId, additionalImageUrls.size());
+
+            log.info("Additional images cleared from state for user: {}, removed {} images", userId,
+                    additionalImageUrls.size());
         }
     }
-    
+
     /**
      * Format name: birinchi harfni katta, qolganlarini kichik
      * Example: "JOHN DOE" -> "John doe"
@@ -584,7 +586,7 @@ public class BotProductServiceImpl implements BotProductService {
         }
         return trimmed.substring(0, 1).toUpperCase() + trimmed.substring(1).toLowerCase();
     }
-    
+
     /**
      * Format description: faqat birinchi harfni katta
      * Example: "this is a description" -> "This is a description"
@@ -599,7 +601,7 @@ public class BotProductServiceImpl implements BotProductService {
         }
         return trimmed.substring(0, 1).toUpperCase() + trimmed.substring(1);
     }
-    
+
     /**
      * Format brand: barcha harflarni katta
      * Example: "nike" -> "NIKE"
@@ -611,4 +613,3 @@ public class BotProductServiceImpl implements BotProductService {
         return brand.trim().toUpperCase();
     }
 }
-

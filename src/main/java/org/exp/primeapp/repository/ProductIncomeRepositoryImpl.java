@@ -40,16 +40,16 @@ public class ProductIncomeRepositoryImpl implements ProductIncomeRepositoryCusto
             }
 
             // Product ni active qilish
-            if (!product.getActive()) {
-                product.setActive(true);
+            if (product.getStatus() != org.exp.primeapp.models.enums.ProductStatus.ON_SALE) {
+                product.setStatus(org.exp.primeapp.models.enums.ProductStatus.ON_SALE);
                 productRepository.save(product);
                 log.info("Product {} activated due to income", product.getId());
             }
 
             // Category ni active qilish
             Category category = product.getCategory();
-            if (category != null && !category.getActive()) {
-                category.setActive(true);
+            if (category != null && category.getStatus() != org.exp.primeapp.models.enums.CategoryStatus.VISIBLE) {
+                category.setStatus(org.exp.primeapp.models.enums.CategoryStatus.VISIBLE);
                 categoryRepository.save(category);
                 log.info("Category {} activated due to product income", category.getId());
             }
@@ -58,5 +58,3 @@ public class ProductIncomeRepositoryImpl implements ProductIncomeRepositoryCusto
         }
     }
 }
-
-

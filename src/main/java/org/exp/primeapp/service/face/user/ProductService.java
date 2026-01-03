@@ -37,4 +37,6 @@ public interface ProductService {
     FeaturedProductRes getFeaturedRandomProducts();
     
     List<ProductCartRes> getCartProducts(List<CartItemReq> cartItems);
+
+    List<ProductCartRes> getCartOrderProducts(List<CartItemReq> cartItems);
 }
