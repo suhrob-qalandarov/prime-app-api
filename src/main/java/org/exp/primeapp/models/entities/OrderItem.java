@@ -27,6 +27,9 @@ public class OrderItem extends BaseEntity {
     private String brand;
 
     @Column(nullable = false)
+    private String imageUrl;
+
+    @Column(nullable = false)
     private String colorName;
 
     @Column(nullable = false)

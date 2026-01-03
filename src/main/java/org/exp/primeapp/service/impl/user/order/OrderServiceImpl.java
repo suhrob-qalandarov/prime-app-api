@@ -29,25 +29,25 @@ public class OrderServiceImpl implements OrderService {
     private final OrderRepository orderRepository;
     private final ProductRepository productRepository;
     private final ProductSizeRepository productSizeRepository;
-    private final AttachmentRepository attachmentRepository;
     private final ProductOutcomeRepository productOutcomeRepository;
     private final CustomerRepository customerRepository;
     private final org.exp.primeapp.service.face.user.CustomerService customerService;
 
+    @Transactional
     @Override
     public UserProfileOrdersRes getUserProfileOrdersById(Long id) {
-        List<UserOrderRes> pendingOrderResList = orderRepository.findByOrderedByUserIdAndStatus(id, OrderStatus.PENDING)
-                .stream()
+        List<UserOrderRes> pendingOrderResList = orderRepository
+                .findByOrderedByUserIdAndStatusIn(id, List.of(OrderStatus.PENDING, OrderStatus.PENDING_PAYMENT)).stream()
                 .map(this::convertToUserOrderRes)
                 .toList();
 
         List<UserOrderRes> confirmedOrderResList = orderRepository
-                .findByOrderedByUserIdAndStatus(id, OrderStatus.CONFIRMED).stream()
+                .findByOrderedByUserIdAndStatusIn(id, List.of(OrderStatus.PAID, OrderStatus.CONFIRMED)).stream()
                 .map(this::convertToUserOrderRes)
                 .toList();
 
-        List<UserOrderRes> shippedOrderResList = orderRepository.findByOrderedByUserIdAndStatus(id, OrderStatus.SHIPPED)
-                .stream()
+        List<UserOrderRes> shippedOrderResList = orderRepository
+                .findByOrderedByUserIdAndStatusIn(id, List.of(OrderStatus.SHIPPED, OrderStatus.DELIVERED)).stream()
                 .map(this::convertToUserOrderRes)
                 .toList();
 
@@ -80,11 +80,7 @@ public class OrderServiceImpl implements OrderService {
                             .brand(orderItem.getBrand())
                             .colorName(orderItem.getColorName())
                             .colorHex(orderItem.getColorHex())
-                            .mainImageUrl(attachmentRepository.findByProductId(orderItem.getProduct().getId())
-                                    .stream()
-                                    .findFirst()
-                                    .map(Attachment::getUrl)
-                                    .orElse(null))
+                            .mainImageUrl(orderItem.getImageUrl())
                             .size(orderItem.getSize())
                             .price(orderItem.getUnitPrice().setScale(2, RoundingMode.HALF_UP))
                             .discount(orderItem.getDiscountPercent())
