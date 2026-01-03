@@ -12,6 +12,7 @@ import org.exp.primeapp.models.enums.OrderStatus;
 
 import org.exp.primeapp.repository.*;
 import org.exp.primeapp.service.face.user.OrderService;
+import org.exp.primeapp.botadmin.service.interfaces.AdminMessageService;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -37,6 +38,7 @@ public class OrderServiceImpl implements OrderService {
     private final CustomerRepository customerRepository;
     private final org.exp.primeapp.service.face.user.CustomerService customerService;
     private final AttachmentRepository attachmentRepository;
+    private final AdminMessageService adminMessageService;
 
     @Transactional
     @Override
@@ -200,6 +202,10 @@ public class OrderServiceImpl implements OrderService {
             customerRepository.save(customer);
 
             log.info("Order successfully created. OrderId: {}", savedOrder.getId());
+
+            // Send Admin Notification
+            adminMessageService.sendNewOrderNotification(savedOrder.getId());
+
             return convertToUserOrderRes(savedOrder);
 
         } catch (ObjectOptimisticLockingFailureException e) {

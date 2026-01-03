@@ -15,6 +15,11 @@ import org.exp.primeapp.models.entities.Attachment;
 import org.exp.primeapp.models.entities.Role;
 import org.exp.primeapp.models.entities.User;
 import org.exp.primeapp.repository.AttachmentRepository;
+import org.exp.primeapp.repository.OrderRepository;
+import org.exp.primeapp.repository.UserRepository;
+import org.exp.primeapp.models.enums.OrderStatus;
+import java.time.LocalDateTime;
+import java.util.Map;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 
@@ -28,13 +33,19 @@ public class AdminMessageServiceImpl implements AdminMessageService {
     private final TelegramBot telegramBot;
     private final AdminButtonService buttonService;
     private final AttachmentRepository attachmentRepository;
+    private final OrderRepository orderRepository;
+    private final UserRepository userRepository;
 
     public AdminMessageServiceImpl(@Qualifier("adminBot") TelegramBot telegramBot,
             AdminButtonService buttonService,
-            AttachmentRepository attachmentRepository) {
+            AttachmentRepository attachmentRepository,
+            OrderRepository orderRepository,
+            UserRepository userRepository) {
         this.telegramBot = telegramBot;
         this.buttonService = buttonService;
         this.attachmentRepository = attachmentRepository;
+        this.orderRepository = orderRepository;
+        this.userRepository = userRepository;
     }
 
     @Override
@@ -563,5 +574,45 @@ public class AdminMessageServiceImpl implements AdminMessageService {
     public void sendSimpleMessage(Long chatId, String message) {
         telegramBot.execute(new SendMessage(chatId, message)
                 .parseMode(ParseMode.HTML));
+    }
+
+    @Override
+    public void sendNewOrderNotification(Long orderId) {
+        try {
+            // Calculate stats
+            Map<OrderStatus, Long> totalCounts = new java.util.HashMap<>();
+            orderRepository.countTotalOrdersByStatus()
+                    .forEach(row -> totalCounts.put((OrderStatus) row[0], (Long) row[1]));
+
+            Map<OrderStatus, Long> todayCounts = new java.util.HashMap<>();
+            LocalDateTime startOfDay = java.time.LocalDate.now().atStartOfDay();
+            orderRepository.countOrdersByStatusSince(startOfDay)
+                    .forEach(row -> todayCounts.put((OrderStatus) row[0], (Long) row[1]));
+
+            StringBuilder sb = new StringBuilder();
+            sb.append("1- Yangi order(#").append(orderId).append(") qilinganligi haqida\n");
+            sb.append("2- Har bir status bo'yicha bugungi, jami order count:\n");
+
+            for (OrderStatus status : OrderStatus.values()) {
+                sb.append("\n").append(status.name()).append(" (").append(status.getLabel()).append(")\n");
+                sb.append("today: ").append(todayCounts.getOrDefault(status, 0L)).append("\n");
+                sb.append("all: ").append(totalCounts.getOrDefault(status, 0L)).append("\n");
+            }
+
+            String message = sb.toString();
+            List<User> admins = userRepository.findByRoles_Name("ROLE_ADMIN");
+
+            for (User admin : admins) {
+                if (admin.getTelegramId() != null) {
+                    try {
+                        sendSimpleMessage(admin.getTelegramId(), message);
+                    } catch (Exception e) {
+                        log.error("Failed to send admin notification to user: {}", admin.getId(), e);
+                    }
+                }
+            }
+        } catch (Exception e) {
+            log.error("Error creating/sending admin notification", e);
+        }
     }
 }

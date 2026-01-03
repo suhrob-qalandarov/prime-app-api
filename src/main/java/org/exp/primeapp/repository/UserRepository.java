@@ -74,4 +74,6 @@ public interface UserRepository extends JpaRepository<User, Long>, JpaSpecificat
        @Query("SELECT u FROM User u WHERE u.verifyCodeExpiration IS NOT NULL " +
                      "AND u.verifyCodeExpiration < :now AND u.messageId IS NOT NULL")
        List<User> findUsersWithExpiredOtpCodes(@Param("now") LocalDateTime now);
+
+       List<User> findByRoles_Name(String roleName);
 }
