@@ -78,25 +78,26 @@ public class AdminOrderServiceImpl implements AdminOrderService {
 
         private AdminOrderRes convertToAdminOrderRes(Order order, LocalDateTime statusDateTime) {
                 String formattedDateTime = statusDateTime != null
-                                ? statusDateTime.format(DATE_FORMATTER)
-                                : order.getCreatedAt().format(DATE_FORMATTER);
+                        ? statusDateTime.format(DATE_FORMATTER)
+                        : order.getCreatedAt().format(DATE_FORMATTER);
 
                 return AdminOrderRes.builder()
-                                .id(order.getId())
-                                .status(order.getStatus().name())
-                                .customer(AdminCustomerRes.builder()
-                                        .id(order.getCustomer().getId())
-                                        .fullName(order.getCustomer().getFullName())
-                                        .phoneNumber(order.getCustomer().getPhoneNumber())
-                                        .isNew(order.getCustomer().getIsNew())
-                                        .build())
-                                .deliveryType(order.getShippingType().name())
-                                .totalPrice(order.getTotalPrice())
-                                .dateTime(formattedDateTime)
-                                .items(order.getItems().stream()
-                                        .map(this::convertToAdminOrderItemRes)
-                                        .collect(Collectors.toList()))
-                                .build();
+                        .id(order.getId())
+                        .status(order.getStatus().name())
+                        .customer(AdminCustomerRes.builder()
+                                .id(order.getCustomer().getId())
+                                .fullName(order.getCustomer().getFullName())
+                                .phoneNumber(order.getCustomer().getPhoneNumber())
+                                .isNew(order.getCustomer().getIsNew())
+                                .build())
+                        .customerComment(order.getComment())
+                        .deliveryType(order.getShippingType().name())
+                        .totalPrice(order.getTotalPrice())
+                        .dateTime(formattedDateTime)
+                        .items(order.getItems().stream()
+                                .map(this::convertToAdminOrderItemRes)
+                                .collect(Collectors.toList()))
+                        .build();
         }
 
         private AdminOrderItemRes convertToAdminOrderItemRes(OrderItem item) {

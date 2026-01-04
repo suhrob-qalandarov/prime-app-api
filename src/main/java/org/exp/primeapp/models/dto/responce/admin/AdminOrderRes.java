@@ -10,6 +10,7 @@ public record AdminOrderRes(
         Long id,
         String status,
         AdminCustomerRes customer,
+        String customerComment,
         String deliveryType,
         BigDecimal totalPrice,
         String dateTime,
