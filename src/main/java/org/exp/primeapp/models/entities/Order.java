@@ -75,6 +75,10 @@ public class Order extends BaseEntity {
 
     private LocalDateTime paidAt;
 
+    private LocalDateTime deliveringAt;
+
+    private LocalDateTime confirmedAt;
+
     private LocalDateTime cancelledAt;
 
     private LocalDateTime refundedAt;
