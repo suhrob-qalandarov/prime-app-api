@@ -34,7 +34,6 @@ public class OrderServiceImpl implements OrderService {
     private final OrderRepository orderRepository;
     private final ProductRepository productRepository;
     private final ProductSizeRepository productSizeRepository;
-    private final ProductOutcomeRepository productOutcomeRepository;
     private final CustomerRepository customerRepository;
     private final org.exp.primeapp.service.face.user.CustomerService customerService;
     private final AttachmentRepository attachmentRepository;
@@ -49,8 +48,8 @@ public class OrderServiceImpl implements OrderService {
                 .findByOrderedByUserIdAndStatusInAndCreatedAtAfter(
                         id,
                         List.of(OrderStatus.PENDING_PAYMENT),
-                        daysAgo
-                ).stream()
+                        daysAgo)
+                .stream()
                 .map(this::convertToUserOrderRes)
                 .toList();
 
@@ -58,8 +57,8 @@ public class OrderServiceImpl implements OrderService {
                 .findByOrderedByUserIdAndStatusInAndCreatedAtAfter(
                         id,
                         List.of(OrderStatus.PAID, OrderStatus.CONFIRMED),
-                        daysAgo
-                ).stream()
+                        daysAgo)
+                .stream()
                 .map(this::convertToUserOrderRes)
                 .toList();
 
@@ -67,8 +66,8 @@ public class OrderServiceImpl implements OrderService {
                 .findByOrderedByUserIdAndStatusInAndCreatedAtAfter(
                         id,
                         List.of(OrderStatus.SHIPPED, OrderStatus.DELIVERED),
-                        daysAgo
-                ).stream()
+                        daysAgo)
+                .stream()
                 .map(this::convertToUserOrderRes)
                 .toList();
 
@@ -185,8 +184,9 @@ public class OrderServiceImpl implements OrderService {
                 OrderItem orderItem = createOrderItem(order, product, productSize, itemReq.amount(), finalUnitPrice);
                 orderItemsList.add(orderItem);
 
-                // Update Stock
-                updateStockAndLogOutcome(productSize, itemReq.amount(), user, product);
+                // Update Stock - REMOVED: Stock now deducted at PAID status in
+                // AdminOrderService
+                // updateStockAndLogOutcome(productSize, itemReq.amount(), user, product);
             }
 
             order.setItems(orderItemsList);
@@ -283,16 +283,4 @@ public class OrderServiceImpl implements OrderService {
         return orderItem;
     }
 
-    private void updateStockAndLogOutcome(ProductSize productSize, int quantity, User user, Product product) {
-        productSize.setQuantity(productSize.getQuantity() - quantity);
-        productSizeRepository.save(productSize);
-
-        ProductOutcome outcome = new ProductOutcome();
-        outcome.setUser(user);
-        outcome.setProduct(product);
-        outcome.setStockQuantity(quantity);
-        outcome.setProductSize(productSize);
-        // outcome.setUnitPrice/TotalPrice logic if needed
-        productOutcomeRepository.save(outcome);
-    }
 }
