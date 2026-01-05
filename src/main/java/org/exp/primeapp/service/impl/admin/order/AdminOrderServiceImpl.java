@@ -2,12 +2,14 @@ package org.exp.primeapp.service.impl.admin.order;
 
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import org.exp.primeapp.models.dto.request.OrderCancelReq;
 import org.exp.primeapp.models.dto.responce.admin.AdminCustomerRes;
 import org.exp.primeapp.models.dto.responce.admin.AdminOrderDashRes;
 import org.exp.primeapp.models.dto.responce.admin.AdminOrderItemRes;
 import org.exp.primeapp.models.dto.responce.admin.AdminOrderRes;
 import org.exp.primeapp.models.entities.Order;
 import org.exp.primeapp.models.entities.OrderItem;
+import org.exp.primeapp.models.entities.ProductSize;
 import org.exp.primeapp.models.enums.OrderStatus;
 import org.exp.primeapp.repository.OrderRepository;
 import org.exp.primeapp.repository.ProductSizeRepository;
@@ -97,9 +99,34 @@ public class AdminOrderServiceImpl implements AdminOrderService {
                 orderRepository.save(order);
         }
 
+        @Transactional
+        @Override
+        public void cancelOrder(Long orderId, OrderCancelReq cancelReq) {
+                Order order = orderRepository.findById(orderId)
+                                .orElseThrow(() -> new RuntimeException("Order not found with id: " + orderId));
+
+                // Cannot cancel already cancelled or refunded orders
+                if (order.getStatus() == OrderStatus.CANCELLED || order.getStatus() == OrderStatus.REFUNDED) {
+                        throw new RuntimeException("Order is already cancelled or refunded");
+                }
+
+                // Return stock if order was PAID or further
+                if (order.getStatus() != OrderStatus.PENDING_PAYMENT) {
+                        returnStockToProductSizes(order);
+                }
+
+                // Set cancel reason and admin comment
+                order.setCancelReason(cancelReq.reason());
+                order.setAdminComment(cancelReq.comment());
+                order.setStatus(OrderStatus.CANCELLED);
+                order.setCancelledAt(LocalDateTime.now());
+
+                orderRepository.save(order);
+        }
+
         private void deductStockWithLock(Order order) {
                 for (OrderItem item : order.getItems()) {
-                        org.exp.primeapp.models.entities.ProductSize ps = productSizeRepository
+                        ProductSize ps = productSizeRepository
                                         .findByIdWithLock(item.getProductSize().getId())
                                         .orElseThrow(() -> new RuntimeException(
                                                         "Product size not found: " + item.getProductSize().getId()));
@@ -139,7 +166,7 @@ public class AdminOrderServiceImpl implements AdminOrderService {
 
         private void returnStockToProductSizes(Order order) {
                 for (OrderItem item : order.getItems()) {
-                        org.exp.primeapp.models.entities.ProductSize ps = item.getProductSize();
+                        ProductSize ps = item.getProductSize();
                         ps.setQuantity(ps.getQuantity() + item.getQuantity());
                         productSizeRepository.save(ps);
                 }

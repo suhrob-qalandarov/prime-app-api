@@ -1,6 +1,7 @@
 package org.exp.primeapp.controller.admin.order;
 
 import lombok.RequiredArgsConstructor;
+import org.exp.primeapp.models.dto.request.OrderCancelReq;
 import org.exp.primeapp.models.dto.responce.admin.AdminOrderDashRes;
 import org.exp.primeapp.models.enums.OrderStatus;
 import org.exp.primeapp.service.face.admin.order.AdminOrderService;
@@ -27,8 +28,9 @@ public class AdminOrderController {
         return ResponseEntity.ok().build();
     }
 
-    @DeleteMapping("{id}")
-    public void deleteOrder() {
-
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteOrder(@PathVariable Long id, @RequestBody OrderCancelReq cancelReq) {
+        adminOrderService.cancelOrder(id, cancelReq);
+        return ResponseEntity.ok().build();
     }
 }
