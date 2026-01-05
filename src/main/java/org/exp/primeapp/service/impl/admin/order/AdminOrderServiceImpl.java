@@ -41,7 +41,7 @@ public class AdminOrderServiceImpl implements AdminOrderService {
                 List<AdminOrderRes> paidOrders = getOrdersByStatusWithPaidAt(since);
                 // CONFIRMED - filter by confirmedAt
                 List<AdminOrderRes> confirmedOrders = getOrdersByStatusWithConfirmedAt(since);
-                // SHIPPED - filter by deliveringAt
+                // DELIVERING - filter by deliveringAt
                 List<AdminOrderRes> deliveringOrders = getOrdersByStatusWithDeliveringAt(since);
 
                 return AdminOrderDashRes.builder()
@@ -66,23 +66,63 @@ public class AdminOrderServiceImpl implements AdminOrderService {
                                         "Invalid status transition from " + currentStatus + " to " + nextStatus);
                 }
 
-                // 2. Check stock if it's a forward move
-                if (nextStatus != OrderStatus.CANCELLED && nextStatus != OrderStatus.REFUNDED) {
+                // 2. Handle stock deduction when moving TO PAID status
+                if (nextStatus == OrderStatus.PAID && currentStatus == OrderStatus.PENDING_PAYMENT) {
+                        deductStockWithLock(order);
+                }
+
+                // 3. Check stock availability for other forward transitions (if needed)
+                // But if it's already PAID, stock was already deducted.
+                if (nextStatus != OrderStatus.CANCELLED && nextStatus != OrderStatus.REFUNDED
+                                && nextStatus != OrderStatus.PAID) {
                         checkStockAvailability(order);
                 }
 
-                // 3. Handle stock return if cancelling
+                // 4. Handle stock return if cancelling from a status that already had stock
+                // deducted
                 if (nextStatus == OrderStatus.CANCELLED) {
-                        returnStockToProductSizes(order);
+                        // Only return stock if it was already deducted (i.e., status was PAID or
+                        // further)
+                        if (currentStatus != OrderStatus.PENDING_PAYMENT) {
+                                returnStockToProductSizes(order);
+                        }
                         order.setCancelledAt(LocalDateTime.now());
                 }
 
-                // 4. Update timestamps based on status
+                // 5. Update timestamps based on status
                 updateStatusTimestamps(order, nextStatus);
 
-                // 5. Update status
+                // 6. Update status
                 order.setStatus(nextStatus);
                 orderRepository.save(order);
+        }
+
+        private void deductStockWithLock(Order order) {
+                for (OrderItem item : order.getItems()) {
+                        org.exp.primeapp.models.entities.ProductSize ps = productSizeRepository
+                                        .findByIdWithLock(item.getProductSize().getId())
+                                        .orElseThrow(() -> new RuntimeException(
+                                                        "Product size not found: " + item.getProductSize().getId()));
+
+                        if (ps.getQuantity() < item.getQuantity()) {
+                                throw new RuntimeException("Yetarli mahsulot mavjud emas: " + item.getName() +
+                                                " (Zaxira: " + ps.getQuantity() + ", So'ralgan: " + item.getQuantity()
+                                                + ")");
+                        }
+
+                        ps.setQuantity(ps.getQuantity() - item.getQuantity());
+                        productSizeRepository.save(ps);
+                }
+        }
+
+        private void checkStockAvailability(Order order) {
+                for (OrderItem item : order.getItems()) {
+                        // If we are already past PAID, quantity should be fine, but we can do a safety
+                        // check
+                        if (item.getProductSize().getQuantity() < 0) {
+                                throw new RuntimeException("Zaxira bilan bog'liq xatolik: " + item.getName());
+                        }
+                }
         }
 
         private boolean isValidTransition(OrderStatus current, OrderStatus next) {
@@ -95,16 +135,6 @@ public class AdminOrderServiceImpl implements AdminOrderService {
 
                 // General rule: status can only move forward
                 return next.ordinal() > current.ordinal();
-        }
-
-        private void checkStockAvailability(Order order) {
-                for (OrderItem item : order.getItems()) {
-                        if (item.getProductSize().getQuantity() < 0) {
-                                if (item.getProductSize().getQuantity() < 0) {
-                                        throw new RuntimeException("Insufficient stock for item: " + item.getName());
-                                }
-                        }
-                }
         }
 
         private void returnStockToProductSizes(Order order) {
@@ -120,7 +150,15 @@ public class AdminOrderServiceImpl implements AdminOrderService {
                 switch (status) {
                         case PAID -> order.setPaidAt(now);
                         case CONFIRMED -> order.setConfirmedAt(now);
-                        case SHIPPED -> order.setDeliveringAt(now);
+                        case DELIVERING -> order.setDeliveringAt(now);
+                        case SHIPPED -> {
+                                // If deliveringAt is already set (e.g. via taxi), we don't necessarily need to
+                                // overwrite it,
+                                // but for SHIPPED (BTS) we might use the same field if no shippedAt exists.
+                                if (order.getDeliveringAt() == null) {
+                                        order.setDeliveringAt(now);
+                                }
+                        }
                         case DELIVERED -> order.setDeliveredAt(now);
                         case REFUNDED -> order.setRefundedAt(now);
                         case CANCELLED -> order.setCancelledAt(now);
@@ -151,7 +189,7 @@ public class AdminOrderServiceImpl implements AdminOrderService {
         }
 
         private List<AdminOrderRes> getOrdersByStatusWithDeliveringAt(LocalDateTime since) {
-                List<Order> orders = orderRepository.findByStatusAndDeliveringAtAfter(OrderStatus.SHIPPED, since);
+                List<Order> orders = orderRepository.findByStatusAndDeliveringAtAfter(OrderStatus.DELIVERING, since);
                 return orders.stream()
                                 .map(order -> convertToAdminOrderRes(order, order.getDeliveringAt()))
                                 .collect(Collectors.toList());
@@ -159,26 +197,26 @@ public class AdminOrderServiceImpl implements AdminOrderService {
 
         private AdminOrderRes convertToAdminOrderRes(Order order, LocalDateTime statusDateTime) {
                 String formattedDateTime = statusDateTime != null
-                        ? statusDateTime.format(DATE_FORMATTER)
-                        : order.getCreatedAt().format(DATE_FORMATTER);
+                                ? statusDateTime.format(DATE_FORMATTER)
+                                : order.getCreatedAt().format(DATE_FORMATTER);
 
                 return AdminOrderRes.builder()
-                        .id(order.getId())
-                        .status(order.getStatus().name())
-                        .customer(AdminCustomerRes.builder()
-                                .id(order.getCustomer().getId())
-                                .fullName(order.getCustomer().getFullName())
-                                .phoneNumber(order.getCustomer().getPhoneNumber())
-                                .isNew(order.getCustomer().getIsNew())
-                                .build())
-                        .customerComment(order.getComment())
-                        .deliveryType(order.getShippingType().name())
-                        .totalPrice(order.getTotalPrice())
-                        .dateTime(formattedDateTime)
-                        .items(order.getItems().stream()
-                                .map(this::convertToAdminOrderItemRes)
-                                .collect(Collectors.toList()))
-                        .build();
+                                .id(order.getId())
+                                .status(order.getStatus().name())
+                                .customer(AdminCustomerRes.builder()
+                                                .id(order.getCustomer().getId())
+                                                .fullName(order.getCustomer().getFullName())
+                                                .phoneNumber(order.getCustomer().getPhoneNumber())
+                                                .isNew(order.getCustomer().getIsNew())
+                                                .build())
+                                .customerComment(order.getComment())
+                                .deliveryType(order.getShippingType().name())
+                                .totalPrice(order.getTotalPrice())
+                                .dateTime(formattedDateTime)
+                                .items(order.getItems().stream()
+                                                .map(this::convertToAdminOrderItemRes)
+                                                .collect(Collectors.toList()))
+                                .build();
         }
 
         private AdminOrderItemRes convertToAdminOrderItemRes(OrderItem item) {
