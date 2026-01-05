@@ -10,6 +10,7 @@ import org.exp.primeapp.models.entities.Order;
 import org.exp.primeapp.models.entities.OrderItem;
 import org.exp.primeapp.models.enums.OrderStatus;
 import org.exp.primeapp.repository.OrderRepository;
+import org.exp.primeapp.repository.ProductSizeRepository;
 import org.exp.primeapp.service.face.admin.order.AdminOrderService;
 import org.springframework.stereotype.Service;
 
@@ -22,9 +23,12 @@ import java.util.stream.Collectors;
 @Service
 @RequiredArgsConstructor
 public class AdminOrderServiceImpl implements AdminOrderService {
+
         private final OrderRepository orderRepository;
-        private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm");
+        private final ProductSizeRepository productSizeRepository;
+
         private static final int DAYS_FILTER = 10;
+        private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm");
 
         @Transactional
         @Override
@@ -46,6 +50,83 @@ public class AdminOrderServiceImpl implements AdminOrderService {
                                 .confirmedOrderList(confirmedOrders)
                                 .deliveringOrderList(deliveringOrders)
                                 .build();
+        }
+
+        @Transactional
+        @Override
+        public void updateOrderStatus(Long orderId, OrderStatus nextStatus) {
+                Order order = orderRepository.findById(orderId)
+                                .orElseThrow(() -> new RuntimeException("Order not found with id: " + orderId));
+
+                OrderStatus currentStatus = order.getStatus();
+
+                // 1. Validate status transition
+                if (!isValidTransition(currentStatus, nextStatus)) {
+                        throw new RuntimeException(
+                                        "Invalid status transition from " + currentStatus + " to " + nextStatus);
+                }
+
+                // 2. Check stock if it's a forward move
+                if (nextStatus != OrderStatus.CANCELLED && nextStatus != OrderStatus.REFUNDED) {
+                        checkStockAvailability(order);
+                }
+
+                // 3. Handle stock return if cancelling
+                if (nextStatus == OrderStatus.CANCELLED) {
+                        returnStockToProductSizes(order);
+                        order.setCancelledAt(LocalDateTime.now());
+                }
+
+                // 4. Update timestamps based on status
+                updateStatusTimestamps(order, nextStatus);
+
+                // 5. Update status
+                order.setStatus(nextStatus);
+                orderRepository.save(order);
+        }
+
+        private boolean isValidTransition(OrderStatus current, OrderStatus next) {
+                if (next == OrderStatus.CANCELLED)
+                        return true;
+                if (current == OrderStatus.CANCELLED || current == OrderStatus.REFUNDED)
+                        return false;
+                if (next == OrderStatus.REFUNDED)
+                        return current != OrderStatus.PENDING_PAYMENT;
+
+                // General rule: status can only move forward
+                return next.ordinal() > current.ordinal();
+        }
+
+        private void checkStockAvailability(Order order) {
+                for (OrderItem item : order.getItems()) {
+                        if (item.getProductSize().getQuantity() < 0) {
+                                if (item.getProductSize().getQuantity() < 0) {
+                                        throw new RuntimeException("Insufficient stock for item: " + item.getName());
+                                }
+                        }
+                }
+        }
+
+        private void returnStockToProductSizes(Order order) {
+                for (OrderItem item : order.getItems()) {
+                        org.exp.primeapp.models.entities.ProductSize ps = item.getProductSize();
+                        ps.setQuantity(ps.getQuantity() + item.getQuantity());
+                        productSizeRepository.save(ps);
+                }
+        }
+
+        private void updateStatusTimestamps(Order order, OrderStatus status) {
+                LocalDateTime now = LocalDateTime.now();
+                switch (status) {
+                        case PAID -> order.setPaidAt(now);
+                        case CONFIRMED -> order.setConfirmedAt(now);
+                        case SHIPPED -> order.setDeliveringAt(now);
+                        case DELIVERED -> order.setDeliveredAt(now);
+                        case REFUNDED -> order.setRefundedAt(now);
+                        case CANCELLED -> order.setCancelledAt(now);
+                        default -> {
+                        }
+                }
         }
 
         private List<AdminOrderRes> getOrdersByStatusWithCreatedAt(LocalDateTime since) {

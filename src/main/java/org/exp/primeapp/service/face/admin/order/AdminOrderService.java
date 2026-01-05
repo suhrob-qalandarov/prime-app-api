@@ -1,9 +1,10 @@
 package org.exp.primeapp.service.face.admin.order;
 
 import org.exp.primeapp.models.dto.responce.admin.AdminOrderDashRes;
-import org.springframework.stereotype.Service;
+import org.exp.primeapp.models.enums.OrderStatus;
 
-@Service
 public interface AdminOrderService {
     AdminOrderDashRes getOrderDashboard();
+
+    void updateOrderStatus(Long orderId, OrderStatus status);
 }
