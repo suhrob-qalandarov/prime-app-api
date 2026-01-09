@@ -15,6 +15,7 @@ import lombok.*;
 import lombok.experimental.SuperBuilder;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -80,4 +81,14 @@ public class Product extends BaseEntity {
     @Builder.Default
     @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, orphanRemoval = true)
     private Set<ProductSize> sizes = new HashSet<>();
+
+    private LocalDateTime publishedAt;
+
+    private LocalDateTime lastActivatedAt;
+
+    private LocalDateTime lastOutOfStockAt;
+
+    private LocalDateTime lastDeactivatedAt;
+
+    private LocalDateTime lastArchivedAt;
 }

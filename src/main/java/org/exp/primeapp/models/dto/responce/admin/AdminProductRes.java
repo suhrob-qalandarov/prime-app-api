@@ -16,10 +16,10 @@ public record AdminProductRes(
         String description,
         String categoryName,
         BigDecimal price,
-        String status,
+        String tag,
         Boolean active,
         Integer discount,
         String createdAt,
         List<String> picturesUrls,
-        List<ProductSizeRes> productSizeRes
+        List<ProductSizeRes> sizes
 ){}

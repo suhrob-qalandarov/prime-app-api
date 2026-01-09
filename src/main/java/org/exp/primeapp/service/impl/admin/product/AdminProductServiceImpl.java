@@ -19,10 +19,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
@@ -64,13 +61,13 @@ public class AdminProductServiceImpl implements AdminProductService {
                 .hotTagCount(hotTagCount)
                 .saleTagCount(saleTagCount)
                 .responseDate(LocalDateTime.now().plusMinutes(updateOffsetMinutes))
-                .productResList(productResList)
+                .products(productResList)
                 .build();
     }
 
     private Map<String, Long> mapCountByTag(List<AdminProductRes> productResList) {
         return productResList.stream()
-                .collect(Collectors.groupingBy(AdminProductRes::status, Collectors.counting()));
+                .collect(Collectors.groupingBy(AdminProductRes::tag, Collectors.counting()));
     }
 
     private long getCountByTag(Map<String, Long> countMap, String tag) {
@@ -107,12 +104,12 @@ public class AdminProductServiceImpl implements AdminProductService {
                 .description(product.getDescription())
                 .categoryName(product.getCategory().getName())
                 .price(product.getPrice())
-                .status(product.getStatus().name())
+                .tag(product.getTag().name())
                 .active(product.getStatus() == ProductStatus.ON_SALE)
                 .discount(product.getDiscountPercent())
                 .createdAt(product.getCreatedAt().format(formatter))
                 .picturesUrls(picturesUrlList)
-                .productSizeRes(productSizeReslist)
+                .sizes(productSizeReslist)
                 .build();
     }
 
@@ -136,7 +133,7 @@ public class AdminProductServiceImpl implements AdminProductService {
             throw new RuntimeException("Attachments empty");
         }
 
-        List<Attachment> attachments = new java.util.ArrayList<>(attachmentRepository.findAllByUrlIn(attachmentUrls));
+        List<Attachment> attachments = new ArrayList<>(attachmentRepository.findAllByUrlIn(attachmentUrls));
         if (attachments.size() != attachmentUrls.size()) {
             throw new RuntimeException("Some attachments not found");
         }
