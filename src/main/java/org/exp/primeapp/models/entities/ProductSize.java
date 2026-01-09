@@ -17,7 +17,7 @@ import java.math.BigDecimal;
 @AllArgsConstructor
 @NoArgsConstructor
 @Entity
-@Table(uniqueConstraints = @UniqueConstraint(columnNames = { "product_id", "size" }))
+@Table(name = "product_sizes", uniqueConstraints = @UniqueConstraint(columnNames = { "product_id", "size" }))
 @JsonIdentityInfo(generator = ObjectIdGenerators.PropertyGenerator.class, property = "id")
 public class ProductSize extends BaseEntity {
 

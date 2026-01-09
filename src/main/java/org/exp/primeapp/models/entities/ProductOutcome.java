@@ -14,6 +14,7 @@ import org.exp.primeapp.models.base.Inventory;
 @AllArgsConstructor
 @NoArgsConstructor
 @Entity
+@Table(name = "product_outcomes")
 public class ProductOutcome extends Inventory {
     @ManyToOne(optional = false, fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)

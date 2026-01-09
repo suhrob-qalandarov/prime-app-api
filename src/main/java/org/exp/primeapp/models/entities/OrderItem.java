@@ -17,7 +17,7 @@ import java.math.BigDecimal;
 @AllArgsConstructor
 @NoArgsConstructor
 @Entity
-@Table(name = "order_item")
+@Table(name = "order_items")
 public class OrderItem extends BaseEntity {
 
     @Column(nullable = false)
