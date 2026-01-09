@@ -37,7 +37,7 @@ public class OrderServiceImpl implements OrderService {
     private final CustomerRepository customerRepository;
     private final org.exp.primeapp.service.face.user.CustomerService customerService;
     private final AttachmentRepository attachmentRepository;
-    //private final AdminMessageService adminMessageService;
+    // private final AdminMessageService adminMessageService;
 
     @Transactional
     @Override
@@ -129,7 +129,7 @@ public class OrderServiceImpl implements OrderService {
 
     @Override
     @Transactional
-    public UserOrderRes createOrder(User user, Session session, CreateOrderReq orderRequest) {
+    public UserOrderRes createOrder(User user, CreateOrderReq orderRequest) {
         log.info("Creating order for User ID: {}", user.getId());
 
         // 1. Get or Create Customer
@@ -150,7 +150,6 @@ public class OrderServiceImpl implements OrderService {
         // 2. Create Order
         Order order = new Order();
         order.setOrderedByUser(user);
-        order.setOrderedBySession(session);
         order.setCustomer(customer);
         order.setStatus(OrderStatus.PENDING_PAYMENT);
         order.setShippingType(orderRequest.delivery());
@@ -204,7 +203,7 @@ public class OrderServiceImpl implements OrderService {
             log.info("Order successfully created. OrderId: {}", savedOrder.getId());
 
             // Send Admin Notification
-            //adminMessageService.sendNewOrderNotification(savedOrder.getId());
+            // adminMessageService.sendNewOrderNotification(savedOrder.getId());
 
             return convertToUserOrderRes(savedOrder);
 

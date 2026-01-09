@@ -40,8 +40,11 @@ public class User extends BaseEntity implements UserDetails {
 
     private LocalDateTime verifyCodeExpiration;
 
-    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.EAGER)
-    private List<Session> sessions;
+    @Column(name = "ip_address")
+    private String ip;
+
+    @Column(name = "browser_info")
+    private String browserInfo;
 
     @ManyToMany(fetch = FetchType.EAGER)
     private List<Role> roles;
