@@ -9,13 +9,14 @@ import org.exp.primeapp.models.dto.responce.global.AttachmentRes;
 import org.exp.primeapp.models.entities.Attachment;
 import org.exp.primeapp.repository.AttachmentRepository;
 import org.exp.primeapp.service.face.global.attachment.AttachmentService;
-import org.exp.primeapp.service.face.global.attachment.AttachmentTokenService;
-import org.exp.primeapp.service.face.global.session.SessionService;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -25,41 +26,40 @@ import java.util.stream.Collectors;
 public class AttachmentServiceImpl implements AttachmentService {
 
     private final AttachmentRepository attachmentRepository;
-    private final AttachmentTokenService attachmentTokenService;
-    private final SessionService sessionService;
 
     @Value("${attachment.max.file.size.mb}")
     private Long maxFileSizeMB;
 
+    @Value("${app.attachment.folder.path:uploads}")
+    private String attachmentFolderPath;
+
     @Override
-    public void get(String attachmentUrl, String token, HttpServletRequest request, HttpServletResponse response) throws IOException {
-        // Token validation
-        if (!attachmentTokenService.validateToken(token)) {
-            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-            response.getWriter().write("Invalid or expired attachment token");
-            return;
-        }
-
-        // Session lastAccessedAt yangilash
-        String sessionId = sessionService.getSessionIdFromCookie(request);
-        if (sessionId != null) {
-            sessionService.updateLastAccessed(sessionId);
-        }
-
+    public void get(String attachmentUrl, HttpServletRequest request, HttpServletResponse response)
+            throws IOException {
         try {
             Attachment attachment = getAttachmentWithUrl(attachmentUrl);
             if (attachment == null) {
                 response.setStatus(HttpServletResponse.SC_NOT_FOUND);
                 return;
             }
-            
-            byte[] fileContent = getFileContent(attachmentUrl);
-            String filename = attachment.getOriginalFilename() != null 
-                    ? attachment.getOriginalFilename() 
+
+            // Simple check: if file exists?
+            // Assuming attachmentUrl is "filename.ext" or "UUID.ext"
+            // If DB entry exists, try to get file.
+
+            byte[] fileContent = getFileContent(attachment.getFilename()); // Assuming filename is stored
+            if (fileContent == null) {
+                response.setStatus(HttpServletResponse.SC_NOT_FOUND);
+                return;
+            }
+
+            String filename = attachment.getOriginalFilename() != null
+                    ? attachment.getOriginalFilename()
                     : attachment.getFilename();
 
             response.setContentType(attachment.getContentType() != null ? attachment.getContentType() : "image/jpeg");
-            response.setHeader("Content-Disposition", "inline; filename=\"" + (filename != null ? filename : "attachment") + "\"");
+            response.setHeader("Content-Disposition",
+                    "inline; filename=\"" + (filename != null ? filename : "attachment") + "\"");
             response.setContentLength(fileContent.length);
             response.getOutputStream().write(fileContent);
             response.getOutputStream().flush();
@@ -70,27 +70,15 @@ public class AttachmentServiceImpl implements AttachmentService {
         }
     }
 
-    @Override
-    public String generateAttachmentToken(org.exp.primeapp.models.entities.User user) {
-        return attachmentTokenService.generateTokenForUser(user);
-    }
-
-    @Override
-    public String refreshAttachmentToken(String oldToken, HttpServletRequest request) {
-        return attachmentTokenService.refreshToken(oldToken, request);
-    }
-
-    @Override
-    public boolean validateAttachmentToken(String token) {
-        return attachmentTokenService.validateToken(token);
-    }
-
-    private byte[] getFileContent(String url) throws IOException {
-        if (url == null || url.isBlank()) {
-            throw new IllegalArgumentException("Attachment URL cannot be null or empty");
+    private byte[] getFileContent(String filename) throws IOException {
+        if (filename == null || filename.isBlank()) {
+            throw new IllegalArgumentException("Filename cannot be null or empty");
         }
-        // TODO: Implement local file reading from filePath
-        throw new UnsupportedOperationException("File reading from local storage not yet implemented");
+        Path filePath = Paths.get(attachmentFolderPath, filename);
+        if (!Files.exists(filePath)) {
+            return null;
+        }
+        return Files.readAllBytes(filePath);
     }
 
     @Override

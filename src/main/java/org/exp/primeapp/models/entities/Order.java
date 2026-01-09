@@ -38,11 +38,7 @@ public class Order extends BaseEntity {
     private OrderDeliveryType shippingType;
 
     @Builder.Default
-    @OneToMany(
-            mappedBy = "order",
-            cascade = CascadeType.ALL,
-            orphanRemoval = true
-    )
+    @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<OrderItem> items = new ArrayList<>();
 
     @ManyToOne(fetch = FetchType.LAZY)
@@ -54,16 +50,8 @@ public class Order extends BaseEntity {
     private User orderedByUser;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "session_id", nullable = false)
-    private Session orderedBySession;
-
-    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "admin_id")
     private User confirmedByAdmin;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "admin_session_id")
-    private Session confirmedByAdminSession;
 
     @Column(columnDefinition = "TEXT")
     private String adminComment;

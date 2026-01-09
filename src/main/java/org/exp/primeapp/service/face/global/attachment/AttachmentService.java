@@ -13,7 +13,7 @@ import java.util.List;
 @Service
 public interface AttachmentService {
 
-    void get(String attachmentUrl, String token, HttpServletRequest request, HttpServletResponse response) throws IOException;
+    void get(String attachmentUrl, HttpServletRequest request, HttpServletResponse response) throws IOException;
 
     Attachment getAttachment(Long attachmentId);
 
@@ -28,10 +28,4 @@ public interface AttachmentService {
     AttachmentRes convertToAttachmentRes(Attachment attachment);
 
     List<String> convertToAttachmentUrls(List<Attachment> attachments);
-
-    String generateAttachmentToken(org.exp.primeapp.models.entities.User user);
-    
-    String refreshAttachmentToken(String oldToken, HttpServletRequest request);
-    
-    boolean validateAttachmentToken(String token);
 }

@@ -9,14 +9,12 @@ import lombok.extern.slf4j.Slf4j;
 import org.exp.primeapp.configs.security.JwtCookieService;
 import org.exp.primeapp.models.dto.responce.global.LoginRes;
 import org.exp.primeapp.models.dto.responce.order.UserProfileOrdersRes;
-import org.exp.primeapp.models.dto.responce.user.SessionRes;
 import org.exp.primeapp.models.dto.responce.user.UserRes;
 import org.exp.primeapp.models.entities.User;
 import org.exp.primeapp.repository.UserRepository;
-import org.exp.primeapp.models.entities.Session;
 import org.exp.primeapp.service.face.global.auth.AuthService;
-import org.exp.primeapp.service.face.global.session.SessionService;
 import org.exp.primeapp.service.face.user.OrderService;
+import org.exp.primeapp.utils.IpAddressUtil;
 import org.exp.primeapp.utils.UserUtil;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -24,7 +22,6 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
-import java.util.List;
 
 @Slf4j
 @Service
@@ -33,8 +30,8 @@ public class AuthServiceImpl implements AuthService {
     private final JwtCookieService jwtService;
     private final UserRepository userRepository;
     private final OrderService orderService;
-    private final SessionService sessionService;
     private final UserUtil userUtil;
+    private final IpAddressUtil ipAddressUtil;
 
     @Value("${cookie.max.age}")
     private Integer cookieMaxAge;
@@ -59,38 +56,15 @@ public class AuthServiceImpl implements AuthService {
             throw new IllegalArgumentException("Code expired");
         }
 
-        // Session topish yoki yaratish
-        Session session = sessionService.getOrCreateSession(request, response);
+        // Update User info (IP and Browser)
+        String clientIp = ipAddressUtil.getClientIpAddress(request);
+        String browserInfo = request.getHeader("User-Agent");
 
-        // Session ni user ga biriktirish (migration)
-        if (session.getUser() == null) {
-            sessionService.migrateSessionToUser(session.getSessionId(), user);
-            // Session ni qayta olish (migration dan keyin yangilanadi)
-            session = sessionService.getSessionById(session.getSessionId());
-        }
+        user.setIp(clientIp);
+        user.setBrowserInfo(browserInfo);
 
-        // Access token yaratish yoki olish
-        String existingAccessToken = sessionService.getAccessToken(session.getSessionId());
-        String token;
-
-        if (existingAccessToken != null) {
-            // Token expiry tekshirish (3 kun)
-            long expiryDays = getAccessTokenExpiryDays(existingAccessToken);
-            if (expiryDays >= 3) {
-                // 3 kun va undan oshiq - eski token ishlatiladi
-                token = existingAccessToken;
-            } else {
-                // 3 kundan kam - yangi token yaratiladi
-                token = jwtService.generateToken(user, session, request);
-                sessionService.setAccessToken(session.getSessionId(), token);
-            }
-        } else {
-            // Token yo'q - yangi yaratish
-            token = jwtService.generateToken(user, session, request);
-            sessionService.setAccessToken(session.getSessionId(), token);
-        }
-
-        // Global token endi cookie da bo'ladi, alohida yaratish kerak emas
+        // Generate token
+        String token = jwtService.generateToken(user, request);
 
         userRepository.save(user);
 
@@ -101,30 +75,13 @@ public class AuthServiceImpl implements AuthService {
 
         UserProfileOrdersRes profileOrdersById = orderService.getUserProfileOrdersById(user.getId());
 
-        // Convert sessions to SessionRes
-        List<SessionRes> sessions = user.getSessions() != null ? user.getSessions().stream()
-                .map(s -> SessionRes.builder()
-                        .sessionId(s.getSessionId())
-                        .ip(s.getIp())
-                        .browserInfo(s.getBrowserInfo())
-                        .isActive(s.getIsActive())
-                        .isDeleted(s.getIsDeleted())
-                        .isAuthenticated(s.getIsAuthenticated())
-                        .isMainSession(s.getIsMainSession())
-                        .lastAccessedAt(s.getLastAccessedAt())
-                        .migratedAt(s.getMigratedAt())
-                        .build())
-                .toList() : List.of();
-
         UserRes userRes = UserRes.builder()
                 .id(user.getId())
                 .firstName(userUtil.truncateName(user.getFirstName()))
                 .lastName(userUtil.truncateName(user.getLastName()))
                 .phone(user.getPhone())
                 .username(user.getTgUsername())
-                // .roles(user.getRoles().stream().map(Role::getName).toList())
                 .orders(profileOrdersById)
-                .sessions(sessions)
                 .isAdmin(user.getRoles().stream()
                         .anyMatch(role -> role.getName().equals("ROLE_ADMIN") || role.getName().equals("ROLE_VISITOR")))
                 .isVisitor(user.getRoles().stream().anyMatch(role -> role.getName().equals("ROLE_VISITOR")))

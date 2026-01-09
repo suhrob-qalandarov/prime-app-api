@@ -6,7 +6,6 @@ import org.exp.primeapp.models.dto.responce.admin.AdminUserDashboardRes;
 import org.exp.primeapp.models.dto.responce.admin.AdminUserDetailRes;
 import org.exp.primeapp.models.dto.responce.admin.AdminUserRes;
 import org.exp.primeapp.models.dto.responce.order.UserProfileOrdersRes;
-import org.exp.primeapp.models.dto.responce.user.SessionRes;
 import org.exp.primeapp.models.dto.responce.user.UserRes;
 import org.exp.primeapp.models.dto.responce.user.page.PageRes;
 import org.exp.primeapp.models.entities.Role;
@@ -117,20 +116,6 @@ public class UserServiceImpl implements UserService {
         public UserRes convertToUserRes(User user) {
                 UserProfileOrdersRes profileOrdersById = orderService.getUserProfileOrdersById(user.getId());
 
-                List<SessionRes> sessions = user.getSessions() != null ? user.getSessions().stream()
-                                .map(s -> SessionRes.builder()
-                                                .sessionId(s.getSessionId())
-                                                .ip(s.getIp())
-                                                .browserInfo(s.getBrowserInfo())
-                                                .isActive(s.getIsActive())
-                                                .isDeleted(s.getIsDeleted())
-                                                .isAuthenticated(s.getIsAuthenticated())
-                                                .isMainSession(s.getIsMainSession())
-                                                .lastAccessedAt(s.getLastAccessedAt())
-                                                .migratedAt(s.getMigratedAt())
-                                                .build())
-                                .toList() : List.of();
-
                 return UserRes.builder()
                                 .id(user.getId())
                                 .firstName(userUtil.truncateName(user.getFirstName()))
@@ -138,7 +123,6 @@ public class UserServiceImpl implements UserService {
                                 .phone(user.getPhone())
                                 .username(user.getTgUsername())
                                 .orders(profileOrdersById)
-                                .sessions(sessions)
                                 .isAdmin(user.getRoles().stream()
                                                 .anyMatch(role -> role.getName().equals("ROLE_ADMIN")
                                                                 || role.getName().equals("ROLE_VISITOR")))
@@ -157,7 +141,6 @@ public class UserServiceImpl implements UserService {
                                 .lastName(user.getLastName())
                                 .username(user.getTgUsername())
                                 .phone(user.getPhone())
-                                .sessions(null) // Dashboard uchun sessions kerak emas
                                 .active(user.getStatus() == org.exp.primeapp.models.enums.AccountStatus.ACTIVE)
                                 .isAdmin(user.getRoles().stream()
                                                 .anyMatch(role -> role.getName().equals("ROLE_ADMIN")
@@ -171,21 +154,6 @@ public class UserServiceImpl implements UserService {
         }
 
         private AdminUserRes convertToAdminUserResForMe(User user) {
-                // Convert sessions to SessionRes
-                List<SessionRes> sessions = user.getSessions() != null ? user.getSessions().stream()
-                                .map(s -> SessionRes.builder()
-                                                .sessionId(s.getSessionId())
-                                                .ip(s.getIp())
-                                                .browserInfo(s.getBrowserInfo())
-                                                .isActive(s.getIsActive())
-                                                .isDeleted(s.getIsDeleted())
-                                                .isAuthenticated(s.getIsAuthenticated())
-                                                .isMainSession(s.getIsMainSession())
-                                                .lastAccessedAt(s.getLastAccessedAt())
-                                                .migratedAt(s.getMigratedAt())
-                                                .build())
-                                .toList() : List.of();
-
                 return AdminUserRes.builder()
                                 .id(user.getId())
                                 .telegramId(user.getTelegramId())
@@ -193,7 +161,6 @@ public class UserServiceImpl implements UserService {
                                 .lastName(userUtil.truncateName(user.getLastName()))
                                 .username(user.getTgUsername())
                                 .phone(user.getPhone())
-                                .sessions(sessions)
                                 .active(user.getStatus() == org.exp.primeapp.models.enums.AccountStatus.ACTIVE)
                                 .isAdmin(user.getRoles().stream()
                                                 .anyMatch(role -> role.getName().equals("ROLE_ADMIN")
