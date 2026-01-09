@@ -23,40 +23,40 @@ public class AdminProductController {
     private final AdminProductService adminProductService;
 
     @Operation(security = @SecurityRequirement(name = "Authorization"))
-    @GetMapping("/dashboard")
-    @PreAuthorize("hasAnyRole('ADMIN', 'VISITOR')")
-    public ResponseEntity<AdminProductDashboardRes> adminProducts() {
-        AdminProductDashboardRes adminDashboardProductsRes = adminProductService.getProductDashboardRes();
-        return new ResponseEntity<>(adminDashboardProductsRes, HttpStatus.OK);
-    }
-
-    @Operation(security = @SecurityRequirement(name = "Authorization"))
+    @PreAuthorize("hasRole('ADMIN')")
     @GetMapping("/{productId}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'VISITOR')")
     public ResponseEntity<AdminProductRes> getProduct(@PathVariable Long productId) {
         AdminProductRes adminProductRes = adminProductService.getProductById(productId);
         return new ResponseEntity<>(adminProductRes, HttpStatus.OK);
     }
 
     @Operation(security = @SecurityRequirement(name = "Authorization"))
-    @PostMapping
     @PreAuthorize("hasRole('ADMIN')")
+    @GetMapping("/dashboard")
+    public ResponseEntity<AdminProductDashboardRes> getDashboardProducts() {
+        AdminProductDashboardRes adminDashboardProductsRes = adminProductService.getProductDashboardRes();
+        return new ResponseEntity<>(adminDashboardProductsRes, HttpStatus.OK);
+    }
+
+    @Operation(security = @SecurityRequirement(name = "Authorization"))
+    @PreAuthorize("hasRole('ADMIN')")
+    @PostMapping
     public ResponseEntity<AdminProductRes> addProduct(@Valid @RequestBody ProductReq productReq) {
         AdminProductRes adminProductRes = adminProductService.saveProduct(productReq);
         return new ResponseEntity<>(adminProductRes, HttpStatus.CREATED);
     }
 
     @Operation(security = @SecurityRequirement(name = "Authorization"))
-    @PutMapping("/{productId}")
     @PreAuthorize("hasRole('ADMIN')")
+    @PutMapping("/{productId}")
     public ResponseEntity<AdminProductRes> updateProduct(@PathVariable Long productId, @RequestBody ProductReq productReq) {
         AdminProductRes adminProductRes = adminProductService.updateProduct(productId, productReq);
         return new ResponseEntity<>(adminProductRes, HttpStatus.ACCEPTED);
     }
 
     @Operation(security = @SecurityRequirement(name = "Authorization"))
-    @DeleteMapping("/toggle/{productId}")
     @PreAuthorize("hasRole('ADMIN')")
+    @PatchMapping("/toggle/{productId}")
     public ResponseEntity<AdminProductRes> activateProduct(@PathVariable Long productId) {
         AdminProductRes adminProductRes = adminProductService.toggleProductUpdate(productId);
         return new ResponseEntity<>(adminProductRes, HttpStatus.ACCEPTED);
