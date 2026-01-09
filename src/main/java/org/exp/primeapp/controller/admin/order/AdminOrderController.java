@@ -1,11 +1,14 @@
 package org.exp.primeapp.controller.admin.order;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import lombok.RequiredArgsConstructor;
 import org.exp.primeapp.models.dto.request.OrderCancelReq;
 import org.exp.primeapp.models.dto.responce.admin.AdminOrderDashRes;
 import org.exp.primeapp.models.enums.OrderStatus;
 import org.exp.primeapp.service.face.admin.order.AdminOrderService;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import static org.exp.primeapp.utils.Const.*;
@@ -16,18 +19,24 @@ import static org.exp.primeapp.utils.Const.*;
 public class AdminOrderController {
     private final AdminOrderService adminOrderService;
 
+    @Operation(security = @SecurityRequirement(name = "Authorization"))
+    @PreAuthorize("hasRole('ADMIN')")
     @GetMapping
     public ResponseEntity<AdminOrderDashRes> getOrderDashboard() {
         AdminOrderDashRes dashboard = adminOrderService.getOrderDashboard();
         return ResponseEntity.ok(dashboard);
     }
 
+    @Operation(security = @SecurityRequirement(name = "Authorization"))
+    @PreAuthorize("hasRole('ADMIN')")
     @PutMapping("/{id}/{status}")
     public ResponseEntity<Void> updateOrder(@PathVariable Long id, @PathVariable OrderStatus status) {
         adminOrderService.updateOrderStatus(id, status);
         return ResponseEntity.ok().build();
     }
 
+    @Operation(security = @SecurityRequirement(name = "Authorization"))
+    @PreAuthorize("hasRole('ADMIN')")
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteOrder(@PathVariable Long id, @RequestBody OrderCancelReq cancelReq) {
         adminOrderService.cancelOrder(id, cancelReq);
