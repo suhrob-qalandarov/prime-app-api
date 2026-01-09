@@ -7,6 +7,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.exp.primeapp.models.entities.Category;
 import org.exp.primeapp.models.entities.Product;
 import org.exp.primeapp.models.entities.ProductIncome;
+import org.exp.primeapp.models.enums.CategoryStatus;
 import org.springframework.stereotype.Repository;
 
 @Slf4j
@@ -48,8 +49,8 @@ public class ProductIncomeRepositoryImpl implements ProductIncomeRepositoryCusto
 
             // Category ni active qilish
             Category category = product.getCategory();
-            if (category != null && category.getStatus() != org.exp.primeapp.models.enums.CategoryStatus.VISIBLE) {
-                category.setStatus(org.exp.primeapp.models.enums.CategoryStatus.VISIBLE);
+            if (category != null && category.getStatus() != CategoryStatus.ACTIVE) {
+                category.setStatus(CategoryStatus.ACTIVE);
                 categoryRepository.save(category);
                 log.info("Category {} activated due to product income", category.getId());
             }
