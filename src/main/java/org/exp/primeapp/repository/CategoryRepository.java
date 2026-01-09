@@ -16,47 +16,43 @@ public interface CategoryRepository extends JpaRepository<Category, Long> {
 
         List<Category> findAllByOrderByOrderNumberAsc();
 
-        // List<Category> findAllByActiveTrueOrderByOrderNumberAsc(); // Removed
-
-        // List<Category> findAllByActiveFalseOrderByOrderNumberAsc(); // Removed
-
         long count();
 
-        /*
-         * long countByActiveTrue();
-         * 
-         * long countByActiveFalse();
-         */
-
-        // List<Category> findByActive(boolean active); // Removed
-
-        // List<Category> findAllBySpotlightId(Long spotlightName);
-
-        @Transactional
-        @Modifying
-        @Query("UPDATE Category c SET c.status = CASE WHEN c.status = 'VISIBLE' THEN 'CREATED' ELSE 'VISIBLE' END WHERE c.id = :categoryId")
-        void toggleCategoryActiveStatus(@Param("categoryId") Long categoryId);
-
-        /*
-         * @Query("SELECT c FROM Category c " +
-         * "WHERE c.spotlight.id = :spotlightName AND c.active = :active " +
-         * "ORDER BY c.orderNumber ASC")
-         * List<Category> findBySpotlightIdAndActiveSorted(
-         * 
-         * @Param("spotlightName") Long spotlightName,
-         * 
-         * @Param("active") Boolean active
-         * );
-         */
-
-        // List<Category> findBySpotlightNameAndActive(String spotlightName, Boolean
-        // active); // Removed
-
-        // Status ga qarab filter qilish
+        // Filtering by status
         List<Category> findByStatusOrderByOrderNumberAsc(CategoryStatus status);
+
+        List<Category> findByStatusInOrderByOrderNumberAsc(List<CategoryStatus> statuses);
 
         List<Category> findBySpotlightNameAndStatusOrderByOrderNumberAsc(String spotlightName, CategoryStatus status);
 
-        List<Category> findBySpotlightNameAndStatusInOrderByOrderNumberAsc(String spotlightName,
-                        List<CategoryStatus> statuses);
+        List<Category> findBySpotlightNameAndStatusInOrderByOrderNumberAsc(String spotlightName, List<CategoryStatus> statuses);
+
+        // Toggle category status only (without affecting products)
+        @Transactional
+        @Modifying
+        @Query(value = "UPDATE category SET status = CASE " +
+                        "WHEN status = 'ACTIVE' THEN 'INACTIVE' " +
+                        "WHEN status = 'INACTIVE' THEN 'ACTIVE' " +
+                        "ELSE status END " +
+                        "WHERE id = :categoryId", nativeQuery = true)
+        void toggleCategoryStatusOnly(@Param("categoryId") Long categoryId);
+
+        // Toggle category status with products
+        @Transactional
+        @Modifying
+        @Query(value = "UPDATE category SET status = CASE " +
+                        "WHEN status = 'ACTIVE' THEN 'INACTIVE' " +
+                        "WHEN status = 'INACTIVE' THEN 'ACTIVE' " +
+                        "ELSE status END " +
+                        "WHERE id = :categoryId", nativeQuery = true)
+        void toggleCategoryStatusWithProducts_Category(@Param("categoryId") Long categoryId);
+
+        @Transactional
+        @Modifying
+        @Query(value = "UPDATE product SET status = CASE " +
+                        "WHEN (SELECT status FROM category WHERE id = :categoryId) = 'ACTIVE' THEN 'ON_SALE' " +
+                        "WHEN (SELECT status FROM category WHERE id = :categoryId) = 'INACTIVE' THEN 'INACTIVE' " +
+                        "ELSE status END " +
+                        "WHERE category_id = :categoryId", nativeQuery = true)
+        void toggleCategoryStatusWithProducts_Products(@Param("categoryId") Long categoryId);
 }

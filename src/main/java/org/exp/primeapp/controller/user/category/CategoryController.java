@@ -4,6 +4,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.exp.primeapp.models.dto.responce.user.CategoryRes;
+import org.exp.primeapp.models.enums.CategoryStatus;
 import org.exp.primeapp.service.face.user.CategoryService;
 import org.exp.primeapp.utils.SessionTokenUtil;
 import org.springframework.http.ResponseEntity;

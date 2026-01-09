@@ -6,6 +6,8 @@ import lombok.experimental.SuperBuilder;
 import org.exp.primeapp.models.base.BaseEntity;
 import org.exp.primeapp.models.enums.CategoryStatus;
 
+import java.time.LocalDateTime;
+
 @Getter
 @Setter
 @Entity
@@ -27,4 +29,8 @@ public class Category extends BaseEntity {
     @Column(nullable = false)
     @Enumerated(EnumType.STRING)
     private CategoryStatus status = CategoryStatus.CREATED;
+
+    private LocalDateTime lastActivatedAt;
+
+    private LocalDateTime lastDeactivatedAt;
 }
