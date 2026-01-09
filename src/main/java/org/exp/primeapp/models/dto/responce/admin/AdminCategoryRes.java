@@ -7,8 +7,8 @@ public record AdminCategoryRes(
         Long id,
         String name,
         String spotlightName,
-        Long order,
-        Boolean active,
+        Long orderNumber,
+        String status,
         long productsCount,
         String createdAt
 ){}

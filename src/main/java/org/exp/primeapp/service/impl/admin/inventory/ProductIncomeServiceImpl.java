@@ -10,6 +10,7 @@ import org.exp.primeapp.models.entities.Product;
 import org.exp.primeapp.models.entities.ProductIncome;
 import org.exp.primeapp.models.entities.ProductSize;
 import org.exp.primeapp.models.entities.User;
+import org.exp.primeapp.models.enums.CategoryStatus;
 import org.exp.primeapp.models.enums.IncomeFilterType;
 import org.exp.primeapp.repository.CategoryRepository;
 import org.exp.primeapp.repository.ProductIncomeRepository;
@@ -147,8 +148,8 @@ public class ProductIncomeServiceImpl implements ProductIncomeService {
 
             // Category ni active qilish (VISIBLE ga o'tkazish)
             Category category = product.getCategory();
-            if (category != null && category.getStatus() != org.exp.primeapp.models.enums.CategoryStatus.VISIBLE) {
-                category.setStatus(org.exp.primeapp.models.enums.CategoryStatus.VISIBLE);
+            if (category != null && category.getStatus() != CategoryStatus.ACTIVE) {
+                category.setStatus(CategoryStatus.ACTIVE);
                 categoryRepository.save(category);
                 log.info("Category {} activated/set to VISIBLE due to product income", category.getId());
             }

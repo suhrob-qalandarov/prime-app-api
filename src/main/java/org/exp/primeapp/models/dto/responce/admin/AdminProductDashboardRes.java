@@ -14,5 +14,5 @@ public record AdminProductDashboardRes(
         long hotTagCount,
         long saleTagCount,
         LocalDateTime responseDate,
-        List<AdminProductRes> productResList
+        List<AdminProductRes> products
 ){}

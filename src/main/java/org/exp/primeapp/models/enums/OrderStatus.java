@@ -5,7 +5,8 @@ import com.fasterxml.jackson.annotation.JsonValue;
 public enum OrderStatus {
     PENDING_PAYMENT("TO'LOV KUTILMOQDA"),
     PAID("TO'LANGAN"),
-    CONFIRMED("YETKAZIB BERILAYAPTI"),
+    CONFIRMED("TASDIQLANGAN"),
+    DELIVERING("YETKAZIB BERILAYAPTI"),
     SHIPPED("XARIDORGA BERILGAN"), /// bts(post)
     DELIVERED("YETKAZIB BERILDI"), /// taxi(yandex)
     CANCELLED("BEKOR QILINDI"),

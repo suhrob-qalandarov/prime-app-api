@@ -23,36 +23,36 @@ import java.util.Comparator;
 import java.util.List;
 
 @Slf4j
-@Service
+// @Service // Temporarily disabled
 public class ProductCallbackHandler {
-    
+
     private final BotProductService botProductService;
     private final AdminMessageService messageService;
     private final AdminButtonService buttonService;
     private final TelegramBot telegramBot;
-    
+
     public ProductCallbackHandler(BotProductService botProductService,
-                                  AdminMessageService messageService,
-                                  AdminButtonService buttonService,
-                                  @Qualifier("adminBot") TelegramBot telegramBot) {
+            AdminMessageService messageService,
+            AdminButtonService buttonService,
+            @Qualifier("adminBot") TelegramBot telegramBot) {
         this.botProductService = botProductService;
         this.messageService = messageService;
         this.buttonService = buttonService;
         this.telegramBot = telegramBot;
     }
-    
+
     public boolean handleCallback(CallbackQuery callbackQuery, Long userId, Long chatId) {
         String data = callbackQuery.data();
         String callbackId = callbackQuery.id();
-        
+
         // Check if this is a product-related callback
         if (!isProductCallback(data)) {
             return false;
         }
-        
+
         // Get product creation state
         ProductCreationState state = botProductService.getProductCreationState(userId);
-        
+
         // Handle add_product callback (can be called without active state)
         if (data.equals(AdminBotMsgConst.CALLBACK_ADD_PRODUCT)) {
             botProductService.startProductCreation(userId);
@@ -61,7 +61,7 @@ public class ProductCallbackHandler {
             telegramBot.execute(new AnswerCallbackQuery(callbackId).text("Mahsulot qo'shish boshlandi"));
             return true;
         }
-        
+
         // For other callbacks, state must exist
         if (state == null) {
             telegramBot.execute(new AnswerCallbackQuery(callbackId)
@@ -69,90 +69,90 @@ public class ProductCallbackHandler {
                     .showAlert(true));
             return true;
         }
-        
+
         // Handle back button callbacks
         if (data.startsWith(AdminBotMsgConst.CALLBACK_BACK_TO)) {
             handleBackButton(callbackQuery, userId, chatId, state, callbackId);
             return true;
         }
-        
+
         // Handle skip brand callback
         if (data.equals(AdminBotMsgConst.CALLBACK_SKIP_BRAND)) {
             handleSkipBrand(callbackQuery, userId, chatId, state, callbackId);
             return true;
         }
-        
+
         // Handle color selection callbacks
         if (data.startsWith("select_color_")) {
             handleColorSelection(callbackQuery, userId, chatId, state, callbackId);
             return true;
         }
-        
+
         // Handle skip color callback
         if (data.equals(AdminBotMsgConst.CALLBACK_SKIP_COLOR)) {
             handleSkipColor(callbackQuery, userId, chatId, state, callbackId);
             return true;
         }
-        
+
         // Handle category selection
         if (data.startsWith("select_category_")) {
             handleCategorySelection(callbackQuery, userId, chatId, state, callbackId);
             return true;
         }
-        
+
         // Handle size selection
         if (data.startsWith("toggle_size_")) {
             handleSizeSelection(callbackQuery, userId, chatId, state, callbackId);
             return true;
         }
-        
+
         // Handle continue sizes
         if (data.equals("continue_sizes")) {
             handleContinueSizes(callbackQuery, userId, chatId, state, callbackId);
             return true;
         }
-        
+
         // Handle continue images
         if (data.equals("continue_images")) {
             handleContinueImages(callbackQuery, userId, chatId, state, callbackId);
             return true;
         }
-        
+
         // Handle confirm product
         if (data.equals(AdminBotMsgConst.CALLBACK_CONFIRM_PRODUCT)) {
             handleConfirmProduct(callbackQuery, userId, chatId, state, callbackId);
             return true;
         }
-        
+
         // Handle cancel product
         if (data.equals(AdminBotMsgConst.CALLBACK_CANCEL_PRODUCT)) {
             handleCancelProduct(callbackQuery, userId, chatId, state, callbackId);
             return true;
         }
-        
+
         return false;
     }
-    
+
     private boolean isProductCallback(String data) {
         return data.equals(AdminBotMsgConst.CALLBACK_ADD_PRODUCT) ||
-               data.equals(AdminBotMsgConst.CALLBACK_SKIP_BRAND) ||
-               data.equals(AdminBotMsgConst.CALLBACK_SKIP_COLOR) ||
-               data.startsWith(AdminBotMsgConst.CALLBACK_BACK_TO) ||
-               data.startsWith("select_color_") ||
-               data.startsWith("select_category_") ||
-               data.startsWith("toggle_size_") ||
-               data.equals("continue_sizes") ||
-               data.equals("continue_images") ||
-               data.equals(AdminBotMsgConst.CALLBACK_CONFIRM_PRODUCT) ||
-               data.equals(AdminBotMsgConst.CALLBACK_CANCEL_PRODUCT);
+                data.equals(AdminBotMsgConst.CALLBACK_SKIP_BRAND) ||
+                data.equals(AdminBotMsgConst.CALLBACK_SKIP_COLOR) ||
+                data.startsWith(AdminBotMsgConst.CALLBACK_BACK_TO) ||
+                data.startsWith("select_color_") ||
+                data.startsWith("select_category_") ||
+                data.startsWith("toggle_size_") ||
+                data.equals("continue_sizes") ||
+                data.equals("continue_images") ||
+                data.equals(AdminBotMsgConst.CALLBACK_CONFIRM_PRODUCT) ||
+                data.equals(AdminBotMsgConst.CALLBACK_CANCEL_PRODUCT);
     }
-    
-    private void handleBackButton(CallbackQuery callbackQuery, Long userId, Long chatId, 
-                                  ProductCreationState state, String callbackId) {
+
+    private void handleBackButton(CallbackQuery callbackQuery, Long userId, Long chatId,
+            ProductCreationState state, String callbackId) {
         String data = callbackQuery.data();
         String stepName = data.replace(AdminBotMsgConst.CALLBACK_BACK_TO, "");
         ProductCreationState.Step targetStep = null;
-        
+
         try {
             targetStep = ProductCreationState.Step.valueOf(stepName);
         } catch (IllegalArgumentException e) {
@@ -162,7 +162,7 @@ public class ProductCallbackHandler {
                     .showAlert(true));
             return;
         }
-        
+
         // Delete current step message
         com.pengrad.telegrambot.model.Message callbackMessage = callbackQuery.message();
         Integer currentMessageId = callbackMessage != null ? callbackMessage.messageId() : null;
@@ -173,7 +173,7 @@ public class ProductCallbackHandler {
                 log.error("Error deleting current step message: {}", e.getMessage());
             }
         }
-        
+
         // Delete previous step message if exists
         Integer previousStepMessageId = state.getStepMessageId(targetStep);
         if (previousStepMessageId != null) {
@@ -183,7 +183,7 @@ public class ProductCallbackHandler {
                 log.error("Error deleting previous step message: {}", e.getMessage());
             }
         }
-        
+
         // Clear images if going back to image steps
         if (targetStep == ProductCreationState.Step.WAITING_MAIN_IMAGE) {
             // Clear main image if exists
@@ -192,10 +192,10 @@ public class ProductCallbackHandler {
             // Clear additional images if exists
             botProductService.clearAdditionalImages(userId);
         }
-        
+
         // Set the state to target step directly
         state.setCurrentStep(targetStep);
-        
+
         // Resend previous step message with appropriate inline buttons
         Integer newMessageId = null;
         switch (targetStep) {
@@ -221,29 +221,29 @@ public class ProductCallbackHandler {
                 log.warn("No handler for back to step: {}", targetStep);
                 break;
         }
-        
+
         // Save new message ID to state
         if (newMessageId != null) {
             state.setStepMessageId(targetStep, newMessageId);
         }
-        
+
         telegramBot.execute(new AnswerCallbackQuery(callbackId).text("Orqaga qaytildi"));
     }
-    
+
     private void handleSkipBrand(CallbackQuery callbackQuery, Long userId, Long chatId,
-                                 ProductCreationState state, String callbackId) {
+            ProductCreationState state, String callbackId) {
         botProductService.handleProductBrand(userId, "");
-        
+
         com.pengrad.telegrambot.model.Message callbackMessage = callbackQuery.message();
         Integer messageId = callbackMessage != null ? callbackMessage.messageId() : null;
         if (messageId != null) {
             telegramBot.execute(new EditMessageText(chatId, messageId,
                     "🏷️ <b>3/9</b> Brend nomi: (O'tkazib yuborildi)")
                     .parseMode(ParseMode.HTML)
-                    .replyMarkup(new InlineKeyboardMarkup(new com.pengrad.telegrambot.model.request.InlineKeyboardButton[0][]))
-            );
+                    .replyMarkup(new InlineKeyboardMarkup(
+                            new com.pengrad.telegrambot.model.request.InlineKeyboardButton[0][])));
         }
-        
+
         state.setCurrentStep(ProductCreationState.Step.WAITING_COLOR);
         Integer colorMessageId = messageService.sendProductColorPrompt(chatId);
         if (colorMessageId != null) {
@@ -251,28 +251,28 @@ public class ProductCallbackHandler {
         }
         telegramBot.execute(new AnswerCallbackQuery(callbackId).text("Brend o'tkazib yuborildi"));
     }
-    
+
     private void handleColorSelection(CallbackQuery callbackQuery, Long userId, Long chatId,
-                                     ProductCreationState state, String callbackId) {
+            ProductCreationState state, String callbackId) {
         String data = callbackQuery.data();
         String colorData = data.replace("select_color_", "");
         int lastUnderscoreIndex = colorData.lastIndexOf("_");
         if (lastUnderscoreIndex > 0 && lastUnderscoreIndex < colorData.length() - 1) {
             String colorName = colorData.substring(0, lastUnderscoreIndex);
             String colorHex = colorData.substring(lastUnderscoreIndex + 1);
-            
+
             botProductService.handleProductColor(userId, colorName, colorHex);
-            
+
             com.pengrad.telegrambot.model.Message callbackMessage = callbackQuery.message();
             Integer messageId = callbackMessage != null ? callbackMessage.messageId() : null;
             if (messageId != null) {
                 telegramBot.execute(new EditMessageText(chatId, messageId,
                         "🎨 <b>4/9</b> Rang tanlandi: " + colorName)
                         .parseMode(ParseMode.HTML)
-                        .replyMarkup(new InlineKeyboardMarkup(new com.pengrad.telegrambot.model.request.InlineKeyboardButton[0][]))
-                );
+                        .replyMarkup(new InlineKeyboardMarkup(
+                                new com.pengrad.telegrambot.model.request.InlineKeyboardButton[0][])));
             }
-            
+
             state.setCurrentStep(ProductCreationState.Step.WAITING_MAIN_IMAGE);
             Integer mainImageMessageId = messageService.sendMainImagePrompt(chatId);
             if (mainImageMessageId != null) {
@@ -286,21 +286,21 @@ public class ProductCallbackHandler {
                     .showAlert(true));
         }
     }
-    
+
     private void handleSkipColor(CallbackQuery callbackQuery, Long userId, Long chatId,
-                                 ProductCreationState state, String callbackId) {
+            ProductCreationState state, String callbackId) {
         botProductService.handleProductColor(userId, "N/A", "#000000");
-        
+
         com.pengrad.telegrambot.model.Message callbackMessage = callbackQuery.message();
         Integer messageId = callbackMessage != null ? callbackMessage.messageId() : null;
         if (messageId != null) {
             telegramBot.execute(new EditMessageText(chatId, messageId,
                     "🎨 <b>4/9</b> Rang tanlash: (O'tkazib yuborildi)")
                     .parseMode(ParseMode.HTML)
-                    .replyMarkup(new InlineKeyboardMarkup(new com.pengrad.telegrambot.model.request.InlineKeyboardButton[0][]))
-            );
+                    .replyMarkup(new InlineKeyboardMarkup(
+                            new com.pengrad.telegrambot.model.request.InlineKeyboardButton[0][])));
         }
-        
+
         state.setCurrentStep(ProductCreationState.Step.WAITING_MAIN_IMAGE);
         Integer mainImageMessageId = messageService.sendMainImagePrompt(chatId);
         if (mainImageMessageId != null) {
@@ -308,17 +308,17 @@ public class ProductCallbackHandler {
         }
         telegramBot.execute(new AnswerCallbackQuery(callbackId).text("Rang tanlash o'tkazib yuborildi"));
     }
-    
+
     private void handleCategorySelection(CallbackQuery callbackQuery, Long userId, Long chatId,
-                                        ProductCreationState state, String callbackId) {
+            ProductCreationState state, String callbackId) {
         String data = callbackQuery.data();
         Long categoryId = Long.parseLong(data.replace("select_category_", ""));
         botProductService.handleCategorySelection(userId, categoryId);
-        
+
         // Get category name for editing message (after handleCategorySelection sets it)
         org.exp.primeapp.models.entities.Category category = state.getCategory();
         String categoryName = category != null ? category.getName() : "Kategoriya";
-        
+
         // Edit category message to remove buttons
         com.pengrad.telegrambot.model.Message callbackMessage = callbackQuery.message();
         Integer messageId = callbackMessage != null ? callbackMessage.messageId() : null;
@@ -326,27 +326,30 @@ public class ProductCallbackHandler {
             String categoryText = "📂 <b>7/9</b> Kategoriyani tanlang: " + categoryName;
             telegramBot.execute(new EditMessageText(chatId, messageId, categoryText)
                     .parseMode(ParseMode.HTML)
-                    .replyMarkup(new InlineKeyboardMarkup(new com.pengrad.telegrambot.model.request.InlineKeyboardButton[0][]))
-            );
+                    .replyMarkup(new InlineKeyboardMarkup(
+                            new com.pengrad.telegrambot.model.request.InlineKeyboardButton[0][])));
         }
-        
+
         // State is already set to WAITING_SIZES in handleCategorySelection
-        // Send size selection message with buttons (don't use sendSizeSelection to avoid duplicate)
+        // Send size selection message with buttons (don't use sendSizeSelection to
+        // avoid duplicate)
         List<Size> allSizes = List.of(Size.values());
-        telegramBot.execute(new SendMessage(chatId, "📏 <b>8/9</b> O'lchamlarni tanlang (bir nechtasini tanlash mumkin):")
-                .parseMode(ParseMode.HTML)
-                .replyMarkup(buttonService.addBackButton(buttonService.createSizeButtons(allSizes, state.getSelectedSizes()), "WAITING_CATEGORY"))
-        );
-        
+        telegramBot
+                .execute(new SendMessage(chatId, "📏 <b>8/9</b> O'lchamlarni tanlang (bir nechtasini tanlash mumkin):")
+                        .parseMode(ParseMode.HTML)
+                        .replyMarkup(buttonService.addBackButton(
+                                buttonService.createSizeButtons(allSizes, state.getSelectedSizes()),
+                                "WAITING_CATEGORY")));
+
         telegramBot.execute(new AnswerCallbackQuery(callbackId).text("Kategoriya tanlandi"));
     }
-    
+
     private void handleSizeSelection(CallbackQuery callbackQuery, Long userId, Long chatId,
-                                     ProductCreationState state, String callbackId) {
+            ProductCreationState state, String callbackId) {
         String data = callbackQuery.data();
         String sizeName = data.replace("toggle_size_", "");
         botProductService.handleSizeSelection(userId, sizeName);
-        
+
         List<Size> allSizes = List.of(Size.values());
         com.pengrad.telegrambot.model.Message callbackMessage = callbackQuery.message();
         Integer messageId = callbackMessage != null ? callbackMessage.messageId() : null;
@@ -354,22 +357,21 @@ public class ProductCallbackHandler {
             telegramBot.execute(new EditMessageText(chatId, messageId,
                     "📏 O'lchamlarni tanlang:")
                     .parseMode(ParseMode.HTML)
-                    .replyMarkup(buttonService.createSizeButtons(allSizes, state.getSelectedSizes()))
-            );
+                    .replyMarkup(buttonService.createSizeButtons(allSizes, state.getSelectedSizes())));
         }
-        
+
         telegramBot.execute(new AnswerCallbackQuery(callbackId).text("O'lcham tanlandi"));
     }
-    
+
     private void handleContinueSizes(CallbackQuery callbackQuery, Long userId, Long chatId,
-                                     ProductCreationState state, String callbackId) {
+            ProductCreationState state, String callbackId) {
         if (state.getSelectedSizes().isEmpty()) {
             telegramBot.execute(new AnswerCallbackQuery(callbackId)
                     .text("Kamida bitta o'lcham tanlang")
                     .showAlert(true));
             return;
         }
-        
+
         // Build selected sizes text
         StringBuilder selectedSizesText = new StringBuilder();
         for (Size size : state.getSelectedSizes()) {
@@ -378,7 +380,7 @@ public class ProductCallbackHandler {
             }
             selectedSizesText.append(size.getLabel());
         }
-        
+
         // Edit size message to remove buttons
         com.pengrad.telegrambot.model.Message callbackMessage = callbackQuery.message();
         Integer messageId = callbackMessage != null ? callbackMessage.messageId() : null;
@@ -386,16 +388,16 @@ public class ProductCallbackHandler {
             String sizeText = "📏 <b>8/9</b> O'lchamlar: " + selectedSizesText;
             telegramBot.execute(new EditMessageText(chatId, messageId, sizeText)
                     .parseMode(ParseMode.HTML)
-                    .replyMarkup(new InlineKeyboardMarkup(new com.pengrad.telegrambot.model.request.InlineKeyboardButton[0][]))
-            );
+                    .replyMarkup(new InlineKeyboardMarkup(
+                            new com.pengrad.telegrambot.model.request.InlineKeyboardButton[0][])));
         }
-        
+
         state.setCurrentStep(ProductCreationState.Step.WAITING_QUANTITIES);
-        
+
         // Sort sizes by label for display
         List<Size> sortedSizes = new ArrayList<>(state.getSelectedSizes());
         sortedSizes.sort(Comparator.comparing(Size::getLabel));
-        
+
         // Build sorted sizes text with comma separation
         StringBuilder sortedSizesText = new StringBuilder();
         for (Size size : sortedSizes) {
@@ -404,36 +406,35 @@ public class ProductCallbackHandler {
             }
             sortedSizesText.append(size.getLabel());
         }
-        
+
         // Build quantity prompt message
         StringBuilder quantityPrompt = new StringBuilder("📊 Har bir o'lcham uchun miqdorni kiriting:\n\n");
         quantityPrompt.append("O'lchamlar: ").append(sortedSizesText).append("\n\n");
         quantityPrompt.append("Miqdorni raqam sifatida kiriting (masalan: 2, 4, 5):");
-        
+
         telegramBot.execute(new SendMessage(chatId, quantityPrompt.toString())
-                .parseMode(ParseMode.HTML)
-        );
-        
+                .parseMode(ParseMode.HTML));
+
         telegramBot.execute(new AnswerCallbackQuery(callbackId).text("O'lchamlar tanlandi"));
     }
-    
+
     private void handleContinueImages(CallbackQuery callbackQuery, Long userId, Long chatId,
-                                     ProductCreationState state, String callbackId) {
+            ProductCreationState state, String callbackId) {
         if (!state.hasMinimumImages()) {
             telegramBot.execute(new AnswerCallbackQuery(callbackId)
                     .text("Kamida 1 ta rasm yuklashingiz kerak")
                     .showAlert(true));
             return;
         }
-        
+
         state.setCurrentStep(ProductCreationState.Step.WAITING_SPOTLIGHT_NAME);
         messageService.sendSpotlightNamePromptForProduct(chatId);
-        
+
         telegramBot.execute(new AnswerCallbackQuery(callbackId).text("Keyingi qadamga o'tildi"));
     }
-    
+
     private void handleConfirmProduct(CallbackQuery callbackQuery, Long userId, Long chatId,
-                                     ProductCreationState state, String callbackId) {
+            ProductCreationState state, String callbackId) {
         try {
             botProductService.confirmAndSaveProduct(userId);
             messageService.sendProductSavedSuccess(chatId);
@@ -445,14 +446,14 @@ public class ProductCallbackHandler {
                     .showAlert(true));
         }
     }
-    
+
     private void handleCancelProduct(CallbackQuery callbackQuery, Long userId, Long chatId,
-                                    ProductCreationState state, String callbackId) {
+            ProductCreationState state, String callbackId) {
         botProductService.cancelProductCreation(userId);
         messageService.sendProductCreationCancelled(chatId);
         telegramBot.execute(new AnswerCallbackQuery(callbackId).text("Bekor qilindi"));
     }
-    
+
     private String getStepMessageText(ProductCreationState.Step step) {
         return switch (step) {
             case WAITING_NAME -> "📝 <b>1/9</b> Mahsulot nomini kiriting:";
@@ -470,4 +471,3 @@ public class ProductCallbackHandler {
         };
     }
 }
-

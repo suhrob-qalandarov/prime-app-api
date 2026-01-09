@@ -8,8 +8,9 @@ import java.util.List;
 @Builder
 public record AdminCategoryDashboardRes(
         long totalCount,
+        long createdCount,
         long activeCount,
         long inactiveCount,
         LocalDateTime responseDate,
-        List<AdminCategoryRes> categoryResList
+        List<AdminCategoryRes> categories
 ){}

@@ -1,50 +1,45 @@
-/*
 package org.exp.primeapp.controller.admin.order;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import lombok.RequiredArgsConstructor;
-import org.exp.primeapp.models.dto.responce.order.ChangeStatusRes;
-import org.exp.primeapp.models.dto.responce.order.OrdersRes;
-import org.exp.primeapp.repository.OrderRepository;
-import org.exp.primeapp.service.interfaces.admin.order.AdminOrderService;
-import org.springframework.messaging.handler.annotation.MessageMapping;
-import org.springframework.messaging.simp.SimpMessagingTemplate;
+import org.exp.primeapp.models.dto.request.OrderCancelReq;
+import org.exp.primeapp.models.dto.responce.admin.AdminOrderDashRes;
+import org.exp.primeapp.models.enums.OrderStatus;
+import org.exp.primeapp.service.face.admin.order.AdminOrderService;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
 
 import static org.exp.primeapp.utils.Const.*;
 
 @RestController
-@RequestMapping(API + V1 + ADMIN + ORDERS)
+@RequestMapping(API + V1 + ADMIN + ORDER)
 @RequiredArgsConstructor
 public class AdminOrderController {
-
-    private final OrderRepository orderRepository;
-    private final SimpMessagingTemplate messagingTemplate;
     private final AdminOrderService adminOrderService;
 
+    @Operation(security = @SecurityRequirement(name = "Authorization"))
+    @PreAuthorize("hasRole('ADMIN')")
     @GetMapping
-    public List<OrdersRes> getAllOrders() {
-        return adminOrderService.getAllOrders();
+    public ResponseEntity<AdminOrderDashRes> getOrderDashboard() {
+        AdminOrderDashRes dashboard = adminOrderService.getOrderDashboard();
+        return ResponseEntity.ok(dashboard);
     }
 
-    @PutMapping("{id}")
-    public void updateOrder(@PathVariable Long id, @RequestBody ChangeStatusRes changeStatusDTO) {
-        orderRepository.findById(id).ifPresent(order -> {
-            order.setStatus(changeStatusDTO.getStatus());
-            orderRepository.save(order);
-            messagingTemplate.convertAndSend("/topic/order/updated", id);
-        });
+    @Operation(security = @SecurityRequirement(name = "Authorization"))
+    @PreAuthorize("hasRole('ADMIN')")
+    @PutMapping("/{id}/{status}")
+    public ResponseEntity<Void> updateOrder(@PathVariable Long id, @PathVariable OrderStatus status) {
+        adminOrderService.updateOrderStatus(id, status);
+        return ResponseEntity.ok().build();
     }
 
-    @MessageMapping("/stop")
-    public void stopOrder(String id) {
-        messagingTemplate.convertAndSend("/topic/order/stop", id);
-    }
-
-    @MessageMapping("/dropped")
-    public void orderDropped(String id) {
-        messagingTemplate.convertAndSend("/topic/order/dropped", id);
+    @Operation(security = @SecurityRequirement(name = "Authorization"))
+    @PreAuthorize("hasRole('ADMIN')")
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteOrder(@PathVariable Long id, @RequestBody OrderCancelReq cancelReq) {
+        adminOrderService.cancelOrder(id, cancelReq);
+        return ResponseEntity.ok().build();
     }
 }
-*/

@@ -13,13 +13,22 @@ import java.util.List;
 
 @Repository
 public interface OrderRepository extends JpaRepository<Order, Long> {
+    List<Order> findByStatus(OrderStatus status);
+
+    List<Order> findByStatusAndCreatedAtAfter(OrderStatus status, LocalDateTime since);
+
+    List<Order> findByStatusAndPaidAtAfter(OrderStatus status, LocalDateTime since);
+
+    List<Order> findByStatusAndConfirmedAtAfter(OrderStatus status, LocalDateTime since);
+
+    List<Order> findByStatusAndDeliveringAtAfter(OrderStatus status, LocalDateTime since);
+
     List<Order> findByOrderedByUserIdAndStatusIn(Long userId, Collection<OrderStatus> statuses);
 
     List<Order> findByOrderedByUserIdAndStatusInAndCreatedAtAfter(
             Long userId,
             Collection<OrderStatus> statuses,
-            LocalDateTime date
-    );
+            LocalDateTime date);
 
     @Query("SELECT o.status, COUNT(o) FROM Order o GROUP BY o.status")
     List<Object[]> countTotalOrdersByStatus();

@@ -36,7 +36,7 @@ import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 @Slf4j
-@Service
+// @Service // Temporarily disabled
 public class BotProductServiceImpl implements BotProductService {
 
     private final Map<Long, ProductCreationState> productCreationStates = new ConcurrentHashMap<>();
@@ -364,7 +364,7 @@ public class BotProductServiceImpl implements BotProductService {
             // Check category status and update to VISIBLE if it's CREATED
             Category category = state.getCategory();
             if (category != null && category.getStatus() == CategoryStatus.CREATED) {
-                category.setStatus(CategoryStatus.VISIBLE);
+                category.setStatus(CategoryStatus.ACTIVE);
                 categoryRepository.save(category);
                 log.info("Category {} status updated from CREATED to VISIBLE", category.getId());
             }
@@ -424,7 +424,7 @@ public class BotProductServiceImpl implements BotProductService {
         // Get categories by spotlight name with CREATED or VISIBLE status
         List<org.exp.primeapp.models.enums.CategoryStatus> statuses = List.of(
                 org.exp.primeapp.models.enums.CategoryStatus.CREATED,
-                org.exp.primeapp.models.enums.CategoryStatus.VISIBLE);
+                CategoryStatus.ACTIVE);
         return categoryRepository.findBySpotlightNameAndStatusInOrderByOrderNumberAsc(spotlightName, statuses);
     }
 

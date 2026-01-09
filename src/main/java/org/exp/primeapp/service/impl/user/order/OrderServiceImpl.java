@@ -34,11 +34,10 @@ public class OrderServiceImpl implements OrderService {
     private final OrderRepository orderRepository;
     private final ProductRepository productRepository;
     private final ProductSizeRepository productSizeRepository;
-    private final ProductOutcomeRepository productOutcomeRepository;
     private final CustomerRepository customerRepository;
     private final org.exp.primeapp.service.face.user.CustomerService customerService;
     private final AttachmentRepository attachmentRepository;
-    private final AdminMessageService adminMessageService;
+    //private final AdminMessageService adminMessageService;
 
     @Transactional
     @Override
@@ -48,18 +47,18 @@ public class OrderServiceImpl implements OrderService {
         List<UserOrderRes> pendingOrderResList = orderRepository
                 .findByOrderedByUserIdAndStatusInAndCreatedAtAfter(
                         id,
-                        List.of(OrderStatus.PENDING_PAYMENT),
-                        daysAgo
-                ).stream()
+                        List.of(OrderStatus.PENDING_PAYMENT, OrderStatus.CANCELLED),
+                        daysAgo)
+                .stream()
                 .map(this::convertToUserOrderRes)
                 .toList();
 
         List<UserOrderRes> confirmedOrderResList = orderRepository
                 .findByOrderedByUserIdAndStatusInAndCreatedAtAfter(
                         id,
-                        List.of(OrderStatus.PAID, OrderStatus.CONFIRMED),
-                        daysAgo
-                ).stream()
+                        List.of(OrderStatus.PAID, OrderStatus.CONFIRMED, OrderStatus.DELIVERING),
+                        daysAgo)
+                .stream()
                 .map(this::convertToUserOrderRes)
                 .toList();
 
@@ -67,8 +66,8 @@ public class OrderServiceImpl implements OrderService {
                 .findByOrderedByUserIdAndStatusInAndCreatedAtAfter(
                         id,
                         List.of(OrderStatus.SHIPPED, OrderStatus.DELIVERED),
-                        daysAgo
-                ).stream()
+                        daysAgo)
+                .stream()
                 .map(this::convertToUserOrderRes)
                 .toList();
 
@@ -118,7 +117,7 @@ public class OrderServiceImpl implements OrderService {
 
         return UserOrderRes.builder()
                 .number(order.getId())
-                .status(order.getStatus().getLabel())
+                .status(order.getStatus().name())
                 .deliveryType(order.getShippingType().getLabel())
                 .createdAt(order.getCreatedAt() != null ? order.getCreatedAt().format(DATE_FORMATTER) : null)
                 .deliveredAt(order.getDeliveredAt() != null ? order.getDeliveredAt().format(DATE_FORMATTER) : null)
@@ -185,8 +184,9 @@ public class OrderServiceImpl implements OrderService {
                 OrderItem orderItem = createOrderItem(order, product, productSize, itemReq.amount(), finalUnitPrice);
                 orderItemsList.add(orderItem);
 
-                // Update Stock
-                updateStockAndLogOutcome(productSize, itemReq.amount(), user, product);
+                // Update Stock - REMOVED: Stock now deducted at PAID status in
+                // AdminOrderService
+                // updateStockAndLogOutcome(productSize, itemReq.amount(), user, product);
             }
 
             order.setItems(orderItemsList);
@@ -204,7 +204,7 @@ public class OrderServiceImpl implements OrderService {
             log.info("Order successfully created. OrderId: {}", savedOrder.getId());
 
             // Send Admin Notification
-            adminMessageService.sendNewOrderNotification(savedOrder.getId());
+            //adminMessageService.sendNewOrderNotification(savedOrder.getId());
 
             return convertToUserOrderRes(savedOrder);
 
@@ -270,7 +270,7 @@ public class OrderServiceImpl implements OrderService {
 
         // Set Image URL
         List<Attachment> attachments = attachmentRepository.findByProductId(product.getId());
-        String imageUrl = "N/A";
+        String imageUrl = null;
         if (!attachments.isEmpty()) {
             imageUrl = attachments.getFirst().getUrl();
         }
@@ -283,16 +283,4 @@ public class OrderServiceImpl implements OrderService {
         return orderItem;
     }
 
-    private void updateStockAndLogOutcome(ProductSize productSize, int quantity, User user, Product product) {
-        productSize.setQuantity(productSize.getQuantity() - quantity);
-        productSizeRepository.save(productSize);
-
-        ProductOutcome outcome = new ProductOutcome();
-        outcome.setUser(user);
-        outcome.setProduct(product);
-        outcome.setStockQuantity(quantity);
-        outcome.setProductSize(productSize);
-        // outcome.setUnitPrice/TotalPrice logic if needed
-        productOutcomeRepository.save(outcome);
-    }
 }

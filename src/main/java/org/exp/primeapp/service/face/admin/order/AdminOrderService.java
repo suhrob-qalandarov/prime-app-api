@@ -1,11 +1,13 @@
 package org.exp.primeapp.service.face.admin.order;
 
-import org.exp.primeapp.models.dto.responce.order.OrdersRes;
-import org.springframework.stereotype.Service;
+import org.exp.primeapp.models.dto.request.OrderCancelReq;
+import org.exp.primeapp.models.dto.responce.admin.AdminOrderDashRes;
+import org.exp.primeapp.models.enums.OrderStatus;
 
-import java.util.List;
-
-@Service
 public interface AdminOrderService {
-    List<OrdersRes> getAllOrders();
+    AdminOrderDashRes getOrderDashboard();
+
+    void updateOrderStatus(Long orderId, OrderStatus status);
+
+    void cancelOrder(Long orderId, OrderCancelReq cancelReq);
 }
