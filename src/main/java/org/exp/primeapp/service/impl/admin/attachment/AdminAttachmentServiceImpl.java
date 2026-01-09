@@ -141,7 +141,6 @@ public class AdminAttachmentServiceImpl implements AdminAttachmentService {
         Attachment attachment = attachmentRepository.findById(attachmentId)
                 .orElseThrow(() -> new IllegalArgumentException("Attachment not found with ID: " + attachmentId));
 
-        // Active status no longer supported for Attachments
         log.info("Toggle active status called for attachment {}, but active field is removed.", attachment.getId());
 
         return attachmentService.convertToAttachmentRes(attachment);

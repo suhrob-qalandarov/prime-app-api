@@ -7,19 +7,16 @@ import jakarta.servlet.http.HttpServletResponse;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.exp.primeapp.models.entities.Session;
 import org.exp.primeapp.models.entities.User;
-import org.exp.primeapp.repository.SessionRepository;
-import org.exp.primeapp.service.face.global.session.SessionService;
-import org.exp.primeapp.utils.IpAddressUtil;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
-import java.util.Optional;
-import static org.exp.primeapp.utils.Const.*;
+
+import static org.exp.primeapp.utils.Const.AUTHORIZATION;
+import static org.exp.primeapp.utils.Const.TOKEN_PREFIX;
 
 @Slf4j
 @Component
@@ -27,9 +24,6 @@ import static org.exp.primeapp.utils.Const.*;
 public class JwtCookieFilter extends OncePerRequestFilter {
 
     private final JwtCookieService jwtService;
-    private final SessionRepository sessionRepository;
-    private final SessionService sessionService;
-    private final IpAddressUtil ipAddressUtil;
 
     @Override
     protected void doFilterInternal(
@@ -37,15 +31,14 @@ public class JwtCookieFilter extends OncePerRequestFilter {
             @NonNull HttpServletResponse response,
             @NonNull FilterChain filterChain) throws ServletException, IOException {
 
-        // Skip JWT validation for Swagger/OpenAPI endpoints, session endpoints,
-        // actuator health, and admin auth
         String requestPath = request.getRequestURI();
+
+        // Skip JWT validation for whitelisted endpoints
         if (requestPath.startsWith("/swagger-ui") ||
                 requestPath.startsWith("/v3/api-docs") ||
                 requestPath.equals("/swagger-ui.html") ||
                 requestPath.startsWith("/swagger-ui.html/") ||
                 requestPath.startsWith("/actuator/health") ||
-                requestPath.equals("/api/v2/auth/session") ||
                 requestPath.startsWith("/api/v2/auth/code/") ||
                 requestPath.equals("/api/v1/admin/auth") ||
                 requestPath.equals("/api/v2/admin/auth")) {
@@ -53,242 +46,76 @@ public class JwtCookieFilter extends OncePerRequestFilter {
             return;
         }
 
-        // Admin endpoints - faqat Spring Security authentication, session token
-        // tekshiruv kerak emas
-        // Admin auth endpoint'i yuqorida skip qilingan
+        boolean isPublicEndpoint = isPublicEndpoint(requestPath, request.getMethod());
         boolean isAdminEndpoint = requestPath.startsWith("/api/v1/admin") ||
                 requestPath.startsWith("/api/v2/admin");
 
-        // Public endpoints - token bo'lmasa ham o'tkazib yuborish
-        boolean isPublicEndpoint = isPublicEndpoint(requestPath, request.getMethod());
-
-        // Admin endpoint'lar uchun - faqat Spring Security authentication, session
-        // token tekshiruv kerak emas
-        if (isAdminEndpoint) {
-            // Admin endpoint'lar uchun faqat token validation va user authentication
-            // Session count tekshiruv kerak emas - Spring Security o'zi tekshiradi
-            String token = null;
-
-            // Get token from header
-            String authHeader = request.getHeader(AUTHORIZATION);
-            if (authHeader != null && !authHeader.trim().isEmpty()) {
-                if (authHeader.startsWith(TOKEN_PREFIX)) {
-                    token = authHeader.substring(TOKEN_PREFIX.length()).trim();
-                } else {
-                    String trimmedHeader = authHeader.trim();
-                    if (!trimmedHeader.contains(" ") && trimmedHeader.length() > 0) {
-                        token = trimmedHeader;
-                    }
-                }
-            }
-
-            // If token not in header, get from cookie
-            if (token == null) {
-                token = jwtService.extractTokenFromCookie(request);
-            }
-
-            // Token bo'lsa, faqat validation va authentication
-            if (token != null) {
-                try {
-                    if (jwtService.validateToken(token, request)) {
-                        User user = jwtService.getUserObject(token);
-                        if (user != null && user.getId() != null) {
-                            var auth = new UsernamePasswordAuthenticationToken(user, null, user.getAuthorities());
-                            SecurityContextHolder.getContext().setAuthentication(auth);
-                            log.debug("Admin user authenticated: {}", user.getId());
-                        }
-                    }
-                } catch (Exception e) {
-                    log.debug("Token validation failed for admin endpoint: {}", e.getMessage());
-                }
-            }
-            // Admin endpoint'lar uchun Spring Security o'zi tekshiradi
-            filterChain.doFilter(request, response);
-            return;
-        }
-
-        // Get token from header
-        String authHeader = request.getHeader(AUTHORIZATION);
-
-        // Extract token from header - supports both "Bearer <token>" and "<token>"
-        // formats
-        String token = null;
-        if (authHeader != null && !authHeader.trim().isEmpty()) {
-            log.debug("Authorization header found: {}",
-                    authHeader.startsWith(TOKEN_PREFIX) ? "Bearer token" : "Direct token");
-
-            // Check if header starts with "Bearer " prefix
-            if (authHeader.startsWith(TOKEN_PREFIX)) {
-                token = authHeader.substring(TOKEN_PREFIX.length()).trim();
-                log.info("Token extracted from header (Bearer format): ***");
-            } else {
-                // Token without Bearer prefix (for Swagger UI and direct token usage)
-                // Only accept if it doesn't contain spaces (to avoid Basic auth)
-                String trimmedHeader = authHeader.trim();
-                if (!trimmedHeader.contains(" ") && trimmedHeader.length() > 0) {
-                    token = trimmedHeader;
-                    log.info("Token extracted from header (direct format): ***");
-                } else {
-                    log.debug("Authorization header ignored (contains spaces, likely Basic auth)");
-                }
-            }
-        }
-
-        // Check if token doesn't exist, get from cookie
-        if (token == null) {
-            log.debug("No token in header, checking cookies. Request URI: {}, Origin: {}",
-                    request.getRequestURI(), request.getHeader("Origin"));
-            token = jwtService.extractTokenFromCookie(request);
-            log.info("Token extracted from cookie: {}", token != null ? "***" : null);
-            if (token == null && !isPublicEndpoint) {
-                log.warn("No JWT token found in cookies or header for request: {} from origin: {}",
-                        request.getRequestURI(), request.getHeader("Origin"));
-            }
-        }
-
-        // Cart endpoint - SessionTokenUtil o'zi token yaratadi, shuning uchun token
-        // bo'lmasa ham o'tkazib yuborish
-        boolean isCartEndpoint = requestPath.equals("/api/v1/cart") && "POST".equals(request.getMethod());
-        if (isCartEndpoint && token == null) {
-            log.debug("Cart endpoint without token - allowing request (SessionTokenUtil will create token): {}",
-                    requestPath);
-            filterChain.doFilter(request, response);
-            return;
-        }
-
-        // Public endpoint'lar uchun token bo'lmasa ham o'tkazib yuborish
-        if (token == null && isPublicEndpoint) {
-            log.debug("Public endpoint without token - allowing request: {}", requestPath);
-            filterChain.doFilter(request, response);
-            return;
-        }
+        String token = extractToken(request);
 
         if (token != null) {
             try {
-                // Check IP mismatch before full validation
-                try {
-                    String tokenIp = jwtService.getIpFromToken(token);
-                    String requestIp = ipAddressUtil.getClientIpAddress(request);
-                    boolean ipMismatch = tokenIp != null && requestIp != null && !tokenIp.equals(requestIp);
-
-                    if (ipMismatch) {
-                        log.warn("IP mismatch detected: token IP = {}, request IP = {}. Creating new session.", tokenIp,
-                                requestIp);
-
-                        // Get user and session info from old token
-                        String oldSessionId = jwtService.getSessionIdFromToken(token);
-                        User user = jwtService.getUserObject(token);
-
-                        // Deactivate old session if exists
-                        if (oldSessionId != null) {
-                            sessionRepository.findBySessionId(oldSessionId).ifPresent(oldSession -> {
-                                oldSession.setIsActive(false);
-                                sessionRepository.save(oldSession);
-                                log.debug("Old session {} deactivated due to IP change", oldSessionId);
-                            });
-                        }
-
-                        // Create new session
-                        Session newSession = sessionService.createSession(request);
-
-                        // If user exists, migrate session to user and generate authenticated token
-                        if (user != null && user.getId() != null) {
-                            sessionService.migrateSessionToUser(newSession.getSessionId(), user);
-                            newSession = sessionService.getSessionById(newSession.getSessionId());
-
-                            // Generate new token with new IP
-                            String newToken = jwtService.generateToken(user, newSession, request);
-                            sessionService.setAccessToken(newSession.getSessionId(), newToken);
-                            jwtService.setJwtCookie(newToken, jwtService.getCookieNameUser(), response, request);
-
-                            // Set authentication
-                            var auth = new UsernamePasswordAuthenticationToken(user, null, user.getAuthorities());
-                            SecurityContextHolder.getContext().setAuthentication(auth);
-                            log.info("New session created for user {} with new IP {}", user.getId(), requestIp);
-                        } else {
-                            // Anonymous user - generate anonymous token
-                            String newToken = jwtService.generateAccessTokenForAnonymous(newSession, request);
-                            sessionService.setAccessToken(newSession.getSessionId(), newToken);
-                            jwtService.setJwtCookie(newToken, jwtService.getCookieNameUser(), response, request);
-                            log.info("New anonymous session created with new IP {}", requestIp);
-                        }
-
-                        // Continue with the request using new session/token
-                        filterChain.doFilter(request, response);
+                if (jwtService.validateToken(token, request)) {
+                    User user = jwtService.getUserObject(token);
+                    if (user != null && user.getId() != null) {
+                        var auth = new UsernamePasswordAuthenticationToken(user, null, user.getAuthorities());
+                        SecurityContextHolder.getContext().setAuthentication(auth);
+                        log.debug("User authenticated: {}", userUtilTruncate(user.getFirstName()));
+                    }
+                } else {
+                    log.warn("Token validation failed");
+                    if (!isPublicEndpoint) {
+                        clearCookieAndSend403(response, isPublicEndpoint);
                         return;
                     }
-                } catch (Exception ipCheckException) {
-                    // If IP check fails (token invalid), continue to normal validation
-                    log.debug("IP mismatch check failed, continuing with normal validation: {}",
-                            ipCheckException.getMessage());
                 }
-
-                // Step 1: Token validation (IP match bo'lsa normal validation)
-                if (!jwtService.validateToken(token, request)) {
-                    log.warn("Token validation failed");
-                    if (isPublicEndpoint) {
-                        send401(response, "Invalid session token");
-                    } else {
-                        clearCookieAndSend403(response, request, isPublicEndpoint);
-                    }
-                    return;
-                }
-
-                // Step 2: Get sessionId from token
-                String sessionId = jwtService.getSessionIdFromToken(token);
-                if (sessionId == null) {
-                    log.warn("Token does not contain sessionId");
-                    if (isPublicEndpoint) {
-                        send401(response, "Invalid session token");
-                    } else {
-                        clearCookieAndSend403(response, request, isPublicEndpoint);
-                    }
-                    return;
-                }
-
-                // Step 3: Database dan faqat isDeleted tekshirish
-                Optional<Boolean> isDeletedOpt = sessionRepository.findIsDeletedBySessionId(sessionId);
-                if (isDeletedOpt.isPresent() && Boolean.TRUE.equals(isDeletedOpt.get())) {
-                    log.warn("Session is deleted: {}", sessionId);
-                    if (isPublicEndpoint) {
-                        send401(response, "Session expired");
-                    } else {
-                        clearCookieAndSend403(response, request, isPublicEndpoint);
-                    }
-                    return;
-                }
-
-                // Step 4: Get user from token (token ichidan)
-                // Anonymous user uchun user null bo'lishi mumkin
-                User user = jwtService.getUserObject(token);
-                if (user != null && user.getId() != null) {
-                    // Step 5: Set authentication (faqat authenticated user uchun)
-                    var auth = new UsernamePasswordAuthenticationToken(user, null, user.getAuthorities());
-                    SecurityContextHolder.getContext().setAuthentication(auth);
-                    log.debug("User authenticated: {}", user.getId());
-                } else {
-                    log.debug("Anonymous user - no authentication set");
-                }
-
             } catch (Exception e) {
-                log.error("Token validation error: {}", e.getMessage(), e);
-                if (isPublicEndpoint) {
-                    send401(response, "Invalid session token");
-                } else {
-                    clearCookieAndSend403(response, request, isPublicEndpoint);
+                log.error("Token validation error: {}", e.getMessage());
+                if (!isPublicEndpoint) {
+                    clearCookieAndSend403(response, isPublicEndpoint);
+                    return;
                 }
-                return;
+            }
+        } else {
+            // No token found
+            if (!isPublicEndpoint && !isAdminEndpoint) {
+                // Logic to block is below
             }
         }
+
+        if (token == null && !isPublicEndpoint) {
+            if (isAdminEndpoint) {
+                filterChain.doFilter(request, response);
+                return;
+            }
+
+            // Token missing -> 401 Unauthorized
+            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+            response.setContentType("application/json");
+            response.getWriter().write("{\"error\":\"Unauthorized\",\"message\":\"Authentication required\"}");
+            return;
+        }
+
         filterChain.doFilter(request, response);
     }
 
-    private void clearCookieAndSend403(HttpServletResponse response, HttpServletRequest request,
-            boolean isPublicEndpoint) {
+    private String extractToken(HttpServletRequest request) {
+        String authHeader = request.getHeader(AUTHORIZATION);
+        if (authHeader != null && !authHeader.trim().isEmpty()) {
+            if (authHeader.startsWith(TOKEN_PREFIX)) {
+                return authHeader.substring(TOKEN_PREFIX.length()).trim();
+            } else {
+                String trimmed = authHeader.trim();
+                if (!trimmed.contains(" ") && trimmed.length() > 0) {
+                    return trimmed;
+                }
+            }
+        }
+        return jwtService.extractTokenFromCookie(request);
+    }
+
+    private void clearCookieAndSend403(HttpServletResponse response, boolean isPublicEndpoint) {
         try {
-            // Public endpoint'lar uchun cookie clear qilmaslik
             if (!isPublicEndpoint) {
-                // Clear JWT cookie
                 jakarta.servlet.http.Cookie cookie = new jakarta.servlet.http.Cookie("prime-user-token", null);
                 cookie.setMaxAge(0);
                 cookie.setPath("/");
@@ -302,65 +129,53 @@ public class JwtCookieFilter extends OncePerRequestFilter {
                 cookieAdmin.setHttpOnly(true);
                 cookieAdmin.setSecure(true);
                 response.addCookie(cookieAdmin);
-            }
 
-            // Send response
-            if (isPublicEndpoint) {
-                response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-                response.setContentType("application/json");
-                response.getWriter().write("{\"error\":\"Unauthorized\",\"message\":\"Invalid session token\"}");
-            } else {
                 response.setStatus(HttpServletResponse.SC_FORBIDDEN);
                 response.setContentType("application/json");
                 response.getWriter().write(
                         "{\"error\":\"Session revoked\",\"message\":\"Your session has been revoked. Please login again.\"}");
+            } else {
+                response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                response.setContentType("application/json");
+                response.getWriter().write("{\"error\":\"Unauthorized\",\"message\":\"Invalid token\"}");
             }
+
         } catch (IOException e) {
             log.error("Error sending response: {}", e.getMessage());
         }
     }
 
-    private void send401(HttpServletResponse response, String message) {
-        try {
-            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-            response.setContentType("application/json");
-            response.getWriter().write("{\"error\":\"Unauthorized\",\"message\":\"" + message + "\"}");
-        } catch (IOException e) {
-            log.error("Error sending 401: {}", e.getMessage());
-        }
-    }
-
-    /**
-     * Public endpoint'ni tekshirish
-     */
     private boolean isPublicEndpoint(String requestPath, String method) {
+        if ("OPTIONS".equalsIgnoreCase(method)) {
+            return true;
+        }
+
         // Public GET endpoints
         if ("GET".equals(method)) {
-            // Public product endpoints
-            if (requestPath.startsWith("/api/v1/product") ||
+            return requestPath.startsWith("/api/v1/product") ||
                     requestPath.equals("/api/v1/products") ||
-                    requestPath.startsWith("/api/v1/products/by-category/")) {
-                return true;
-            }
-
-            // Public category endpoints
-            if (requestPath.equals("/api/v1/category") ||
-                    requestPath.equals("/api/v1/category/**") ||
+                    requestPath.startsWith("/api/v1/products/by-category/") ||
+                    requestPath.contains("/api/v1/attachment") ||
+                    requestPath.startsWith("/api/v1/cart") ||
+                    requestPath.startsWith("/uploads/") ||
+                    requestPath.equals("/api/v1/category") ||
+                    requestPath.startsWith("/api/v1/category/") ||
                     requestPath.equals("/api/v1/categories") ||
-                    requestPath.equals("/api/v1/categories/**") ||
-                    requestPath.startsWith("/api/v1/category/")) {
-                return true;
-            }
+                    requestPath.startsWith("/api/v1/categories/");
         }
 
         // Public POST endpoints
         if ("POST".equals(method)) {
-            if (requestPath.equals("/api/v2/auth/session") ||
-                    requestPath.startsWith("/api/v2/auth/code/")) {
-                return true;
-            }
+            return requestPath.startsWith("/api/v2/auth/code/") ||
+                    requestPath.equals("/api/v1/cart"); // Cart is public
         }
 
         return false;
+    }
+
+    private String userUtilTruncate(String name) {
+        if (name == null)
+            return "";
+        return name.length() > 10 ? name.substring(0, 10) + "..." : name;
     }
 }

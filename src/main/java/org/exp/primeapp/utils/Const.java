@@ -4,16 +4,13 @@ public interface Const {
     String WAY_ALL = "/**";
 
     String API = "/api";
-    //String VERSION = "/version";
+    // String VERSION = "/version";
     String V1 = "/v1";
     String V2 = "/v2";
 
     String AUTH_HEADER = "Authorization";
     String AUTHORIZATION = "Authorization";
     String TOKEN_PREFIX = "Bearer ";
-
-    String SETTING = "/setting";
-    String SETTINGS = "/settings";
 
     String AUTH = "/auth";
     String LOGIN = "/login";
@@ -54,10 +51,10 @@ public interface Const {
     String EMAIL_EXIST_MSG = "Email already exist!";
     String PASSWORD_NO_MATCH_MSG = "Passwords do not match!";
 
-    String ROLE_MEGA_SUPER_ADMIN ="ROLE_MEGA_SUPER_ADMIN";
-    String ROLE_SUPER_ADMIN ="ROLE_SUPER_ADMIN";
-    String ROLE_ADMIN ="ROLE_ADMIN";
-    String ROLE_VISITOR ="ROLE_VISITOR";
-    String ROLE_USER ="ROLE_USER";
+    String ROLE_MEGA_SUPER_ADMIN = "ROLE_MEGA_SUPER_ADMIN";
+    String ROLE_SUPER_ADMIN = "ROLE_SUPER_ADMIN";
+    String ROLE_ADMIN = "ROLE_ADMIN";
+    String ROLE_VISITOR = "ROLE_VISITOR";
+    String ROLE_USER = "ROLE_USER";
 
 }

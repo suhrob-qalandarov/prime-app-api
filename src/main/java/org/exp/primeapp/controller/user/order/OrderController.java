@@ -8,7 +8,6 @@ import org.exp.primeapp.models.dto.request.CreateOrderReq;
 import org.exp.primeapp.models.dto.responce.order.UserOrderRes;
 
 import org.exp.primeapp.models.entities.User;
-import org.exp.primeapp.service.face.global.session.SessionService;
 import org.exp.primeapp.service.face.user.OrderService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -26,7 +25,6 @@ import static org.exp.primeapp.utils.Const.*;
 public class OrderController {
 
     private final OrderService orderService;
-    private final SessionService sessionService;
 
     @Operation(security = @SecurityRequirement(name = "Authorization"))
     @PostMapping
@@ -35,8 +33,7 @@ public class OrderController {
             @AuthenticationPrincipal User user,
             HttpServletRequest request,
             HttpServletResponse response) {
-        var session = sessionService.getOrCreateSession(request, response);
-        UserOrderRes orderRes = orderService.createOrder(user, session, orderRequest);
+        UserOrderRes orderRes = orderService.createOrder(user, orderRequest);
         return new ResponseEntity<>(orderRes, HttpStatus.OK);
     }
 }
