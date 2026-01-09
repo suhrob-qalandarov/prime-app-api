@@ -14,6 +14,7 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 @NoArgsConstructor
 @SuperBuilder
+@Table(name = "categories")
 public class Category extends BaseEntity {
 
     @Column(nullable = false)

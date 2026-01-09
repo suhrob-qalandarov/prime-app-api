@@ -1,1 +1,0 @@
-ALTER TABLE app_users ALTER COLUMN phone DROP NOT NULL;

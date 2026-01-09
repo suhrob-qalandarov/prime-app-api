@@ -31,7 +31,7 @@ public interface CategoryRepository extends JpaRepository<Category, Long> {
         // Toggle category status only (without affecting products)
         @Transactional
         @Modifying
-        @Query(value = "UPDATE category SET " +
+        @Query(value = "UPDATE categories SET " +
                         "status = CASE WHEN status = 'ACTIVE' THEN 'INACTIVE' WHEN status = 'INACTIVE' THEN 'ACTIVE' ELSE status END, "
                         +
                         "last_activated_at = CASE WHEN status = 'INACTIVE' THEN NOW() ELSE last_activated_at END, " +
@@ -42,7 +42,7 @@ public interface CategoryRepository extends JpaRepository<Category, Long> {
         // Toggle category status with products
         @Transactional
         @Modifying
-        @Query(value = "UPDATE category SET " +
+        @Query(value = "UPDATE categories SET " +
                         "status = CASE WHEN status = 'ACTIVE' THEN 'INACTIVE' WHEN status = 'INACTIVE' THEN 'ACTIVE' ELSE status END, "
                         +
                         "last_activated_at = CASE WHEN status = 'INACTIVE' THEN NOW() ELSE last_activated_at END, " +
@@ -52,9 +52,9 @@ public interface CategoryRepository extends JpaRepository<Category, Long> {
 
         @Transactional
         @Modifying
-        @Query(value = "UPDATE product SET status = CASE " +
-                        "WHEN (SELECT status FROM category WHERE id = :categoryId) = 'ACTIVE' THEN 'ON_SALE' " +
-                        "WHEN (SELECT status FROM category WHERE id = :categoryId) = 'INACTIVE' THEN 'INACTIVE' " +
+        @Query(value = "UPDATE products SET status = CASE " +
+                        "WHEN (SELECT status FROM categories WHERE id = :categoryId) = 'ACTIVE' THEN 'ON_SALE' " +
+                        "WHEN (SELECT status FROM categories WHERE id = :categoryId) = 'INACTIVE' THEN 'INACTIVE' " +
                         "ELSE status END " +
                         "WHERE category_id = :categoryId", nativeQuery = true)
         void toggleCategoryStatusWithProducts_Products(@Param("categoryId") Long categoryId);
