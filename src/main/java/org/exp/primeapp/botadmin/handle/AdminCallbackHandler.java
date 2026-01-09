@@ -28,7 +28,7 @@ import java.util.List;
 import java.util.function.Consumer;
 
 @Slf4j
-@Component
+// @Component // Temporarily disabled
 public class AdminCallbackHandler implements Consumer<CallbackQuery> {
 
     private final UserService userService;

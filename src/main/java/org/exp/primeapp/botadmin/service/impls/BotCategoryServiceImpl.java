@@ -13,7 +13,7 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 @Slf4j
-@Service
+// @Service // Temporarily disabled
 @RequiredArgsConstructor
 public class BotCategoryServiceImpl implements BotCategoryService {
 
@@ -92,4 +92,3 @@ public class BotCategoryServiceImpl implements BotCategoryService {
         clearCategoryCreationState(userId);
     }
 }
-

@@ -24,7 +24,7 @@ import org.springframework.stereotype.Component;
 import java.util.function.Consumer;
 
 @Slf4j
-@Component
+// @Component // Temporarily disabled
 public class AdminMessageHandler implements Consumer<Message> {
 
     private final AdminMessageService messageService;

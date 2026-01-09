@@ -15,7 +15,7 @@ import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 
 @Slf4j
-@Service
+// @Service // Temporarily disabled
 @RequiredArgsConstructor
 public class BotUserServiceImpl implements BotUserService {
 
@@ -26,16 +26,16 @@ public class BotUserServiceImpl implements BotUserService {
     @Override
     public long[] getUserCounts() {
         long totalCount = userRepository.count();
-        
+
         long adminCount = userRepository.findAll().stream()
                 .filter(user -> hasRole(user, "ROLE_ADMIN"))
                 .count();
-        
+
         long superAdminCount = userRepository.findAll().stream()
                 .filter(user -> hasRole(user, "ROLE_SUPER_ADMIN"))
                 .count();
-        
-        return new long[]{totalCount, adminCount, superAdminCount};
+
+        return new long[] { totalCount, adminCount, superAdminCount };
     }
 
     @Override
@@ -48,21 +48,21 @@ public class BotUserServiceImpl implements BotUserService {
     public void addRoleToUser(Long userId, String roleName) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User topilmadi: " + userId));
-        
+
         // Role allaqachon mavjudligini tekshirish
         if (hasRole(user, roleName)) {
             log.warn("User {} allaqachon {} role'ga ega", userId, roleName);
             return;
         }
-        
+
         // Role'ni topish
         List<Role> roles = roleRepository.findALlByNameIn(List.of(roleName));
         if (roles.isEmpty()) {
             throw new RuntimeException("Role topilmadi: " + roleName);
         }
-        
+
         Role role = roles.get(0);
-        
+
         // User'ning role'larini olish va yangi role qo'shish
         List<Role> userRoles = user.getRoles();
         if (userRoles == null) {
@@ -70,7 +70,7 @@ public class BotUserServiceImpl implements BotUserService {
         }
         userRoles.add(role);
         user.setRoles(userRoles);
-        
+
         userRepository.save(user);
         log.info("User {} ga {} role qo'shildi", userId, roleName);
     }
@@ -98,4 +98,3 @@ public class BotUserServiceImpl implements BotUserService {
         return userSearchStates.getOrDefault(userId, false);
     }
 }
-

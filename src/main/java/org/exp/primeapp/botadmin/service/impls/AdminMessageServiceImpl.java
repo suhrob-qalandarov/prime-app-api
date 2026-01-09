@@ -27,7 +27,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Slf4j
-@Service
+// @Service // Temporarily disabled
 public class AdminMessageServiceImpl implements AdminMessageService {
 
     private final TelegramBot telegramBot;
