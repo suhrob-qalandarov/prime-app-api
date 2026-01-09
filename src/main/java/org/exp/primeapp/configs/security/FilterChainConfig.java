@@ -141,11 +141,6 @@ public class FilterChainConfig {
                                                 API + V1 + ADMIN + ATTACHMENT + "/**")
                                 .hasRole("ADMIN")
 
-                                // Setting path security
-                                .requestMatchers(
-                                                API + V1 + ADMIN + SETTING + "/**")
-                                .hasRole("SUPER_ADMIN")
-
                                 // Actuator health endpoint - public for health checks
                                 .requestMatchers(
                                                 "/actuator/health")

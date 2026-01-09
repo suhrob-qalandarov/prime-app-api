@@ -9,9 +9,6 @@ public enum EntityType {
     ORDER,
     ORDER_ITEM,
     PRODUCT_SIZE,
-    SETTING,
     ROLE,
     OTHER
 }
-
-
