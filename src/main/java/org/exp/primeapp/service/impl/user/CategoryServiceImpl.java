@@ -126,13 +126,14 @@ public class CategoryServiceImpl implements CategoryService {
     }
 
     @Override
-    public void toggleCategoryStatus(Long categoryId, Boolean withProducts) {
+    public AdminCategoryRes toggleCategoryStatus(Long categoryId, Boolean withProducts) {
         if (withProducts) {
             categoryRepository.toggleCategoryStatusWithProducts_Category(categoryId);
             categoryRepository.toggleCategoryStatusWithProducts_Products(categoryId);
         } else {
             categoryRepository.toggleCategoryStatusOnly(categoryId);
         }
+        return convertToAdminCategoryRes(categoryRepository.findById(categoryId).orElseThrow(RuntimeException::new));
     }
 
     @Transactional

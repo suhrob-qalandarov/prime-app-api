@@ -74,12 +74,12 @@ public class AdminCategoryController {
     @Operation(security = @SecurityRequirement(name = "Authorization"))
     @PreAuthorize("hasRole('ADMIN')")
     @PatchMapping("/toggle/{categoryId}")
-    public ResponseEntity<Void> toggleCategoryWithType(
+    public ResponseEntity<AdminCategoryRes> toggleCategoryWithType(
             @PathVariable Long categoryId,
             @RequestParam(defaultValue = "false") Boolean withProducts
     ) {
-        categoryService.toggleCategoryStatus(categoryId, withProducts);
-        return new ResponseEntity<>(HttpStatus.ACCEPTED);
+        AdminCategoryRes toggledCategoryRes = categoryService.toggleCategoryStatus(categoryId, withProducts);
+        return new ResponseEntity<>(toggledCategoryRes, HttpStatus.ACCEPTED);
     }
 
     @Operation(security = @SecurityRequirement(name = "Authorization"))

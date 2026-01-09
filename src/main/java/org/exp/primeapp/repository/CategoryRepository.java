@@ -25,25 +25,28 @@ public interface CategoryRepository extends JpaRepository<Category, Long> {
 
         List<Category> findBySpotlightNameAndStatusOrderByOrderNumberAsc(String spotlightName, CategoryStatus status);
 
-        List<Category> findBySpotlightNameAndStatusInOrderByOrderNumberAsc(String spotlightName, List<CategoryStatus> statuses);
+        List<Category> findBySpotlightNameAndStatusInOrderByOrderNumberAsc(String spotlightName,
+                        List<CategoryStatus> statuses);
 
         // Toggle category status only (without affecting products)
         @Transactional
         @Modifying
-        @Query(value = "UPDATE category SET status = CASE " +
-                        "WHEN status = 'ACTIVE' THEN 'INACTIVE' " +
-                        "WHEN status = 'INACTIVE' THEN 'ACTIVE' " +
-                        "ELSE status END " +
+        @Query(value = "UPDATE category SET " +
+                        "status = CASE WHEN status = 'ACTIVE' THEN 'INACTIVE' WHEN status = 'INACTIVE' THEN 'ACTIVE' ELSE status END, "
+                        +
+                        "last_activated_at = CASE WHEN status = 'INACTIVE' THEN NOW() ELSE last_activated_at END, " +
+                        "last_deactivated_at = CASE WHEN status = 'ACTIVE' THEN NOW() ELSE last_deactivated_at END " +
                         "WHERE id = :categoryId", nativeQuery = true)
         void toggleCategoryStatusOnly(@Param("categoryId") Long categoryId);
 
         // Toggle category status with products
         @Transactional
         @Modifying
-        @Query(value = "UPDATE category SET status = CASE " +
-                        "WHEN status = 'ACTIVE' THEN 'INACTIVE' " +
-                        "WHEN status = 'INACTIVE' THEN 'ACTIVE' " +
-                        "ELSE status END " +
+        @Query(value = "UPDATE category SET " +
+                        "status = CASE WHEN status = 'ACTIVE' THEN 'INACTIVE' WHEN status = 'INACTIVE' THEN 'ACTIVE' ELSE status END, "
+                        +
+                        "last_activated_at = CASE WHEN status = 'INACTIVE' THEN NOW() ELSE last_activated_at END, " +
+                        "last_deactivated_at = CASE WHEN status = 'ACTIVE' THEN NOW() ELSE last_deactivated_at END " +
                         "WHERE id = :categoryId", nativeQuery = true)
         void toggleCategoryStatusWithProducts_Category(@Param("categoryId") Long categoryId);
 

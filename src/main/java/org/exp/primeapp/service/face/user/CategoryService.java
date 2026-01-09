@@ -27,5 +27,5 @@ public interface CategoryService {
 
     List<CategoryRes> getCategoriesResByStatuses(List<CategoryStatus> statuses);
 
-    void toggleCategoryStatus(Long categoryId, Boolean withProducts);
+    AdminCategoryRes toggleCategoryStatus(Long categoryId, Boolean withProducts);
 }
