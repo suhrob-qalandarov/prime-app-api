@@ -44,7 +44,7 @@ public class AdminCategoryController {
 
     @Operation(security = @SecurityRequirement(name = "Authorization"))
     @PreAuthorize("hasRole('ADMIN')")
-    @GetMapping("/for-product")
+    @GetMapping("/list-for-product")
     public ResponseEntity<List<CategoryRes>> getCategoriesForProduct() {
         List<CategoryRes> categories = categoryService.getCategoriesResByStatuses(
                 List.of(CategoryStatus.ACTIVE, CategoryStatus.CREATED)
