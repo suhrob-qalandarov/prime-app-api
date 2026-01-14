@@ -5,15 +5,15 @@ import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.exp.primeapp.models.entities.Category;
+import org.exp.primeapp.models.entities.InventoryTransaction;
 import org.exp.primeapp.models.entities.Product;
-import org.exp.primeapp.models.entities.ProductIncome;
 import org.exp.primeapp.models.enums.CategoryStatus;
 import org.springframework.stereotype.Repository;
 
 @Slf4j
 @Repository
 @RequiredArgsConstructor
-public class ProductIncomeRepositoryImpl implements ProductIncomeRepositoryCustom {
+public class InventoryTransactionRepositoryImpl implements InventoryTransactionRepositoryCustom {
 
     private final EntityManager entityManager;
     private final ProductRepository productRepository;
@@ -21,9 +21,9 @@ public class ProductIncomeRepositoryImpl implements ProductIncomeRepositoryCusto
 
     @Override
     @Transactional
-    public ProductIncome saveWithActivation(ProductIncome productIncome) {
-        // ProductIncome ni saqlash
-        ProductIncome savedIncome = entityManager.merge(productIncome);
+    public InventoryTransaction saveWithActivation(InventoryTransaction productIncome) {
+        // Warehouse ni saqlash
+        InventoryTransaction savedIncome = entityManager.merge(productIncome);
         entityManager.flush();
 
         // Product va Category ni active qilish
@@ -32,11 +32,11 @@ public class ProductIncomeRepositoryImpl implements ProductIncomeRepositoryCusto
         return savedIncome;
     }
 
-    private void activateProductAndCategory(ProductIncome productIncome) {
+    private void activateProductAndCategory(InventoryTransaction productIncome) {
         try {
             Product product = productIncome.getProduct();
             if (product == null) {
-                log.warn("ProductIncome has no product, skipping activation");
+                log.warn("Warehouse has no product, skipping activation");
                 return;
             }
 
@@ -55,7 +55,7 @@ public class ProductIncomeRepositoryImpl implements ProductIncomeRepositoryCusto
                 log.info("Category {} activated due to product income", category.getId());
             }
         } catch (Exception e) {
-            log.error("Error activating product and category for ProductIncome {}", productIncome.getId(), e);
+            log.error("Error activating product and category for Warehouse {}", productIncome.getId(), e);
         }
     }
 }

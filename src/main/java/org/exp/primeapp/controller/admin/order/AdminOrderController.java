@@ -20,7 +20,7 @@ public class AdminOrderController {
     private final AdminOrderService adminOrderService;
 
     @Operation(security = @SecurityRequirement(name = "Authorization"))
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyAuthority('ADMIN', 'SUPER_ADMIN')")
     @GetMapping
     public ResponseEntity<AdminOrderDashRes> getOrderDashboard() {
         AdminOrderDashRes dashboard = adminOrderService.getOrderDashboard();
@@ -28,7 +28,7 @@ public class AdminOrderController {
     }
 
     @Operation(security = @SecurityRequirement(name = "Authorization"))
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyAuthority('ADMIN', 'SUPER_ADMIN')")
     @PutMapping("/{id}/{status}")
     public ResponseEntity<Void> updateOrder(@PathVariable Long id, @PathVariable OrderStatus status) {
         adminOrderService.updateOrderStatus(id, status);
@@ -36,7 +36,7 @@ public class AdminOrderController {
     }
 
     @Operation(security = @SecurityRequirement(name = "Authorization"))
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyAuthority('ADMIN', 'SUPER_ADMIN')")
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteOrder(@PathVariable Long id, @RequestBody OrderCancelReq cancelReq) {
         adminOrderService.cancelOrder(id, cancelReq);

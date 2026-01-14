@@ -27,4 +27,13 @@ public enum Size {
     public String toString() {
         return label;
     }
+
+    public static Size fromLabel(String label) {
+        for (Size size : Size.values()) {
+            if (size.label.equals(label)) {
+                return size;
+            }
+        }
+        throw new IllegalArgumentException("Invalid size label: " + label);
+    }
 }
