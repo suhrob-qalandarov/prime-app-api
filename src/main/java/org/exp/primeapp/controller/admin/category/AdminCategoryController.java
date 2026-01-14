@@ -27,7 +27,7 @@ public class AdminCategoryController {
     private final CategoryService categoryService;
 
     @Operation(security = @SecurityRequirement(name = "Authorization"))
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyAuthority('ADMIN', 'SUPER_ADMIN')")
     @GetMapping("/{categoryId}")
     public ResponseEntity<AdminCategoryRes> getCategoryById(@PathVariable Long categoryId) {
         AdminCategoryRes adminCategoryRes  = categoryService.getAdminCategoryResById(categoryId);
@@ -35,7 +35,7 @@ public class AdminCategoryController {
     }
 
     @Operation(security = @SecurityRequirement(name = "Authorization"))
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyAuthority('ADMIN', 'SUPER_ADMIN')")
     @GetMapping("/dashboard")
     public ResponseEntity<AdminCategoryDashboardRes> getCategoryDashboard() {
         AdminCategoryDashboardRes categoryDashboardRes = categoryService.getCategoryDashboardRes();
@@ -43,7 +43,7 @@ public class AdminCategoryController {
     }
 
     @Operation(security = @SecurityRequirement(name = "Authorization"))
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyAuthority('ADMIN', 'SUPER_ADMIN')")
     @GetMapping("/list-for-product")
     public ResponseEntity<List<CategoryRes>> getCategoriesForProduct() {
         List<CategoryRes> categories = categoryService.getCategoriesResByStatuses(
@@ -53,7 +53,7 @@ public class AdminCategoryController {
     }
 
     @Operation(security = @SecurityRequirement(name = "Authorization"))
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyAuthority('ADMIN', 'SUPER_ADMIN')")
     @PostMapping
     public ResponseEntity<AdminCategoryRes> createCategory(@RequestBody CategoryReq categoryReq) {
         AdminCategoryRes adminCategoryRes = categoryService.saveCategory(categoryReq);
@@ -61,7 +61,7 @@ public class AdminCategoryController {
     }
 
     @Operation(security = @SecurityRequirement(name = "Authorization"))
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyAuthority('ADMIN', 'SUPER_ADMIN')")
     @PutMapping("/{categoryId}")
     public ResponseEntity<AdminCategoryRes> updateCategory(
             @PathVariable Long categoryId,
@@ -72,7 +72,7 @@ public class AdminCategoryController {
     }
 
     @Operation(security = @SecurityRequirement(name = "Authorization"))
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyAuthority('ADMIN', 'SUPER_ADMIN')")
     @PatchMapping("/toggle/{categoryId}")
     public ResponseEntity<AdminCategoryRes> toggleCategoryWithType(
             @PathVariable Long categoryId,
@@ -83,7 +83,7 @@ public class AdminCategoryController {
     }
 
     @Operation(security = @SecurityRequirement(name = "Authorization"))
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyAuthority('ADMIN', 'SUPER_ADMIN')")
     @PatchMapping("/order")
     public ResponseEntity<List<AdminCategoryRes>> updateCategoriesOrder(
             @RequestBody Map<Long, Long> categoryOrderMap
