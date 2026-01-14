@@ -34,7 +34,7 @@ public class AdminInventoryTransactionController {
     private final InventoryTransactionService inventoryTransactionService;
 
     @PostMapping
-    // @PreAuthorize("hasAnyAuthority('ADMIN', 'SUPER_ADMIN')")
+    @PreAuthorize("hasAnyAuthority('ADMIN', 'SUPER_ADMIN')")
     @Operation(summary = "Create inventory transaction", description = "Create IN (income) or OUT (outcome) transaction with size-based items")
     public ResponseEntity<InventoryTransactionResponse> createTransaction(
             @Valid @RequestBody InventoryTransactionRequest request) {
@@ -43,7 +43,7 @@ public class AdminInventoryTransactionController {
     }
 
     @GetMapping("/{id}")
-    // @PreAuthorize("hasAnyAuthority('ADMIN', 'SUPER_ADMIN')")
+    @PreAuthorize("hasAnyAuthority('ADMIN', 'SUPER_ADMIN')")
     @Operation(summary = "Get transaction by ID")
     public ResponseEntity<InventoryTransactionResponse> getTransactionById(@PathVariable Long id) {
         InventoryTransactionResponse response = inventoryTransactionService.getTransactionById(id);
@@ -51,7 +51,7 @@ public class AdminInventoryTransactionController {
     }
 
     @GetMapping
-    // @PreAuthorize("hasAnyAuthority('ADMIN', 'SUPER_ADMIN')")
+    @PreAuthorize("hasAnyAuthority('ADMIN', 'SUPER_ADMIN')")
     @Operation(summary = "Get all transactions", description = "Get all transactions with filtering, pagination and statistics")
     public ResponseEntity<InventoryTransactionPageResponse> getAllTransactions(
             @RequestParam(required = false) String type,
