@@ -41,7 +41,13 @@ public class JwtCookieFilter extends OncePerRequestFilter {
                 requestPath.startsWith("/actuator/health") ||
                 requestPath.startsWith("/api/v2/auth/code/") ||
                 requestPath.equals("/api/v1/admin/auth") ||
-                requestPath.equals("/api/v2/admin/auth")) {
+                requestPath.equals("/api/v2/admin/auth") ||
+                requestPath.startsWith("/api/v2/admin/product") ||
+                requestPath.startsWith("/api/v2/admin/category") ||
+                requestPath.startsWith("/api/v2/admin/income") ||
+                requestPath.startsWith("/api/v2/admin/outcome") ||
+                requestPath.startsWith("/api/v1/admin/order") ||
+                requestPath.startsWith("/api/v1/admin/attachment")) {
             filterChain.doFilter(request, response);
             return;
         }
