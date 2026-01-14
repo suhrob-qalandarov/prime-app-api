@@ -5,15 +5,17 @@ import lombok.RequiredArgsConstructor;
 import org.exp.primeapp.models.dto.request.ProductReq;
 import org.exp.primeapp.models.dto.responce.admin.AdminProductDashboardRes;
 import org.exp.primeapp.models.dto.responce.admin.AdminProductRes;
+import org.exp.primeapp.models.dto.responce.user.ProductPageRes;
 import org.exp.primeapp.models.dto.responce.user.ProductSizeRes;
 import org.exp.primeapp.models.entities.*;
 import org.exp.primeapp.models.enums.ProductStatus;
 import org.exp.primeapp.models.enums.ProductTag;
 import org.exp.primeapp.repository.AttachmentRepository;
 import org.exp.primeapp.repository.CategoryRepository;
-import org.exp.primeapp.repository.ProductIncomeRepository;
+import org.exp.primeapp.repository.InventoryTransactionRepository;
 import org.exp.primeapp.repository.ProductRepository;
 import org.exp.primeapp.service.face.admin.product.AdminProductService;
+import org.exp.primeapp.service.impl.user.ProductServiceImpl;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
@@ -26,13 +28,14 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class AdminProductServiceImpl implements AdminProductService {
 
+    private final ProductServiceImpl productServiceImpl;
     @Value("${app.products.update-offset-minutes}")
     private long updateOffsetMinutes;
 
     private final ProductRepository productRepository;
     private final CategoryRepository categoryRepository;
     private final AttachmentRepository attachmentRepository;
-    private final ProductIncomeRepository productIncomeRepository;
+    private final InventoryTransactionRepository inventoryTransactionRepository;
     private static final DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm");
 
     @Override
@@ -81,6 +84,13 @@ public class AdminProductServiceImpl implements AdminProductService {
         Product product = productRepository.findById(productId)
                 .orElseThrow();
         return convertToAdminProductRes(product);
+    }
+
+    @Override
+    public List<ProductPageRes> getProductListForIncome() {
+        return productRepository.findAll().stream()
+                .map(productServiceImpl::convertToProductPageRes)
+                .toList();
     }
 
     @Transactional
@@ -164,12 +174,14 @@ public class AdminProductServiceImpl implements AdminProductService {
                 .build();
     }
 
-    private ProductIncome createIncome(Product product, Integer amount) {
-        return ProductIncome.builder()
-                .stockQuantity(amount)
-                //.product(product)
-                .build();
-    }
+    /*
+     * Commented out - no longer needed with InventoryTransaction
+     * private InventoryTransaction createIncome(Product product, Integer amount) {
+     * return InventoryTransaction.builder()
+     * .stockQuantity(amount)
+     * .build();
+     * }
+     */
 
     @Transactional
     @Override

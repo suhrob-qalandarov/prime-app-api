@@ -57,105 +57,96 @@ public class FilterChainConfig {
 
         @Bean
         public SecurityFilterChain configure(HttpSecurity http, JwtCookieFilter mySecurityFilter) throws Exception {
-                // Exclude Swagger endpoints from main filter chain (handled by
-                // swaggerSecurityFilterChain)
+                // Exclude Swagger endpoints from main filter chain (handled by swaggerSecurityFilterChain)
                 http.securityMatcher(request -> {
                         String path = request.getRequestURI();
                         return !path.startsWith("/swagger-ui") &&
-                                        !path.startsWith("/v3/api-docs") &&
-                                        !path.equals("/swagger-ui.html");
+                                !path.startsWith("/v3/api-docs") &&
+                                !path.equals("/swagger-ui.html");
                 });
+
                 http.csrf(AbstractHttpConfigurer::disable);
                 http.cors(cors -> cors.configurationSource(corsConfigurationSource()));
                 http.authorizeHttpRequests(auth -> auth
                                 // Allow all OPTIONS requests (CORS preflight)
                                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
 
-                                // Public auth endpoints
-                                .requestMatchers(
-                                                HttpMethod.POST,
-                                                API + V2 + AUTH + "/code/*")
-                                .permitAll()
+                        // Public auth endpoint
+                        .requestMatchers(
+                                HttpMethod.POST,
+                                "/api/v2/auth/code/*"
+                        ).permitAll()
 
-                                // Public admin auth endpoint (login)
-                                .requestMatchers(
-                                                HttpMethod.POST,
-                                                API + V1 + ADMIN + AUTH)
-                                .permitAll()
+                        // Public attachment endpoint
+                        .requestMatchers(
+                                HttpMethod.GET,
+                                "/api/v1/attachment/*"
+                        ).permitAll()
 
-                                // Public product endpoints
-                                .requestMatchers(
-                                                HttpMethod.GET,
-                                                API + V1 + PRODUCT + WAY_ALL)
-                                .permitAll()
+                        // Public uploads endpoint
+                        .requestMatchers(
+                                HttpMethod.GET,
+                                "/uploads/**"
+                        ).permitAll()
 
-                                // Attachment access endpoint - public (token bilan himoyalangan)
-                                .requestMatchers(
-                                                HttpMethod.GET,
-                                                API + V1 + ATTACHMENT + "/*")
-                                .permitAll() // Token validation controller/service da qilinadi
+                        // Public product endpoint
+                        .requestMatchers(
+                                HttpMethod.GET,
+                                "/api/v1/product/*"
+                        ).permitAll()
 
-                                // /uploads/** path - public (session token bilan himoyalangan)
-                                .requestMatchers(
-                                                HttpMethod.GET,
-                                                "/uploads/**")
-                                .permitAll() // Session token validation controller da qilinadi
+                        // Public product endpoint
+                        .requestMatchers(
+                                HttpMethod.GET,
+                                "/api/v1/category/*"
+                        ).permitAll()
 
-                                // Allow GET requests to AdminProductController for ROLE_ADMIN and ROLE_VISITOR
-                                .requestMatchers(
-                                                HttpMethod.GET,
-                                                API + V2 + ADMIN + PRODUCT,
-                                                API + V2 + ADMIN + PRODUCT + "/dashboard",
-                                                API + V2 + ADMIN + PRODUCT + "/*")
-                                .hasAnyRole("ADMIN", "VISITOR")
+                        // Public cart endpoint
+                        .requestMatchers(
+                                HttpMethod.POST,
+                                "/api/v1/cart"
+                        ).permitAll()
 
-                                .requestMatchers(
-                                                HttpMethod.GET,
-                                                API + V2 + ADMIN + CATEGORY + WAY_ALL)
-                                .hasAnyRole("ADMIN", "VISITOR")
+                        // Restricted admin product endpoint
+                        .requestMatchers(
+                                "/api/v2/admin/product/**"
+                        ).hasAnyAuthority("ADMIN", "SUPER_ADMIN")
 
-                                .requestMatchers(
-                                                API + V2 + ADMIN + CATEGORY + "/**")
-                                .hasRole("ADMIN")
+                        // Restricted admin product size endpoint
+                        .requestMatchers(
+                                "/api/v2/admin/product/size",
+                                "/api/v2/admin/product/size/**"
+                        ).hasAnyAuthority("ADMIN", "SUPER_ADMIN")
 
-                                // Restrict all other AdminProductController endpoints to ROLE_ADMIN
-                                .requestMatchers(
-                                                API + V2 + ADMIN + PRODUCT + "/**")
-                                .hasRole("ADMIN")
+                        // Restricted admin income endpoint
+                        .requestMatchers(
+                                "/api/v1/admin/inventory-transactions/**"
+                        ).hasAnyAuthority("ADMIN", "SUPER_ADMIN")
 
-                                .requestMatchers(
-                                                HttpMethod.GET,
-                                                API + V2 + ADMIN + PRODUCT + SIZE)
-                                .hasAnyRole("ADMIN", "VISITOR")
+                        // Restricted admin category endpoint
+                        .requestMatchers(
+                                "/api/v2/admin/category/**"
+                        ).hasAnyAuthority("ADMIN", "SUPER_ADMIN")
 
-                                // Allow GET requests to AdminAttachmentController for ROLE_ADMIN and
-                                // ROLE_VISITOR
-                                .requestMatchers(
-                                                HttpMethod.GET,
-                                                API + V1 + ADMIN + ATTACHMENT + "/{attachmentId}",
-                                                API + V1 + ADMIN + ATTACHMENT + "/with-url/{attachmentUrl}")
-                                .hasAnyRole("ADMIN", "VISITOR")
+                        // Restricted admin order endpoint
+                        .requestMatchers(
+                                "/api/v1/admin/order/**"
+                        ).hasAnyAuthority("ADMIN", "SUPER_ADMIN")
 
-                                // Restrict all other AdminAttachmentController endpoints to ROLE_ADMIN
-                                .requestMatchers(
-                                                API + V1 + ADMIN + ATTACHMENT + "/**")
-                                .hasRole("ADMIN")
+                        // Restricted admin attachment endpoint
+                        .requestMatchers(
+                                "/api/v1/admin/attachment/**"
+                        ).hasAnyAuthority("ADMIN", "SUPER_ADMIN")
 
-                                // Actuator health endpoint - public for health checks
-                                .requestMatchers(
-                                                "/actuator/health")
-                                .permitAll()
+                        // Actuator health endpoint public for health checks on deployment
+                        .requestMatchers(
+                                "/actuator/health")
+                        .permitAll()
 
-                                // Cart endpoint - SessionTokenUtil o'zi token yaratadi va tekshiradi
-                                .requestMatchers(
-                                                HttpMethod.POST,
-                                                API + V1 + "/cart")
-                                .permitAll()
+                        // All other requests require authentication
+                        .anyRequest().authenticated());
 
-                                // All other requests require authentication
-                                .anyRequest().authenticated());
-
-                // Add JWT filter
+                // JWT filter
                 http.addFilterBefore(mySecurityFilter, UsernamePasswordAuthenticationFilter.class);
 
                 return http.build();

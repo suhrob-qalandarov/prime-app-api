@@ -23,7 +23,7 @@ public class AdminProductSizeController {
 
     @Operation(security = @SecurityRequirement(name = "Authorization"))
     @GetMapping
-    @PreAuthorize("hasAnyRole('ADMIN', 'VISITOR')")
+    @PreAuthorize("hasAnyAuthority('ADMIN', 'SUPER_ADMIN')")
     public ResponseEntity<List<AdminSizeRes>> getSizes() {
         List<AdminSizeRes> sizeList = adminSizeService.getSizeList();
         return ResponseEntity.ok(sizeList);
