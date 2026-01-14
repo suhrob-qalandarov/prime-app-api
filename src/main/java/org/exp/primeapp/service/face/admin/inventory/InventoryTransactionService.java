@@ -1,6 +1,7 @@
 package org.exp.primeapp.service.face.admin.inventory;
 
 import org.exp.primeapp.models.dto.request.InventoryTransactionRequest;
+import org.exp.primeapp.models.dto.response.InventoryTransactionPageResponse;
 import org.exp.primeapp.models.dto.response.InventoryTransactionResponse;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -30,6 +31,22 @@ public interface InventoryTransactionService {
             String reason,
             Long productId,
             Long customerId,
+            LocalDateTime startDate,
+            LocalDateTime endDate,
+            Pageable pageable);
+
+    /**
+     * Get all transactions with filtering and statistics
+     * Includes counts for IN/OUT/RETURN and product tags
+     */
+    InventoryTransactionPageResponse getAllTransactionsWithStats(
+            String type,
+            String reason,
+            Long productId,
+            Long categoryId,
+            String productSize,
+            String productTag,
+            Long performedById,
             LocalDateTime startDate,
             LocalDateTime endDate,
             Pageable pageable);

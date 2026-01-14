@@ -298,4 +298,110 @@ public class InventoryTransactionServiceImpl implements InventoryTransactionServ
                 }
                 return user.getUsername();
         }
+
+        @Override
+        @Transactional(readOnly = true)
+        public org.exp.primeapp.models.dto.response.InventoryTransactionPageResponse getAllTransactionsWithStats(
+                        String type,
+                        String reason,
+                        Long productId,
+                        Long categoryId,
+                        String productSize,
+                        String productTag,
+                        Long performedById,
+                        LocalDateTime startDate,
+                        LocalDateTime endDate,
+                        Pageable pageable) {
+                log.info("Getting all transactions with stats - type: {}, reason: {}, productId: {}, categoryId: {}, size: {}, tag: {}",
+                                type, reason, productId, categoryId, productSize, productTag);
+
+                // Build filtering spec/criteria (simplified - would use Specification in real
+                // implementation)
+                // For now, using JPA query
+                Page<InventoryTransaction> transactionsPage = inventoryTransactionRepository.findAll(pageable);
+
+                // Apply filters manually on the result
+                List<InventoryTransaction> filteredList = transactionsPage.getContent().stream()
+                                .filter(t -> type == null || t.getType().name().equals(type))
+                                .filter(t -> reason == null
+                                                || (t.getReason() != null && t.getReason().name().equals(reason)))
+                                .filter(t -> productId == null
+                                                || (t.getProduct() != null && t.getProduct().getId().equals(productId)))
+                                .filter(t -> categoryId == null
+                                                || (t.getProduct() != null && t.getProduct().getCategory() != null
+                                                                && t.getProduct().getCategory().getId()
+                                                                                .equals(categoryId)))
+                                .filter(t -> productSize == null || (t.getProductSize() != null
+                                                && t.getProductSize().equals(productSize)))
+                                .filter(t -> productTag == null
+                                                || (t.getProductTag() != null && t.getProductTag().equals(productTag)))
+                                .filter(t -> performedById == null || (t.getPerformedBy() != null
+                                                && t.getPerformedBy().getId().equals(performedById)))
+                                .filter(t -> startDate == null
+                                                || (t.getCreatedAt() != null && !t.getCreatedAt().isBefore(startDate)))
+                                .filter(t -> endDate == null
+                                                || (t.getCreatedAt() != null && !t.getCreatedAt().isAfter(endDate)))
+                                .collect(Collectors.toList());
+
+                // Get all transactions for statistics (without pagination)
+                List<InventoryTransaction> allForStats = inventoryTransactionRepository.findAll().stream()
+                                .filter(t -> type == null || t.getType().name().equals(type))
+                                .filter(t -> reason == null
+                                                || (t.getReason() != null && t.getReason().name().equals(reason)))
+                                .filter(t -> productId == null
+                                                || (t.getProduct() != null && t.getProduct().getId().equals(productId)))
+                                .filter(t -> categoryId == null
+                                                || (t.getProduct() != null && t.getProduct().getCategory() != null
+                                                                && t.getProduct().getCategory().getId()
+                                                                                .equals(categoryId)))
+                                .filter(t -> productSize == null || (t.getProductSize() != null
+                                                && t.getProductSize().equals(productSize)))
+                                .filter(t -> productTag == null
+                                                || (t.getProductTag() != null && t.getProductTag().equals(productTag)))
+                                .filter(t -> performedById == null || (t.getPerformedBy() != null
+                                                && t.getPerformedBy().getId().equals(performedById)))
+                                .filter(t -> startDate == null
+                                                || (t.getCreatedAt() != null && !t.getCreatedAt().isBefore(startDate)))
+                                .filter(t -> endDate == null
+                                                || (t.getCreatedAt() != null && !t.getCreatedAt().isAfter(endDate)))
+                                .collect(Collectors.toList());
+
+                // Calculate statistics
+                long totalCount = allForStats.size();
+                long inCount = allForStats.stream()
+                                .filter(t -> t.getType() == TransactionType.IN)
+                                .count();
+                long outCount = allForStats.stream()
+                                .filter(t -> t.getType() == TransactionType.OUT)
+                                .count();
+                long returningCount = allForStats.stream()
+                                .filter(t -> t.getReason() != null && t.getReason().name().contains("RETURN"))
+                                .count();
+
+                // Product tag counts
+                java.util.Map<String, Long> tagCounts = allForStats.stream()
+                                .filter(t -> t.getProductTag() != null)
+                                .collect(Collectors.groupingBy(
+                                                InventoryTransaction::getProductTag,
+                                                Collectors.counting()));
+
+                // Map to responses
+                List<InventoryTransactionResponse> responses = filteredList.stream()
+                                .map(this::mapToResponse)
+                                .collect(Collectors.toList());
+
+                Page<InventoryTransactionResponse> responsePage = new PageImpl<>(
+                                responses,
+                                pageable,
+                                filteredList.size());
+
+                return org.exp.primeapp.models.dto.response.InventoryTransactionPageResponse.builder()
+                                .transactions(responsePage)
+                                .totalTransactionsCount(totalCount)
+                                .inTransactionsCount(inCount)
+                                .outTransactionsCount(outCount)
+                                .returningCount(returningCount)
+                                .productTagCounts(tagCounts)
+                                .build();
+        }
 }
