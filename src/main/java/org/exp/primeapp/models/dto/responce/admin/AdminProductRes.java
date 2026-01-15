@@ -1,6 +1,7 @@
 package org.exp.primeapp.models.dto.responce.admin;
 
 import lombok.Builder;
+import org.exp.primeapp.models.dto.response.admin.AdminAttachmentRes;
 import org.exp.primeapp.models.dto.responce.user.ProductSizeRes;
 
 import java.math.BigDecimal;
@@ -11,6 +12,7 @@ public record AdminProductRes(
         Long id,
         String name,
         String brand,
+        String mainImageUrl,
         String colorName,
         String colorHex,
         String description,
@@ -20,6 +22,6 @@ public record AdminProductRes(
         Boolean active,
         Integer discount,
         String createdAt,
-        List<String> picturesUrls,
+        List<AdminAttachmentRes> attachments,
         List<ProductSizeRes> sizes
-){}
+) {}

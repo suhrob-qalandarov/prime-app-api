@@ -36,6 +36,7 @@ public class OrderServiceImpl implements OrderService {
     private final CustomerRepository customerRepository;
     private final org.exp.primeapp.service.face.user.CustomerService customerService;
     private final AttachmentRepository attachmentRepository;
+    private final org.exp.primeapp.service.face.global.attachment.AttachmentService attachmentService;
 
     @Transactional
     @Override
@@ -269,7 +270,7 @@ public class OrderServiceImpl implements OrderService {
         List<Attachment> attachments = attachmentRepository.findByProductId(product.getId());
         String imageUrl = null;
         if (!attachments.isEmpty()) {
-            imageUrl = attachments.getFirst().getUrl();
+            imageUrl = attachmentService.convertToAttachmentRes(attachments.getFirst()).url();
         }
         orderItem.setImageUrl(imageUrl);
 

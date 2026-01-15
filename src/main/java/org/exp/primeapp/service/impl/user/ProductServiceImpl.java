@@ -41,6 +41,7 @@ public class ProductServiceImpl implements ProductService {
     private final ProductRepository productRepository;
     private final AttachmentRepository attachmentRepository;
     private final ProductSizeRepository productSizeRepository;
+    private final org.exp.primeapp.service.face.global.attachment.AttachmentService attachmentService;
 
     @Override
     public List<ProductRes> getAllProducts() {
@@ -248,10 +249,8 @@ public class ProductServiceImpl implements ProductService {
     }
 
     public ProductRes convertToProductRes(Product product) {
-        List<String> attachmentUrls = attachmentRepository.findByProductId(product.getId())
-                .stream()
-                .map(Attachment::getUrl)
-                .collect(toList());
+        List<String> attachmentUrls = attachmentService.convertToAttachmentUrls(
+                attachmentRepository.findByProductId(product.getId()));
 
         List<ProductSizeRes> productSizes = product.getSizes()
                 .stream()
@@ -290,7 +289,7 @@ public class ProductServiceImpl implements ProductService {
         String mainImage = attachmentRepository.findByProductId(product.getId())
                 .stream()
                 .findFirst()
-                .map(Attachment::getUrl)
+                .map(att -> attachmentService.convertToAttachmentRes(att).url())
                 .orElse(null);
 
         // Discount'ni hisoblab discountPrice'ni set qilish
@@ -392,7 +391,7 @@ public class ProductServiceImpl implements ProductService {
         String mainImage = attachmentRepository.findByProductId(product.getId())
                 .stream()
                 .findFirst()
-                .map(Attachment::getUrl)
+                .map(att -> attachmentService.convertToAttachmentRes(att).url())
                 .orElse(null);
 
         // Price logic
@@ -499,7 +498,7 @@ public class ProductServiceImpl implements ProductService {
         String mainImage = attachmentRepository.findByProductId(product.getId())
                 .stream()
                 .findFirst()
-                .map(Attachment::getUrl)
+                .map(att -> attachmentService.convertToAttachmentRes(att).url())
                 .orElse(null);
 
         // Discount'ni hisoblab discountPrice'ni set qilish

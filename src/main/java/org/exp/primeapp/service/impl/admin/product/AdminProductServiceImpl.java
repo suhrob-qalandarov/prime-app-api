@@ -2,9 +2,11 @@ package org.exp.primeapp.service.impl.admin.product;
 
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.exp.primeapp.models.dto.request.ProductReq;
 import org.exp.primeapp.models.dto.responce.admin.AdminProductDashboardRes;
 import org.exp.primeapp.models.dto.responce.admin.AdminProductRes;
+import org.exp.primeapp.models.dto.response.admin.AdminAttachmentRes;
 import org.exp.primeapp.models.dto.responce.user.ProductPageRes;
 import org.exp.primeapp.models.dto.responce.user.ProductSizeRes;
 import org.exp.primeapp.models.entities.*;
@@ -24,6 +26,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class AdminProductServiceImpl implements AdminProductService {
@@ -36,6 +39,7 @@ public class AdminProductServiceImpl implements AdminProductService {
     private final CategoryRepository categoryRepository;
     private final AttachmentRepository attachmentRepository;
     private final InventoryTransactionRepository inventoryTransactionRepository;
+    private final org.exp.primeapp.service.face.global.attachment.AttachmentService attachmentService;
     private static final DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm");
 
     @Override
@@ -101,13 +105,25 @@ public class AdminProductServiceImpl implements AdminProductService {
                         .amount(size.getQuantity())
                         .build())
                 .toList();
-        List<String> picturesUrlList = attachmentRepository.findByProductId(product.getId())
-                .stream()
-                .map(Attachment::getUrl)
+
+        List<Attachment> attachments = attachmentRepository.findByProductId(product.getId());
+        List<AdminAttachmentRes> attachmentResList = attachments.stream()
+                .map(this::convertToAdminAttachmentRes)
                 .toList();
+
+        // Use mainImageFilename from product, or fallback to first attachment
+        String mainImageFilename = product.getMainImageFilename();
+        if (mainImageFilename == null && !attachments.isEmpty()) {
+            mainImageFilename = attachments.getFirst().getFilename();
+        }
+        String mainImageUrl = mainImageFilename != null
+                ? attachmentService.generateUrl(mainImageFilename)
+                : null;
+
         return AdminProductRes.builder()
                 .id(product.getId())
                 .name(product.getName())
+                .mainImageUrl(mainImageUrl)
                 .brand(product.getBrand())
                 .colorName(product.getColorName())
                 .colorHex(product.getColorHex())
@@ -118,8 +134,20 @@ public class AdminProductServiceImpl implements AdminProductService {
                 .active(product.getStatus() == ProductStatus.ON_SALE)
                 .discount(product.getDiscountPercent())
                 .createdAt(product.getCreatedAt().format(formatter))
-                .picturesUrls(picturesUrlList)
+                .attachments(attachmentResList)
                 .sizes(productSizeReslist)
+                .build();
+    }
+
+    private AdminAttachmentRes convertToAdminAttachmentRes(Attachment attachment) {
+        String url = attachmentService.convertToAttachmentRes(attachment).url();
+        return AdminAttachmentRes.builder()
+                .filename(attachment.getFilename())
+                .url(url)
+                .isMain(attachment.getIsMain())
+                .isActive(attachment.getIsActive() != null ? attachment.getIsActive() : true)
+                .orderNumber(attachment.getOrderNumber())
+                .dateTime(attachment.getCreatedAt())
                 .build();
     }
 
@@ -138,18 +166,56 @@ public class AdminProductServiceImpl implements AdminProductService {
                 .orElseThrow(
                         () -> new RuntimeException("Category not found with categoryId: " + productReq.categoryId()));
 
-        Set<String> attachmentUrls = productReq.attachmentUrls();
-        if (attachmentUrls == null || attachmentUrls.isEmpty()) {
+        Set<Object> attachmentObjects = productReq.attachmentUrls();
+        if (attachmentObjects == null || attachmentObjects.isEmpty()) {
             throw new RuntimeException("Attachments empty");
         }
 
-        List<Attachment> attachments = new ArrayList<>(attachmentRepository.findAllByUrlIn(attachmentUrls));
-        if (attachments.size() != attachmentUrls.size()) {
+        // Extract filenames from Mixed Types (String or Map)
+        Set<String> filenames = attachmentObjects.stream()
+                .map(obj -> {
+                    if (obj instanceof String str) {
+                        return extractFilenameFromUrl(str);
+                    }
+                    if (obj instanceof java.util.Map map) {
+                        Object filenameObj = map.get("filename");
+                        if (filenameObj != null && !filenameObj.toString().isEmpty()) {
+                            return filenameObj.toString();
+                        }
+                        Object urlObj = map.get("url");
+                        if (urlObj != null) {
+                            return extractFilenameFromUrl(urlObj.toString());
+                        }
+                    }
+                    return null;
+                })
+                .filter(java.util.Objects::nonNull)
+                .collect(java.util.stream.Collectors.toSet());
+
+        // Find attachments by filename (not UUID!)
+        List<Attachment> attachments = filenames.stream()
+                .map(filename -> attachmentRepository.findByFilename(filename)
+                        .orElse(null))
+                .filter(att -> att != null)
+                .toList();
+
+        if (attachments.size() != filenames.size()) {
+            log.error("Expected {} attachments, found {}. Filenames: {}",
+                    filenames.size(), attachments.size(), filenames);
             throw new RuntimeException("Some attachments not found");
         }
 
         Product product = createProductFromReq(productReq, category);
         product.setDiscountPercent(0);
+
+        // Set main image filename
+        String mainImageFilename = attachments.stream()
+                .filter(Attachment::getIsMain)
+                .map(Attachment::getFilename)
+                .findFirst()
+                .orElseGet(() -> attachments.isEmpty() ? null : attachments.get(0).getFilename());
+        product.setMainImageFilename(mainImageFilename);
+
         Product savedProduct = productRepository.save(product);
 
         // Attachments ga product_id ni set qilamiz
@@ -157,6 +223,29 @@ public class AdminProductServiceImpl implements AdminProductService {
         attachmentRepository.saveAll(attachments);
 
         return convertToAdminProductRes(savedProduct);
+    }
+
+    /**
+     * Extract UUID from attachment URL or filename
+     * Examples:
+     * "/api/v1/attachment/uuid-123.jpg" -> "uuid-123"
+     * "http://localhost:8080/api/v1/attachment/uuid-456.png" -> "uuid-456"
+     * "uuid-789.jpg" -> "uuid-789"
+     * "uuid-abc" -> "uuid-abc" (already UUID without extension)
+     */
+    private String extractFilenameFromUrl(String urlOrFilename) {
+        if (urlOrFilename == null || urlOrFilename.isEmpty()) {
+            return urlOrFilename;
+        }
+
+        // Extract filename from URL (last segment after the last slash)
+        if (urlOrFilename.contains("/")) {
+            String[] parts = urlOrFilename.split("/");
+            return parts[parts.length - 1];
+        }
+
+        // Already a filename
+        return urlOrFilename;
     }
 
     private Product createProductFromReq(ProductReq req, Category category) {

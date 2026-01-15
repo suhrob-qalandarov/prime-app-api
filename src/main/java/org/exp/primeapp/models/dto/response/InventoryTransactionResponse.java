@@ -1,6 +1,7 @@
 package org.exp.primeapp.models.dto.response;
 
 import lombok.Builder;
+import com.fasterxml.jackson.annotation.JsonFormat;
 import org.exp.primeapp.models.enums.TransactionReason;
 import org.exp.primeapp.models.enums.TransactionType;
 
@@ -51,6 +52,6 @@ public record InventoryTransactionResponse(
 
         String note,
 
-        LocalDateTime createdAt,
-        LocalDateTime returnedAt) {
-}
+       @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "dd.MM.yyyy HH:mm") LocalDateTime createdAt,
+       @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "dd.MM.yyyy HH:mm") LocalDateTime returnedAt
+) {}
