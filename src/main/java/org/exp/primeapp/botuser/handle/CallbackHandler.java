@@ -14,7 +14,7 @@ public class CallbackHandler implements Consumer<CallbackQuery> {
 
     @Override
     public void accept(CallbackQuery callbackQuery) {
-        // User bot doesn't handle callbacks - all callbacks are for admin bot
-        log.debug("User bot received callback query, but callbacks are not handled for user bot");
+        // User bot currently doesn't handle callbacks
+        log.debug("User bot received callback query, but callbacks are not handled");
     }
 }
