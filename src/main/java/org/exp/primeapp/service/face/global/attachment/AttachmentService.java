@@ -13,19 +13,19 @@ import java.util.List;
 @Service
 public interface AttachmentService {
 
-    void get(String attachmentUrl, HttpServletRequest request, HttpServletResponse response) throws IOException;
+    void get(String fileNameOrUuid, HttpServletRequest request, HttpServletResponse response) throws IOException;
 
-    Attachment getAttachment(Long attachmentId);
-
-    Attachment getAttachmentWithUrl(String attachmentUrl);
+    Attachment getAttachment(String attachmentId);
 
     void validateFile(MultipartFile file);
 
-    void validateAttachmentId(Long attachmentId);
+    void validateAttachmentId(String attachmentId);
 
     List<AttachmentRes> convertToAttachmentResList(List<Attachment> attachments);
 
     AttachmentRes convertToAttachmentRes(Attachment attachment);
 
     List<String> convertToAttachmentUrls(List<Attachment> attachments);
+
+    String generateUrl(String filename);
 }

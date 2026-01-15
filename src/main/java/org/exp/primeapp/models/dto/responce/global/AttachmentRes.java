@@ -4,12 +4,11 @@ import lombok.Builder;
 
 @Builder
 public record AttachmentRes(
-        Long id,
+        String id,
         String url,
         String filename,
         String originalFilename,
         String contentType,
         Long fileSize,
         String fileExtension
-) {
-}
+) {}

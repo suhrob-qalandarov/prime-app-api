@@ -17,8 +17,11 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Base64;
 import java.util.List;
 import java.util.stream.Collectors;
+
+import static org.exp.primeapp.utils.Const.*;
 
 @Slf4j
 @Service
@@ -33,64 +36,107 @@ public class AttachmentServiceImpl implements AttachmentService {
     @Value("${app.attachment.folder.path:uploads}")
     private String attachmentFolderPath;
 
+    @Value("${app.attachment.base.url:http://localhost:8080}")
+    private String attachmentBaseUrl;
+
     @Override
-    public void get(String attachmentUrl, HttpServletRequest request, HttpServletResponse response)
+    public void get(String filenameWithExt, HttpServletRequest request, HttpServletResponse response)
             throws IOException {
         try {
-            Attachment attachment = getAttachmentWithUrl(attachmentUrl);
-            if (attachment == null) {
-                response.setStatus(HttpServletResponse.SC_NOT_FOUND);
+            log.debug("Fetching attachment: {}", filenameWithExt);
+
+            // 1️⃣ First: Try to read directly from disk (NO DB QUERY!)
+            byte[] fileContent = tryReadFromDiskByFilename(filenameWithExt);
+
+            if (fileContent != null) {
+                log.debug("✅ File loaded from disk without DB query: {}", filenameWithExt);
+                sendFileResponse(response, fileContent, filenameWithExt);
                 return;
             }
 
-            // Simple check: if file exists?
-            // Assuming attachmentUrl is "filename.ext" or "UUID.ext"
-            // If DB entry exists, try to get file.
+            // 2️⃣ Fallback: Query DB by filename (native SQL - only base64 field, indexed column!)
+            log.info("📦 Disk file not found, attempting database fallback for filename: {}", filenameWithExt);
 
-            byte[] fileContent = getFileContent(attachment.getFilename()); // Assuming filename is stored
-            if (fileContent == null) {
-                response.setStatus(HttpServletResponse.SC_NOT_FOUND);
+            String base64Data = attachmentRepository.findBase64DataByFilename(filenameWithExt);
+
+            if (base64Data != null && !base64Data.isEmpty()) {
+                byte[] decodedData = Base64.getDecoder().decode(base64Data);
+                log.info("✅ File loaded from database (base64 fallback): {} ({} bytes)",
+                        filenameWithExt, decodedData.length);
+                sendFileResponse(response, decodedData, filenameWithExt);
                 return;
             }
 
-            String filename = attachment.getOriginalFilename() != null
-                    ? attachment.getOriginalFilename()
-                    : attachment.getFilename();
+            // 3️⃣ File not found anywhere
+            log.error("❌ File not found on disk or database: {}", filenameWithExt);
+            response.setStatus(HttpServletResponse.SC_NOT_FOUND);
 
-            response.setContentType(attachment.getContentType() != null ? attachment.getContentType() : "image/jpeg");
-            response.setHeader("Content-Disposition",
-                    "inline; filename=\"" + (filename != null ? filename : "attachment") + "\"");
-            response.setContentLength(fileContent.length);
-            response.getOutputStream().write(fileContent);
-            response.getOutputStream().flush();
-        } catch (IOException e) {
-            log.error("Failed to fetch file for attachment URL {}: {}", attachmentUrl, e.getMessage());
+        } catch (Exception e) {
+            log.error("Failed to fetch file {}: {}", filenameWithExt, e.getMessage(), e);
             response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
-            throw new IOException("Unable to retrieve file", e);
         }
     }
 
-    private byte[] getFileContent(String filename) throws IOException {
-        if (filename == null || filename.isBlank()) {
-            throw new IllegalArgumentException("Filename cannot be null or empty");
+    /**
+     * Try to read file directly from disk using filename
+     * NO DATABASE QUERY - super fast!
+     */
+    private byte[] tryReadFromDiskByFilename(String filename) {
+        try {
+            Path filePath = Paths.get(attachmentFolderPath, filename);
+            if (Files.exists(filePath)) {
+                return Files.readAllBytes(filePath);
+            }
+        } catch (IOException e) {
+            log.warn("⚠️ Error reading file from disk: {}", e.getMessage());
         }
-        Path filePath = Paths.get(attachmentFolderPath, filename);
-        if (!Files.exists(filePath)) {
-            return null;
+        return null;
+    }
+
+    /**
+     * Send file response with proper headers
+     */
+    private void sendFileResponse(HttpServletResponse response, byte[] fileContent, String filename)
+            throws IOException {
+        String contentType = determineContentType(filename);
+
+        response.setContentType(contentType);
+        response.setHeader("Content-Disposition", "inline; filename=\"" + filename + "\"");
+        response.setContentLength(fileContent.length);
+        response.setHeader("Cache-Control", "public, max-age=2592000"); // 30 days cache
+        response.getOutputStream().write(fileContent);
+        response.getOutputStream().flush();
+    }
+
+    /**
+     * Determine content type from filename extension
+     */
+    private String determineContentType(String filename) {
+        if (filename == null) {
+            return "application/octet-stream";
         }
-        return Files.readAllBytes(filePath);
+
+        String lowerFilename = filename.toLowerCase();
+        if (lowerFilename.endsWith(".jpg") || lowerFilename.endsWith(".jpeg")) {
+            return "image/jpeg";
+        } else if (lowerFilename.endsWith(".png")) {
+            return "image/png";
+        } else if (lowerFilename.endsWith(".gif")) {
+            return "image/gif";
+        } else if (lowerFilename.endsWith(".webp")) {
+            return "image/webp";
+        } else if (lowerFilename.endsWith(".svg")) {
+            return "image/svg+xml";
+        }
+
+        return "application/octet-stream";
     }
 
     @Override
-    public Attachment getAttachment(Long attachmentId) {
+    public Attachment getAttachment(String attachmentId) {
         validateAttachmentId(attachmentId);
         return attachmentRepository.findById(attachmentId)
                 .orElseThrow(() -> new EntityNotFoundException("Active attachment not found with ID: " + attachmentId));
-    }
-
-    @Override
-    public Attachment getAttachmentWithUrl(String attachmentUrl) {
-        return attachmentRepository.findByUrl(attachmentUrl);
     }
 
     @Override
@@ -108,8 +154,8 @@ public class AttachmentServiceImpl implements AttachmentService {
     }
 
     @Override
-    public void validateAttachmentId(Long attachmentId) {
-        if (attachmentId == null || attachmentId <= 0) {
+    public void validateAttachmentId(String attachmentId) {
+        if (attachmentId == null || attachmentId.isBlank()) {
             throw new IllegalArgumentException("Invalid attachment ID: " + attachmentId);
         }
     }
@@ -124,19 +170,28 @@ public class AttachmentServiceImpl implements AttachmentService {
     @Override
     public List<String> convertToAttachmentUrls(List<Attachment> attachments) {
         return attachments.stream()
-                .map(Attachment::getUrl).toList();
+                .map(Attachment::getFilename)
+                .toList();
     }
 
     @Override
     public AttachmentRes convertToAttachmentRes(Attachment attachment) {
         return AttachmentRes.builder()
-                .id(attachment.getId())
-                .url(attachment.getUrl())
+                .id(attachment.getUuid()) // Use UUID as ID
+                .url(generateUrl(attachment.getFilename()))
                 .filename(attachment.getFilename())
                 .originalFilename(attachment.getOriginalFilename())
                 .contentType(attachment.getContentType())
                 .fileSize(attachment.getFileSize())
                 .fileExtension(attachment.getFileExtension())
                 .build();
+    }
+
+    @Override
+    public String generateUrl(String filename) {
+        // Construct full URL with filename (uuid.ext format)
+        // Example: http://localhost:8080/api/v1/attachment/uuid-123.jpg
+        // This allows direct disk lookup without DB query!
+        return attachmentBaseUrl + API + V1 + ATTACHMENT + "/" + filename; // Using filename (uuid.ext) instead of just UUID
     }
 }

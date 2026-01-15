@@ -12,9 +12,9 @@ public interface AdminAttachmentService {
 
     List<Attachment> uploadMultiple(MultipartFile[] files);
 
-    AttachmentRes update(Long attachmentId, MultipartFile file);
+    AttachmentRes update(String attachmentId, MultipartFile file);
 
-    void delete(Long attachmentId);
+    void delete(String attachmentId);
 
     List<AttachmentRes> getAttachments();
 
@@ -22,7 +22,9 @@ public interface AdminAttachmentService {
 
     List<AttachmentRes> getAttachmentsLinkedWithProduct();
 
-    void deleteFromS3(Long attachmentId);
+    void deleteFromS3(String attachmentId);
 
-    AttachmentRes toggleAttachmentActiveStatus(Long attachmentId);
+    AttachmentRes toggleAttachmentActiveStatus(String attachmentId);
+
+    Attachment uploadMainFile(MultipartFile file);
 }

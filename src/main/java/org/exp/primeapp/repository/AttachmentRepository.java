@@ -3,15 +3,13 @@ package org.exp.primeapp.repository;
 import org.exp.primeapp.models.entities.Attachment;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
-import java.util.Collection;
 import java.util.List;
 
-import java.util.Set;
-
 @Repository
-public interface AttachmentRepository extends JpaRepository<Attachment, Long> {
+public interface AttachmentRepository extends JpaRepository<Attachment, String> {
 
     List<Attachment> findByProductIsNull();
 
@@ -22,7 +20,23 @@ public interface AttachmentRepository extends JpaRepository<Attachment, Long> {
     @Query("SELECT COUNT(a) FROM Attachment a")
     int countAll();
 
-    Attachment findByUrl(String url);
+    /**
+     * Fetch only base64 data for fallback when disk file is missing.
+     * Uses native query for performance - only retrieves the base64 column.
+     */
+    @Query(value = "SELECT file_data_base64 FROM attachments WHERE uuid = :uuid", nativeQuery = true)
+    String findBase64DataByUuid(@Param("uuid") String uuid);
 
-    Set<Attachment> findAllByUrlIn(Collection<String> urls);
+    /**
+     * Fetch only base64 data by filename for fallback when disk file is missing.
+     * Uses native query for performance - only retrieves the base64 column.
+     * Uses indexed filename column for fast lookup.
+     */
+    @Query(value = "SELECT file_data_base64 FROM attachments WHERE filename = :filename", nativeQuery = true)
+    String findBase64DataByFilename(@Param("filename") String filename);
+
+    /**
+     * Find attachment by filename
+     */
+    java.util.Optional<Attachment> findByFilename(String filename);
 }

@@ -18,6 +18,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.util.Arrays;
+import java.util.Base64;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -29,9 +30,6 @@ public class AdminAttachmentServiceImpl implements AdminAttachmentService {
 
     private final AttachmentRepository attachmentRepository;
     private final AttachmentService attachmentService;
-
-    @Value("${app.attachment.base.url}")
-    private String attachmentBaseUrl;
 
     @Value("${app.attachment.folder.path:uploads}")
     private String attachmentFolderPath;
@@ -58,9 +56,19 @@ public class AdminAttachmentServiceImpl implements AdminAttachmentService {
     @Override
     public Attachment uploadOne(MultipartFile file) {
         attachmentService.validateFile(file);
-        String url = saveFileLocally(file);
-        return saveAttachment(file, url);
+        String filename = saveFileLocally(file);
+        String base64Data = convertToBase64(file);
+        return saveAttachment(file, filename, base64Data, false);
     }
+
+    @Override
+    public Attachment uploadMainFile(MultipartFile file) {
+        attachmentService.validateFile(file);
+        String filename = saveFileLocally(file);
+        String base64Data = convertToBase64(file);
+        return saveAttachment(file, filename, base64Data, true);
+    }
+
 
     @Transactional
     @Override
@@ -71,44 +79,51 @@ public class AdminAttachmentServiceImpl implements AdminAttachmentService {
         return Arrays.stream(files)
                 .map(file -> {
                     attachmentService.validateFile(file);
-                    String url = saveFileLocally(file);
-                    return saveAttachment(file, url);
+                    String filename = saveFileLocally(file);
+                    String base64Data = convertToBase64(file);
+                    return saveAttachment(file, filename, base64Data, false);
                 })
                 .collect(Collectors.toList());
     }
 
     @Transactional
     @Override
-    public AttachmentRes update(Long attachmentId, MultipartFile file) {
+    public AttachmentRes update(String attachmentId, MultipartFile file) {
         attachmentService.validateFile(file);
         Attachment attachment = attachmentService.getAttachment(attachmentId);
-        String oldUrl = attachment.getUrl();
-        String newUrl = saveFileLocally(file);
+        String oldFilename = attachment.getFilename();
+        String newFilename = saveFileLocally(file);
+        String base64Data = convertToBase64(file);
 
-        attachment.setUrl(newUrl);
-        attachment.setFilename(file.getOriginalFilename());
+        attachment.setFilename(newFilename);
+        attachment.setOriginalFilename(file.getOriginalFilename());
         attachment.setContentType(file.getContentType());
+        attachment.setFileSize(file.getSize());
+        attachment.setFileExtension(getFileExtension(newFilename));
+        attachment.setFileDataBase64(base64Data);
 
         try {
             Attachment saved = attachmentRepository.save(attachment);
-            if (oldUrl != null && !oldUrl.equals(newUrl)) {
-                deleteLocalFile(oldUrl);
+            if (oldFilename != null && !oldFilename.equals(newFilename)) {
+                deleteLocalFile(oldFilename);
             }
             return attachmentService.convertToAttachmentRes(saved);
         } catch (Exception e) {
             log.error("Failed to update attachment ID {} in database: {}", attachmentId, e.getMessage());
-            deleteLocalFile(newUrl); // Rollback new file upload
+            deleteLocalFile(newFilename); // Rollback new file upload
             throw new RuntimeException("Unable to update attachment in database", e);
         }
     }
 
     @Transactional
     @Override
-    public void delete(Long attachmentId) {
+    public void delete(String attachmentId) {
         Attachment attachment = attachmentService.getAttachment(attachmentId);
+        String filename = attachment.getFilename();
 
         try {
             attachmentRepository.delete(attachment);
+            deleteLocalFile(filename);
         } catch (Exception e) {
             log.error("Failed to delete attachment ID {}: {}", attachmentId, e.getMessage());
             throw new RuntimeException("Unable to delete attachment in database", e);
@@ -117,45 +132,44 @@ public class AdminAttachmentServiceImpl implements AdminAttachmentService {
 
     @Transactional
     @Override
-    public void deleteFromS3(Long attachmentId) {
+    public void deleteFromS3(String attachmentId) {
         Attachment attachment = attachmentService.getAttachment(attachmentId);
-        String url = attachment.getUrl();
+        String filename = attachment.getFilename();
 
-        if (attachment.getUrl().startsWith("deleted_")) {
+        if (filename.startsWith("deleted_")) {
             return;
         }
 
         try {
-            attachment.setUrl("deleted_" + attachment.getUrl());
+            attachment.setFilename("deleted_" + filename);
             attachmentRepository.save(attachment);
         } catch (Exception e) {
             log.error("Failed to soft-delete attachment ID {}: {}", attachmentId, e.getMessage());
             throw new RuntimeException("Unable to soft-delete attachment in database", e);
         }
-
-        deleteLocalFile(url);
+        // Assuming we keep the file but rename it or something, but the original code
+        // deleted it from "local file" in deleteFromS3
+        // If we soft delete in DB (rename), do we delete file?
+        // Original code: assigned deleted_ prefix in DB, AND deletedLocalFile(url).
+        // I will follow original logic: delete file from disk.
+        deleteLocalFile(filename);
     }
 
     @Override
-    public AttachmentRes toggleAttachmentActiveStatus(Long attachmentId) {
-        Attachment attachment = attachmentRepository.findById(attachmentId)
-                .orElseThrow(() -> new IllegalArgumentException("Attachment not found with ID: " + attachmentId));
-
-        log.info("Toggle active status called for attachment {}, but active field is removed.", attachment.getId());
-
+    public AttachmentRes toggleAttachmentActiveStatus(String attachmentId) {
+        Attachment attachment = attachmentService.getAttachment(attachmentId);
+        // Active status logic removed as per original comment
         return attachmentService.convertToAttachmentRes(attachment);
     }
 
     private String saveFileLocally(MultipartFile file) {
         try {
-            // Create upload directory if it doesn't exist
             Path uploadDir = Paths.get(attachmentFolderPath);
             if (!Files.exists(uploadDir)) {
                 Files.createDirectories(uploadDir);
                 log.info("Created upload directory: {}", uploadDir.toAbsolutePath());
             }
 
-            // Generate unique filename
             String originalFilename = file.getOriginalFilename();
             if (originalFilename == null || originalFilename.isEmpty()) {
                 originalFilename = file.getName();
@@ -166,49 +180,81 @@ public class AdminAttachmentServiceImpl implements AdminAttachmentService {
                 uniqueFilename += "." + fileExtension;
             }
 
-            // Save file to disk
             Path filePath = uploadDir.resolve(uniqueFilename);
             Files.copy(file.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);
             log.info("File saved successfully: {}", filePath.toAbsolutePath());
 
-            // Generate URL: base_url + folder_path + filename
-            String baseUrl = attachmentBaseUrl.endsWith("/")
-                    ? attachmentBaseUrl.substring(0, attachmentBaseUrl.length() - 1)
-                    : attachmentBaseUrl;
-            String folderPath = attachmentFolderPath.startsWith("/")
-                    ? attachmentFolderPath
-                    : "/" + attachmentFolderPath;
-            String url = baseUrl + folderPath + "/" + uniqueFilename;
-
-            return url;
+            return uniqueFilename;
         } catch (IOException e) {
             log.error("Failed to save file {}: {}", file.getOriginalFilename(), e.getMessage());
             throw new RuntimeException("Unable to save file to disk", e);
         }
     }
 
-    private Attachment saveAttachment(MultipartFile file, String url) {
-        // Extract file path from URL (relative path)
-        String filePath = url.replace(attachmentBaseUrl, "");
-        if (!filePath.startsWith("/")) {
-            filePath = "/" + filePath;
-        }
+    private Attachment saveAttachment(MultipartFile file, String filename, String base64Data, Boolean isMain) {
+        // Store only path in filePath as requested: "file_path ga faqat path o'zi
+        // saqlanadi masalan: /uploads"
+        // I will use attachmentFolderPath as the path.
+
+        // Extract timestamp from filename (uuid_timestamp.ext)
+        Long timestamp = extractTimestampFromFilename(filename);
 
         Attachment newAttachment = Attachment.builder()
-                .url(url)
-                .filePath(filePath)
-                .filename(file.getOriginalFilename())
+                .filePath(attachmentFolderPath)
+                .filename(filename)
                 .originalFilename(file.getOriginalFilename())
                 .contentType(file.getContentType())
                 .fileSize(file.getSize())
                 .fileExtension(getFileExtension(file.getOriginalFilename()))
+                .fileTimestamp(timestamp)
+                .fileDataBase64(base64Data)
+                .isActive(true)
+                .isMain(isMain)
+                .orderNumber(0)
                 .build();
         try {
             return attachmentRepository.save(newAttachment);
         } catch (Exception e) {
             log.error("Failed to save attachment for file {}: {}", file.getOriginalFilename(), e.getMessage());
-            deleteLocalFile(url); // Rollback file upload
+            deleteLocalFile(filename); // Rollback file upload
             throw new RuntimeException("Unable to save attachment to database", e);
+        }
+    }
+
+    /**
+     * Extract timestamp from filename
+     * Example: "uuid-123_1768493140874.jpg" -> 1768493140874
+     */
+    private Long extractTimestampFromFilename(String filename) {
+        try {
+            // Remove extension first
+            String nameWithoutExt = filename;
+            int lastDotIndex = filename.lastIndexOf('.');
+            if (lastDotIndex > 0) {
+                nameWithoutExt = filename.substring(0, lastDotIndex);
+            }
+
+            // Extract timestamp after last underscore
+            int lastUnderscoreIndex = nameWithoutExt.lastIndexOf('_');
+            if (lastUnderscoreIndex > 0 && lastUnderscoreIndex < nameWithoutExt.length() - 1) {
+                String timestampStr = nameWithoutExt.substring(lastUnderscoreIndex + 1);
+                return Long.parseLong(timestampStr);
+            }
+        } catch (Exception e) {
+            log.warn("Failed to extract timestamp from filename: {}", filename);
+        }
+        return null;
+    }
+
+    private String convertToBase64(MultipartFile file) {
+        try {
+            byte[] bytes = file.getBytes();
+            String base64 = Base64.getEncoder().encodeToString(bytes);
+            log.debug("✅ Converted file to base64 ({} bytes -> {} chars)", bytes.length, base64.length());
+            return base64;
+        } catch (IOException e) {
+            log.warn("⚠️ Failed to convert file to base64, continuing without backup: {}", e.getMessage());
+            return null;
         }
     }
 
@@ -220,18 +266,9 @@ public class AdminAttachmentServiceImpl implements AdminAttachmentService {
         return lastDotIndex > 0 ? filename.substring(lastDotIndex + 1) : "";
     }
 
-    private void deleteLocalFile(String url) {
+    private void deleteLocalFile(String filename) {
         try {
-            // Extract file path from URL
-            String baseUrl = attachmentBaseUrl.endsWith("/")
-                    ? attachmentBaseUrl.substring(0, attachmentBaseUrl.length() - 1)
-                    : attachmentBaseUrl;
-            String filePath = url.replace(baseUrl, "");
-            if (filePath.startsWith("/")) {
-                filePath = filePath.substring(1);
-            }
-
-            Path fileToDelete = Paths.get(filePath);
+            Path fileToDelete = Paths.get(attachmentFolderPath, filename);
             if (Files.exists(fileToDelete)) {
                 Files.delete(fileToDelete);
                 log.info("File deleted successfully: {}", fileToDelete.toAbsolutePath());
@@ -239,8 +276,7 @@ public class AdminAttachmentServiceImpl implements AdminAttachmentService {
                 log.warn("File not found for deletion: {}", fileToDelete.toAbsolutePath());
             }
         } catch (IOException e) {
-            log.error("Failed to delete file with URL {}: {}", url, e.getMessage());
-            // Don't throw exception - file deletion failure shouldn't break the flow
+            log.error("Failed to delete file {}: {}", filename, e.getMessage());
         }
     }
 }
