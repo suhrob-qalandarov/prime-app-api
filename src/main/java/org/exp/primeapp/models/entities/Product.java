@@ -38,6 +38,9 @@ public class Product extends BaseEntity {
     @Column(columnDefinition = "TEXT", nullable = false)
     private String description;
 
+    @Column(name = "main_image_filename", columnDefinition = "TEXT", nullable = false)
+    private String mainImageFilename;
+
     @Column(nullable = false)
     private String colorName;
 
